@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "studio-1345487071-133e0"
+  },
+  "targets": {
+    "studio-1345487071-133e0": {
+      "hosting": {
+        "alexamarante": [
+          "alexamarante"
+        ]
+      }
+    }
+  }
+}

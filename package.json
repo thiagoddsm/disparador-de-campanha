@@ -1,0 +1,22 @@
+{
+  "name": "whatsapp-campaign-dispatch",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "vite build && firebase deploy --only hosting:alexamarante",
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "deploy:all": "vite build && firebase deploy"
+  },
+  "dependencies": {
+    "firebase": "^11.4.0",
+    "lucide": "^0.475.0"
+  },
+  "devDependencies": {
+    "firebase-tools": "^15.28.1",
+    "vite": "^6.2.0"
+  }
+}

@@ -1,0 +1,298 @@
+import './styles/main.css';
+import { useAuth, logoutUser } from './firebase/auth.js';
+import { renderLoginView } from './components/LoginView.js';
+import { renderSidebar } from './components/Sidebar.js';
+import { renderBottomNav } from './components/BottomNav.js';
+import { renderAdminPanel } from './components/AdminPanel.js';
+import { renderManagerialDashboard } from './components/ManagerialDashboard.js';
+import { renderContactsView } from './components/ContactsView.js';
+import { renderDispatchView } from './components/DispatchView.js';
+import { renderCsvImportWizard } from './components/CsvImportWizard.js';
+import { renderEvolutionManager } from './components/EvolutionManager.js';
+import { renderSettingsGeneral } from './components/SettingsGeneral.js';
+import { renderRolesManagement } from './components/RolesManagement.js';
+import { renderSecuritySettings } from './components/SecuritySettings.js';
+
+const appEl = document.querySelector('#app');
+
+// Remove somente o cache legado de demonstração; a fonte de dados em produção é o Firestore.
+['campaign_teams', 'campaign_members', 'campaign_templates', 'campaign_contacts', 'campaign_audit_logs', 'mgmt_active_template'].forEach(key => localStorage.removeItem(key));
+
+let activeCleanup = null;
+let currentView = null;
+let currentTeamId = 'team_alpha';
+let currentUserState = null;
+
+function renderProtectedApp(currentUser) {
+  currentUserState = currentUser;
+  const role = currentUser.role || 'member';
+
+  // Define a view padrão com base no papel
+  if (!currentView) {
+    if (role === 'admin') currentView = 'admin';
+    else if (role === 'coordinator') currentView = 'manager';
+    else currentView = 'contacts';
+  }
+
+  // Guard de Rota no Frontend (Blindagem de Nível de Acesso)
+  if (role === 'member' && ['admin', 'manager', 'import', 'evolution', 'roles'].includes(currentView)) {
+    currentView = 'contacts';
+  } else if (role === 'coordinator' && currentView === 'admin') {
+    currentView = 'manager';
+  }
+
+  if (activeCleanup && typeof activeCleanup === 'function') {
+    activeCleanup();
+    activeCleanup = null;
+  }
+
+  const isManagerView = currentView === 'manager' || currentView === 'admin';
+  const roleLabel = role === 'admin' ? 'Administrador Geral' : role === 'coordinator' ? 'Coordenador de Equipe' : 'Operador de Disparos';
+
+  appEl.innerHTML = `
+    <div class="app-container">
+      <!-- Sidebar Desktop -->
+      <div id="sidebar-mount"></div>
+
+      <!-- Main Content Area -->
+      <div class="main-wrapper">
+        <!-- Topbar -->
+        <header class="topbar">
+          <div class="topbar-left">
+            <h2>
+              ${currentView === 'admin' ? 'Painel Administrativo Global' : currentView === 'manager' ? 'Painel de Gestão da Equipe' : currentView === 'settings' ? 'Enterprise Dashboard' : currentView === 'roles' ? 'Enterprise Dashboard' : currentView === 'security' ? 'Enterprise Dashboard' : 'Enterprise Dashboard'}
+            </h2>
+            
+            ${isManagerView ? `
+              <select id="topbar-team-select" class="team-selector-pill">
+                <option value="team_alpha" ${currentTeamId === 'team_alpha' ? 'selected' : ''}>Equipe Alpha ⌵</option>
+                <option value="team_beta" ${currentTeamId === 'team_beta' ? 'selected' : ''}>Equipe Beta ⌵</option>
+              </select>
+            ` : `
+              <div class="topbar-search-wrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" class="topbar-search-input" placeholder="Buscar...">
+              </div>
+            `}
+          </div>
+
+          <div class="topbar-right" style="position: relative;">
+            <!-- Notificações -->
+            <button id="btn-topbar-notifications" class="topbar-icon-btn" title="Notificações" style="position: relative;">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <div class="topbar-badge-dot"></div>
+            </button>
+
+            <!-- Configurações -->
+            <button id="btn-topbar-settings" class="topbar-icon-btn" title="Configurações">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </button>
+
+            <!-- Avatar -->
+            <button id="btn-topbar-avatar" style="background: none; border: none; padding: 0; cursor: pointer;">
+              <img src="${currentUser.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" class="topbar-avatar" alt="Avatar Usuário">
+            </button>
+
+            <!-- Dropdown Notificações -->
+            <div id="dropdown-notifications" class="topbar-dropdown" style="display: none;">
+              <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 0.9rem; color: var(--text-main);">Notificações da Campanha</strong>
+                <span class="pill-btn" style="font-size: 0.65rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8;">2 Novas</span>
+              </div>
+              <div style="max-height: 260px; overflow-y: auto;">
+                <div style="padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-color); font-size: 0.82rem; background: #F8FAFC;">
+                  <div style="font-weight: 600; color: var(--text-main);">🔥 Meta de Disparos Ativa</div>
+                  <div style="color: var(--text-muted); margin-top: 0.15rem;">Meta individual configurada: ${currentUser.daily_goal || 30} contatos.</div>
+                  <div style="font-size: 0.7rem; color: #9CA3AF; margin-top: 0.35rem;">Hoje</div>
+                </div>
+                <div style="padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-color); font-size: 0.82rem;">
+                  <div style="font-weight: 600; color: #15803D;">✓ Plataforma Multi-Tenant Conectada</div>
+                  <div style="color: var(--text-muted); margin-top: 0.15rem;">Segurança RBAC e isolamento de tenancy ativos.</div>
+                  <div style="font-size: 0.7rem; color: #9CA3AF; margin-top: 0.35rem;">Ativo</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dropdown Perfil -->
+            <div id="dropdown-profile" class="topbar-dropdown" style="display: none; width: 280px;">
+              <div style="padding: 1.25rem 1rem; text-align: center; border-bottom: 1px solid var(--border-color); background: #F8FAFC;">
+                <img src="${currentUser.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" style="width: 52px; height: 52px; border-radius: 50%; margin-bottom: 0.5rem; object-fit: cover; border: 2px solid #FFFFFF; box-shadow: var(--shadow-sm);" alt="Avatar">
+                <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${currentUser.name || 'Jane Doe'}</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.1rem;">${currentUser.email}</div>
+                <div style="margin-top: 0.5rem;">
+                  <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-size: 0.72rem;">${roleLabel}</span>
+                </div>
+              </div>
+              <div style="padding: 0.5rem 0;">
+                <a href="#" id="menu-goto-settings" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1rem; color: var(--text-main); text-decoration: none; font-size: 0.85rem; font-weight: 500;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                  General Settings
+                </a>
+                <a href="#" id="menu-goto-security" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1rem; color: var(--text-main); text-decoration: none; font-size: 0.85rem; font-weight: 500;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                  Security Settings
+                </a>
+                <a href="#" id="menu-topbar-logout" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1rem; color: #DC2626; text-decoration: none; font-size: 0.85rem; font-weight: 500; border-top: 1px solid var(--border-color);">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                  Logout
+                </a>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <!-- Dynamic Main Content Screen -->
+        <main id="main-view-mount"></main>
+      </div>
+
+      <!-- Mobile Bottom Navigation -->
+      <div id="bottom-nav-mount"></div>
+    </div>
+  `;
+
+  const sidebarMount = appEl.querySelector('#sidebar-mount');
+  const mainMount = appEl.querySelector('#main-view-mount');
+  const bottomNavMount = appEl.querySelector('#bottom-nav-mount');
+
+  // Renderiza Sidebar
+  renderSidebar(sidebarMount, currentUserState, currentView, (newView) => {
+    currentView = newView;
+    renderProtectedApp(currentUserState);
+  });
+
+  // Renderiza Bottom Nav
+  renderBottomNav(bottomNavMount, currentView, (newView) => {
+    currentView = newView;
+    renderProtectedApp(currentUserState);
+  });
+
+  // Renderiza Tela Conforme View Ativa
+  if (currentView === 'admin') {
+    activeCleanup = renderAdminPanel(mainMount, currentUserState, (newView) => {
+      currentView = newView;
+      renderProtectedApp(currentUserState);
+    });
+  } else if (currentView === 'manager') {
+    activeCleanup = renderManagerialDashboard(mainMount, currentUserState, currentTeamId, (newTeam) => {
+      currentTeamId = newTeam;
+      renderProtectedApp(currentUserState);
+    });
+  } else if (currentView === 'contacts') {
+    activeCleanup = renderContactsView(mainMount, currentUserState, (newView) => {
+      currentView = newView;
+      renderProtectedApp(currentUserState);
+    });
+  } else if (currentView === 'dispatch') {
+    activeCleanup = renderDispatchView(mainMount, currentUserState);
+  } else if (currentView === 'import') {
+    activeCleanup = renderCsvImportWizard(mainMount, currentUserState, (newView) => {
+      currentView = newView;
+      renderProtectedApp(currentUserState);
+    });
+  } else if (currentView === 'evolution') {
+    activeCleanup = renderEvolutionManager(mainMount, currentUserState);
+  } else if (currentView === 'settings') {
+    activeCleanup = renderSettingsGeneral(mainMount, currentUserState, (newView) => {
+      currentView = newView;
+      renderProtectedApp(currentUserState);
+    });
+  } else if (currentView === 'roles') {
+    activeCleanup = renderRolesManagement(mainMount, currentUserState, (newView) => {
+      currentView = newView;
+      renderProtectedApp(currentUserState);
+    });
+  } else if (currentView === 'security') {
+    activeCleanup = renderSecuritySettings(mainMount, currentUserState, (newView) => {
+      currentView = newView;
+      renderProtectedApp(currentUserState);
+    });
+  }
+
+  // Topbar Dropdown Handlers
+  const notifBtn = appEl.querySelector('#btn-topbar-notifications');
+  const settingsBtn = appEl.querySelector('#btn-topbar-settings');
+  const avatarBtn = appEl.querySelector('#btn-topbar-avatar');
+  const notifDropdown = appEl.querySelector('#dropdown-notifications');
+  const profileDropdown = appEl.querySelector('#dropdown-profile');
+
+  notifBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isVisible = notifDropdown.style.display === 'block';
+    notifDropdown.style.display = isVisible ? 'none' : 'block';
+    if (profileDropdown) profileDropdown.style.display = 'none';
+  });
+
+  avatarBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isVisible = profileDropdown.style.display === 'block';
+    profileDropdown.style.display = isVisible ? 'none' : 'block';
+    if (notifDropdown) notifDropdown.style.display = 'none';
+  });
+
+  settingsBtn?.addEventListener('click', () => {
+    currentView = 'settings';
+    renderProtectedApp(currentUserState);
+  });
+
+  appEl.querySelector('#menu-goto-settings')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    currentView = 'settings';
+    renderProtectedApp(currentUserState);
+  });
+
+  appEl.querySelector('#menu-goto-security')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    currentView = 'security';
+    renderProtectedApp(currentUserState);
+  });
+
+  appEl.querySelector('#menu-topbar-logout')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    await logoutUser();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (notifDropdown && !notifDropdown.contains(e.target) && e.target !== notifBtn) {
+      notifDropdown.style.display = 'none';
+    }
+    if (profileDropdown && !profileDropdown.contains(e.target) && !avatarBtn.contains(e.target)) {
+      profileDropdown.style.display = 'none';
+    }
+  });
+}
+
+function renderLoading() {
+  appEl.innerHTML = `
+    <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #F8FAFC;">
+      <div style="width: 36px; height: 36px; border: 3px solid #E2E8F0; border-top-color: #1D4ED8; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+      <p style="margin-top: 1rem; font-size: 0.85rem; color: #64748B; font-weight: 500;">Autenticando no DispatchPro...</p>
+    </div>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+  `;
+}
+
+useAuth(({ user, loading }) => {
+  if (loading) {
+    renderLoading();
+    return;
+  }
+
+  if (!user) {
+    currentView = null;
+    renderLoginView(appEl, (loggedUser) => {
+      renderProtectedApp(loggedUser);
+    });
+    return;
+  }
+
+  renderProtectedApp(user);
+});

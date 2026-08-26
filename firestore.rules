@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { 
+      return request.auth != null; 
+    }
+    
+    function hasUserDoc() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Admin: Token custom claim OU perfil no Firestore com role == 'admin'
+    function admin() { 
+      return signedIn() && (
+        request.auth.token.admin == true || 
+        (hasUserDoc() && getUserDoc().role == 'admin')
+      ); 
+    }
+    
+    // Coordenador: perfil no Firestore com role == 'coordinator'
+    function coordinator() { 
+      return signedIn() && !admin() && (
+        hasUserDoc() && getUserDoc().role == 'coordinator'
+      ); 
+    }
+    
+    function sameTeam(teamId) { 
+      return hasUserDoc() && getUserDoc().team_id == teamId; 
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && (
+        admin() || 
+        (request.auth.uid == userId && request.resource.data.uid == userId)
+      );
+      allow update: if admin()
+        || (signedIn() && request.auth.uid == userId);
+      allow delete: if admin();
+    }
+
+    match /teams/{teamId} {
+      allow read: if signedIn();
+      allow create, update, delete: if admin();
+    }
+
+    match /contacts/{contactId} {
+      allow read: if signedIn() && (
+        admin() || 
+        (coordinator() && sameTeam(resource.data.team_id)) || 
+        resource.data.assigned_to == request.auth.uid
+      );
+      allow create: if admin() || (coordinator() && sameTeam(request.resource.data.team_id));
+      allow update: if admin()
+        || (coordinator() && sameTeam(resource.data.team_id))
+        || (signedIn() && resource.data.assigned_to == request.auth.uid);
+      allow delete: if admin() || (coordinator() && sameTeam(resource.data.team_id));
+    }
+
+    match /messages/{messageId} {
+      allow read: if signedIn() && (
+        admin() || 
+        (coordinator() && sameTeam(resource.data.team_id)) || 
+        resource.data.user_uid == request.auth.uid
+      );
+      allow create: if signedIn() && request.resource.data.user_uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if admin() || coordinator();
+      allow create: if signedIn() && request.resource.data.actor_uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /templates/{templateId} {
+      allow read: if signedIn();
+      allow create, update, delete: if admin() || coordinator();
+    }
+
+    match /roles/{roleId} {
+      allow read: if signedIn();
+      allow write: if admin();
+    }
+  }
+}
