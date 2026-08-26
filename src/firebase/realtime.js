@@ -40,14 +40,25 @@ export function subscribeToTeamMembers(teamId, coordinatorUid, callback) {
       }
     });
 
-    let all = Array.from(map.values()).filter(m => m && (m.email || m.name));
-    let filtered = coordinatorUid 
-      ? all.filter(m => m.coordinator_uid === coordinatorUid)
-      : teamId 
-      ? all.filter(m => m.team_id === teamId)
-      : all.filter(m => m.role === 'member');
-    
-    callback(filtered.length > 0 ? filtered : all);
+    // Filtra membros válidos: remove administradores globais e usuários sem equipe
+    const validTeamMembers = Array.from(map.values()).filter(u => {
+      if (!u || (!u.email && !u.name)) return false;
+      const isSuperAdmin = (u.email || '').toLowerCase() === 'thiagoddsm@gmail.com';
+      if (isSuperAdmin || u.role === 'admin') return false; // Admin global não aparece em equipes operacionais
+      if (!u.team_id || u.team_id === 'global' || u.team_id === 'none') return false; // Sem equipe não aparece
+      return true;
+    });
+
+    let filtered = [];
+    if (teamId) {
+      filtered = validTeamMembers.filter(m => m.team_id === teamId || (coordinatorUid && m.coordinator_uid === coordinatorUid));
+    } else if (coordinatorUid) {
+      filtered = validTeamMembers.filter(m => m.coordinator_uid === coordinatorUid);
+    } else {
+      filtered = validTeamMembers;
+    }
+
+    callback(filtered);
   };
 
   const onUpdate = () => notify(cachedMembers);

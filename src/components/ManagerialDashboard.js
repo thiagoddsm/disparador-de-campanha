@@ -468,7 +468,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
   // Subscriptions
   const unsubMembers = subscribeToTeamMembers(
     targetTeamId, 
-    isCoordinator && !isAdmin ? currentUser.uid : null, 
+    null, 
     (members) => {
       teamMembers = members;
       updateKpis();
