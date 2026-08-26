@@ -34,7 +34,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
             <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.72rem;">
               ${isAdmin ? 'Governança Global' : 'Minha Equipe'}
             </span>
-            <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">${teamName}</h2>
+            <h2 id="team-dashboard-title" style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">${teamName}</h2>
           </div>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
             Gerencie equipes, vincule coordenadores líderes e acompanhe as metas dos membros da equipe.
@@ -473,10 +473,12 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
     container.querySelector('#modal-create-team').style.display = 'flex';
   }
 
+  const targetTeamId = currentTeamId || currentUser?.team_id || (allTeams.length > 0 ? allTeams[0].id : null);
+
   // Subscriptions
   const unsubMembers = subscribeToTeamMembers(
-    currentUser?.team_id || 'team_alpha', 
-    isCoordinator ? currentUser.uid : null, 
+    targetTeamId, 
+    isCoordinator && !isAdmin ? currentUser.uid : null, 
     (members) => {
       teamMembers = members;
       updateKpis();
@@ -485,7 +487,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
   );
 
   const unsubContacts = subscribeToTeamContacts(
-    currentUser?.team_id || 'team_alpha', 
+    targetTeamId, 
     (contacts) => {
       teamContacts = contacts;
       updateKpis();
@@ -495,6 +497,11 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
 
   const unsubTeams = subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
     allTeams = teams;
+    const currentTeam = allTeams.find(t => t.id === targetTeamId);
+    if (currentTeam && currentTeam.name) {
+      const headerTitle = container.querySelector('#team-dashboard-title');
+      if (headerTitle) headerTitle.textContent = currentTeam.name;
+    }
     renderTabContent();
   });
 

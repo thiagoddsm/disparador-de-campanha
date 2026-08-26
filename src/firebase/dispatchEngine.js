@@ -47,8 +47,12 @@ export const WaMeStrategy = {
   async execute({ contact, user, formattedPhone, personalizedMessage, messageId }) {
     const encodedMessage = encodeURIComponent(personalizedMessage);
     const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-    return { success: true, strategy: 'wa.me', messageId, whatsappUrl };
+    let openedWindow = null;
+    try {
+      openedWindow = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    } catch (e) {}
+    const isBlocked = !openedWindow || openedWindow.closed || typeof openedWindow.closed === 'undefined';
+    return { success: true, strategy: 'wa.me', messageId, whatsappUrl, isBlocked };
   }
 };
 

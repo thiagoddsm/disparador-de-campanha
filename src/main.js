@@ -22,24 +22,41 @@ const appEl = document.querySelector('#app');
 
 let activeCleanup = null;
 let currentView = null;
-let currentTeamId = 'team_alpha';
+let currentTeamId = null;
 let currentUserState = null;
 let tenantTeams = [];
 
-// Subscreve às equipes para mapeamento de nome
+// Subscreve às equipes para mapeamento de nome e seletor global
 subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
   tenantTeams = teams;
+  if (!currentTeamId && teams.length > 0) {
+    currentTeamId = teams[0].id;
+  }
   if (currentUserState && currentUserState.role === 'member') {
     const teamObj = tenantTeams.find(t => t.id === currentUserState.team_id);
     if (teamObj && teamObj.name) {
       currentUserState.team_name = teamObj.name;
     }
   }
+
+  // Atualiza o dropdown da topbar em tempo real se estiver montado
+  const topbarSel = appEl?.querySelector('#topbar-team-select');
+  if (topbarSel) {
+    topbarSel.innerHTML = tenantTeams.length === 0 
+      ? `<option value="">Nenhuma equipe cadastrada</option>`
+      : tenantTeams.map(t => `<option value="${t.id}" ${currentTeamId === t.id ? 'selected' : ''}>👥 ${t.name} ⌵</option>`).join('');
+  }
 });
 
 function renderProtectedApp(currentUser) {
   currentUserState = currentUser;
   const role = currentUser.role || 'member';
+
+  if (!currentTeamId && tenantTeams.length > 0) {
+    currentTeamId = currentUser.team_id || tenantTeams[0].id;
+  } else if (!currentTeamId && currentUser.team_id) {
+    currentTeamId = currentUser.team_id;
+  }
 
   // Localiza o nome da equipe do operador
   const teamObj = tenantTeams.find(t => t.id === currentUser.team_id);
@@ -90,9 +107,12 @@ function renderProtectedApp(currentUser) {
             ` : ''}
 
             ${isManagerView ? `
-              <select id="topbar-team-select" class="team-selector-pill">
-                <option value="team_alpha" ${currentTeamId === 'team_alpha' ? 'selected' : ''}>Equipe Alpha ⌵</option>
-                <option value="team_beta" ${currentTeamId === 'team_beta' ? 'selected' : ''}>Equipe Beta ⌵</option>
+              <select id="topbar-team-select" class="team-selector-pill" style="padding: 0.35rem 0.85rem; font-size: 0.82rem; font-weight: 700; border-radius: 9999px; background: #FFFFFF; border: 1px solid var(--border-color); cursor: pointer; color: var(--text-main); outline: none;">
+                ${tenantTeams.length === 0 ? `
+                  <option value="">Nenhuma equipe cadastrada</option>
+                ` : tenantTeams.map(t => `
+                  <option value="${t.id}" ${currentTeamId === t.id ? 'selected' : ''}>👥 ${t.name} ⌵</option>
+                `).join('')}
               </select>
             ` : `
               <div class="topbar-search-wrap">
@@ -206,8 +226,9 @@ function renderProtectedApp(currentUser) {
 
   // Renderiza Tela Conforme View Ativa
   if (currentView === 'admin') {
-    activeCleanup = renderAdminPanel(mainMount, currentUserState, (newView) => {
+    activeCleanup = renderAdminPanel(mainMount, currentUserState, (newView, selectedTeamId) => {
       currentView = newView;
+      if (selectedTeamId) currentTeamId = selectedTeamId;
       renderProtectedApp(currentUserState);
     });
   } else if (currentView === 'manager') {
@@ -246,7 +267,15 @@ function renderProtectedApp(currentUser) {
     });
   }
 
-  // Topbar Dropdown Handlers
+  // Topbar Dropdown & Select Handlers
+  const topbarTeamSelect = appEl.querySelector('#topbar-team-select');
+  topbarTeamSelect?.addEventListener('change', (e) => {
+    currentTeamId = e.target.value;
+    if (currentView === 'manager' || currentView === 'admin') {
+      renderProtectedApp(currentUserState);
+    }
+  });
+
   const notifBtn = appEl.querySelector('#btn-topbar-notifications');
   const settingsBtn = appEl.querySelector('#btn-topbar-settings');
   const avatarBtn = appEl.querySelector('#btn-topbar-avatar');

@@ -278,7 +278,8 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
 
       contentEl.querySelectorAll('.btn-manage-team-view').forEach(btn => {
         btn.addEventListener('click', () => {
-          onNavigate('manager');
+          const teamId = btn.getAttribute('data-team');
+          onNavigate('manager', teamId);
         });
       });
     } else if (currentTab === 'users') {

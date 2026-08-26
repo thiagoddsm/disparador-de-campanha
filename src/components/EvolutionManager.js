@@ -67,29 +67,29 @@ export function renderEvolutionManager(container, currentUser) {
           <!-- Left: Instance Form & Actions -->
           <div>
             <div style="margin-bottom: 1.25rem;">
-              <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.35rem;">
+              <label for="input-instance-slug" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.35rem;">
                 Identificador da Instância (Slug)
               </label>
-              <input type="text" id="input-instance-slug" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-family: monospace;" value="${activeInstanceName}" placeholder="ex: camp_equipe_alpha">
-              <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Nome único que será criado na Evolution API.</p>
+              <input type="text" id="input-instance-slug" name="instance_slug" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-family: monospace;" value="${activeInstanceName}" placeholder="ex: instancia_thiago_moura">
+              <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Identificador da sua instância no servidor Evolution API.</p>
             </div>
 
             <!-- Global API Key Card (FestaPay Master Key) -->
             <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem 1rem; background: #F8FAFC; margin-bottom: 1.25rem;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">
-                  🔑 Chave Mestra Global (AUTHENTICATION_API_KEY)
+                <label for="input-api-key" style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">
+                  🔑 Token da Instância / Chave Global (apikey)
                 </label>
               </div>
               <p style="font-size: 0.73rem; color: var(--text-muted); margin-bottom: 0.6rem; line-height: 1.3;">
-                Necessária para que a aplicação crie novas instâncias automaticamente via <code>POST /instance/create</code>.
+                Copie o Token da sua instância no painel Evolution (ou a Global API Key) e cole aqui:
               </p>
-              <input type="password" id="input-api-key" class="topbar-search-input" style="width: 100%; font-size: 0.8rem; background: #FFFFFF; font-family: monospace; margin-bottom: 0.5rem;" value="${localStorage.getItem('evolution_api_key') || EVOLUTION_CONFIG.apiKey}" placeholder="Cole sua AUTHENTICATION_API_KEY">
+              <input type="password" id="input-api-key" name="api_key" class="topbar-search-input" style="width: 100%; font-size: 0.8rem; background: #FFFFFF; font-family: monospace; margin-bottom: 0.5rem;" value="${localStorage.getItem('evolution_api_key') || EVOLUTION_CONFIG.apiKey}" placeholder="Cole o token da sua instância aqui">
               
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <input type="text" id="input-api-url" class="topbar-search-input" style="width: 65%; font-size: 0.75rem; background: #FFFFFF;" value="${localStorage.getItem('evolution_api_url') || EVOLUTION_CONFIG.baseUrl}" placeholder="URL da Evolution API">
-                <button id="btn-save-api-config" class="btn-outline-white" style="font-size: 0.75rem; padding: 0.35rem 0.65rem; font-weight: 600;">
-                  Salvar
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+                <input type="text" id="input-api-url" name="api_url" class="topbar-search-input" style="flex: 1; font-size: 0.75rem; background: #FFFFFF;" value="${localStorage.getItem('evolution_api_url') || EVOLUTION_CONFIG.baseUrl}" placeholder="URL da Evolution API">
+                <button id="btn-save-api-config" class="btn-outline-white" style="font-size: 0.75rem; padding: 0.4rem 0.8rem; font-weight: 700;">
+                  Salvar Token
                 </button>
               </div>
             </div>
@@ -97,7 +97,7 @@ export function renderEvolutionManager(container, currentUser) {
             <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
               <button id="btn-generate-qr" class="btn-green-action" style="font-weight: 700;">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
                 </svg>
                 Criar Instância & Gerar QR Code
               </button>
@@ -167,6 +167,12 @@ export function renderEvolutionManager(container, currentUser) {
   const slugInput = container.querySelector('#input-instance-slug');
 
   async function checkStatus() {
+    activeInstanceName = sanitizeInstanceSlug(slugInput.value || activeInstanceName);
+    const instanceNameDisplay = container.querySelector('#instance-name-display');
+    if (instanceNameDisplay) {
+      instanceNameDisplay.innerHTML = `Instância: <strong>${activeInstanceName}</strong>`;
+    }
+
     const res = await getEvolutionConnectionState(activeInstanceName);
     if (res.state === 'open') {
       statusBadge.innerHTML = `<span class="pill-btn" style="background: #DCFCE7; color: #15803D;">● Conectado (${res.phoneNumber || 'Ativo'})</span>`;
@@ -174,7 +180,7 @@ export function renderEvolutionManager(container, currentUser) {
         <div style="color: #15803D; padding: 1.5rem 0;">
           <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎉</div>
           <strong>WhatsApp Conectado e Operacional!</strong>
-          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Número pareado: ${res.phoneNumber || 'Ativo'}. Pronto para disparos.</p>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Instância <strong>${activeInstanceName}</strong> vinculada e pronta para disparos.</p>
         </div>
       `;
 
@@ -197,6 +203,18 @@ export function renderEvolutionManager(container, currentUser) {
       }
     } else if (res.state === 'connecting') {
       statusBadge.innerHTML = `<span class="pill-btn" style="background: #FEF3C7; color: #B45309;">Aguardando Leitura do QR Code...</span>`;
+    } else if (res.state === 'error') {
+      statusBadge.innerHTML = `<span class="pill-btn" style="background: #FEE2E2; color: #DC2626;">Chave Não Autorizada (401)</span>`;
+      qrMount.innerHTML = `
+        <div style="color: #DC2626; font-size: 0.83rem; padding: 1.5rem 0; line-height: 1.4;">
+          <strong>Chave de Autenticação Inválida para ${activeInstanceName}.</strong>
+          <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 0.35rem;">
+            Copie o token da instância no painel Evolution (ou a chave global), cole no campo ao lado e clique em <strong>Salvar Token</strong>.
+          </p>
+        </div>
+      `;
+    } else if (res.state === 'not_found') {
+      statusBadge.innerHTML = `<span class="pill-btn" style="background: #F1F5F9; color: #64748B;">Instância Não Criada</span>`;
     } else {
       statusBadge.innerHTML = `<span class="pill-btn" style="background: #F1F5F9; color: #64748B;">Desconectado</span>`;
     }
@@ -204,17 +222,11 @@ export function renderEvolutionManager(container, currentUser) {
 
   checkStatus();
 
-  function startPolling() {
-    if (pollingTimer) clearInterval(pollingTimer);
-    pollingTimer = setInterval(async () => {
-      const res = await getEvolutionConnectionState(activeInstanceName);
-      if (res.state === 'open') {
-        clearInterval(pollingTimer);
-        pollingTimer = null;
-        checkStatus();
-      }
-    }, 3000);
-  }
+  slugInput?.addEventListener('change', () => {
+    activeInstanceName = sanitizeInstanceSlug(slugInput.value);
+    localStorage.setItem('evolution_active_instance', activeInstanceName);
+    checkStatus();
+  });
 
   const saveApiConfigBtn = container.querySelector('#btn-save-api-config');
   saveApiConfigBtn?.addEventListener('click', () => {
@@ -222,7 +234,7 @@ export function renderEvolutionManager(container, currentUser) {
     const key = container.querySelector('#input-api-key')?.value.trim();
     if (url) localStorage.setItem('evolution_api_url', url);
     if (key) localStorage.setItem('evolution_api_key', key);
-    alert('Credenciais da Evolution API salvas localmente!');
+    alert('Token e URL da Evolution API salvos com sucesso!');
     checkStatus();
   });
 
