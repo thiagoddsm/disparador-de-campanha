@@ -49,7 +49,7 @@ export function resolveSpintax(text) {
 /**
  * Sanitiza o slug da instância (padrão FestaPay).
  */
-export function sanitizeInstanceSlug(name) {
+export function sanitizeInstanceSlug(name, maxLength = 35) {
   return (name || 'instancia')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -57,7 +57,18 @@ export function sanitizeInstanceSlug(name) {
     .replace(/[^a-z0-9]/g, '_')
     .replace(/_+/g, '_')
     .replace(/^_|_$/g, '')
-    .slice(0, 30);
+    .slice(0, maxLength);
+}
+
+/**
+ * Gera o nome padronizado da instância no padrão: equipe_funcao_nome
+ * Exemplo: alpha_coordenador_thiago
+ */
+export function generateHierarchicalInstanceName(teamName, role, userName) {
+  const cleanTeam = sanitizeInstanceSlug(teamName || 'alpha', 15);
+  const cleanRole = sanitizeInstanceSlug(role || 'coordenador', 15);
+  const cleanName = sanitizeInstanceSlug((userName || 'usuario').split(' ')[0], 15);
+  return `${cleanTeam}_${cleanRole}_${cleanName}`;
 }
 
 /**

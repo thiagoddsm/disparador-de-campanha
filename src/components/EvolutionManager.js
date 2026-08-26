@@ -3,6 +3,7 @@ import {
   getEvolutionQrCode, 
   logoutEvolutionInstance, 
   sanitizeInstanceSlug,
+  generateHierarchicalInstanceName,
   EVOLUTION_CONFIG 
 } from '../firebase/evolutionApi.js';
 import { db } from '../firebase/config.js';
@@ -16,7 +17,7 @@ export function renderEvolutionManager(container, currentUser) {
       <div class="page-content">
         <div class="main-panel-card" style="padding: 3rem 2rem; text-align: center;">
           <div style="width: 56px; height: 56px; border-radius: var(--radius-full); background: #FEE2E2; color: #DC2626; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto;">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             </svg>
@@ -32,12 +33,15 @@ export function renderEvolutionManager(container, currentUser) {
     return () => {};
   }
 
-  const defaultInstanceName = sanitizeInstanceSlug(`instancia_${currentUser.name || 'coordenador'}`);
+  const teamLabel = currentUser?.team_name || currentUser?.team_id?.replace('team_', '') || 'alpha';
+  const roleLabel = currentUser?.role === 'admin' ? 'admin' : 'coordenador';
+  const userFirst = (currentUser?.name || currentUser?.displayName || 'thiago').split(' ')[0];
+  const defaultHierarchicalName = generateHierarchicalInstanceName(teamLabel, roleLabel, userFirst);
 
   let instanceState = 'close';
   let qrBase64 = null;
   let pollingTimer = null;
-  let activeInstanceName = localStorage.getItem('evolution_active_instance') || defaultInstanceName;
+  let activeInstanceName = localStorage.getItem('evolution_active_instance') || defaultHierarchicalName;
 
   container.innerHTML = `
     <div class="page-content">
@@ -70,8 +74,13 @@ export function renderEvolutionManager(container, currentUser) {
               <label for="input-instance-slug" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.35rem;">
                 Identificador da Instância (Slug)
               </label>
-              <input type="text" id="input-instance-slug" name="instance_slug" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-family: monospace;" value="${activeInstanceName}" placeholder="ex: instancia_thiago_moura">
-              <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Identificador da sua instância no servidor Evolution API.</p>
+              <input type="text" id="input-instance-slug" name="instance_slug" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-family: monospace;" value="${activeInstanceName}" placeholder="ex: ${defaultHierarchicalName}">
+              <div style="display: flex; gap: 0.4rem; align-items: center; margin-top: 0.45rem; flex-wrap: wrap;">
+                <span style="font-size: 0.72rem; color: var(--text-muted);">Padrão Sugerido:</span>
+                <button type="button" id="btn-use-standard-slug" class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; cursor: pointer; font-size: 0.72rem; padding: 2px 8px; font-weight: 600;">
+                  ⚡ ${defaultHierarchicalName}
+                </button>
+              </div>
             </div>
 
             <!-- Global API Key Card (FestaPay Master Key) -->
@@ -166,6 +175,8 @@ export function renderEvolutionManager(container, currentUser) {
   const disBtn = container.querySelector('#btn-disconnect-instance');
   const slugInput = container.querySelector('#input-instance-slug');
 
+  let lastSavedState = null;
+
   async function checkStatus() {
     activeInstanceName = sanitizeInstanceSlug(slugInput.value || activeInstanceName);
     const instanceNameDisplay = container.querySelector('#instance-name-display');
@@ -184,22 +195,26 @@ export function renderEvolutionManager(container, currentUser) {
         </div>
       `;
 
-      // Persiste no Firestore (padrão FestaPay)
-      if (currentUser?.uid) {
-        updateDoc(doc(db, 'users', currentUser.uid), {
-          'whatsapp.enabled': true,
-          'whatsapp.instanceName': activeInstanceName,
-          'whatsapp.status': 'CONNECTED',
-          'whatsapp.phoneNumber': res.phoneNumber || null,
-          'whatsapp.updatedAt': serverTimestamp()
-        }).catch(() => {});
-      }
-      if (currentUser?.team_id) {
-        updateDoc(doc(db, 'teams', currentUser.team_id), {
-          'whatsapp_instance': activeInstanceName,
-          'whatsapp_connected': true,
-          'whatsapp_phone': res.phoneNumber || null
-        }).catch(() => {});
+      // Persiste no Firestore uma única vez por mudança de estado
+      const stateKey = `${activeInstanceName}_open_${res.phoneNumber || ''}`;
+      if (lastSavedState !== stateKey) {
+        lastSavedState = stateKey;
+        if (currentUser?.uid) {
+          updateDoc(doc(db, 'users', currentUser.uid), {
+            'whatsapp.enabled': true,
+            'whatsapp.instanceName': activeInstanceName,
+            'whatsapp.status': 'CONNECTED',
+            'whatsapp.phoneNumber': res.phoneNumber || null,
+            'whatsapp.updatedAt': serverTimestamp()
+          }).catch(() => {});
+        }
+        if (currentUser?.team_id) {
+          updateDoc(doc(db, 'teams', currentUser.team_id), {
+            'whatsapp_instance': activeInstanceName,
+            'whatsapp_connected': true,
+            'whatsapp_phone': res.phoneNumber || null
+          }).catch(() => {});
+        }
       }
     } else if (res.state === 'connecting') {
       statusBadge.innerHTML = `<span class="pill-btn" style="background: #FEF3C7; color: #B45309;">Aguardando Leitura do QR Code...</span>`;
@@ -238,11 +253,12 @@ export function renderEvolutionManager(container, currentUser) {
     checkStatus();
   });
 
-  container.querySelector('#btn-use-ibm-instance')?.addEventListener('click', () => {
-    activeInstanceName = 'IBM';
-    slugInput.value = 'IBM';
-    localStorage.setItem('evolution_active_instance', 'IBM');
-    container.querySelector('#instance-name-display').innerHTML = 'Instância: <strong>IBM</strong>';
+  container.querySelector('#btn-use-standard-slug')?.addEventListener('click', () => {
+    activeInstanceName = defaultHierarchicalName;
+    slugInput.value = defaultHierarchicalName;
+    localStorage.setItem('evolution_active_instance', defaultHierarchicalName);
+    const nameDisplay = container.querySelector('#instance-name-display');
+    if (nameDisplay) nameDisplay.innerHTML = `Instância: <strong>${defaultHierarchicalName}</strong>`;
     checkStatus();
   });
 

@@ -356,6 +356,9 @@ useAuth(({ user, loading }) => {
     return;
   }
 
+  const prevUser = currentUserState;
+  currentUserState = user;
+
   // Se o usuário logado for operador (member) e não estiver alocado em uma equipe, bloqueia o acesso
   const role = user.role || 'member';
   if (role === 'member' && !user.team_id) {
@@ -364,6 +367,11 @@ useAuth(({ user, loading }) => {
       activeCleanup = null;
     }
     renderPendingTeamView(appEl, user);
+    return;
+  }
+
+  // Se já está autenticado e o papel/equipe não mudou, não destrói a tela ativa
+  if (prevUser && prevUser.uid === user.uid && prevUser.role === user.role && prevUser.team_id === user.team_id && currentView) {
     return;
   }
 
