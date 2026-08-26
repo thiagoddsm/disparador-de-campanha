@@ -20,17 +20,23 @@ export const DEFAULT_TENANT_ID = 'tenant_main';
  * Escuta os membros da equipe específica do coordenador (Isolamento de Equipe).
  */
 export function subscribeToTeamMembers(teamId, coordinatorUid, callback) {
-  const notify = (fsMembers = []) => {
+  let cachedMembers = [];
+
+  const notify = (fsMembers = cachedMembers) => {
+    if (Array.isArray(fsMembers) && fsMembers.length > 0) {
+      cachedMembers = fsMembers;
+    }
     const overrides = JSON.parse(localStorage.getItem('user_profile_overrides') || '{}');
     const local = JSON.parse(localStorage.getItem('campaign_members') || '[]');
     const map = new Map();
     local.forEach(m => map.set(m.uid, m));
-    fsMembers.forEach(m => map.set(m.uid, { ...(map.get(m.uid) || {}), ...m }));
+    cachedMembers.forEach(m => map.set(m.uid, { ...(map.get(m.uid) || {}), ...m }));
     
     map.forEach((u, uid) => {
       if (overrides[uid]) {
         if (overrides[uid].role) u.role = overrides[uid].role;
         if (overrides[uid].team_id !== undefined) u.team_id = overrides[uid].team_id;
+        if (overrides[uid].team_name !== undefined) u.team_name = overrides[uid].team_name;
       }
     });
 
@@ -44,7 +50,7 @@ export function subscribeToTeamMembers(teamId, coordinatorUid, callback) {
     callback(filtered.length > 0 ? filtered : all);
   };
 
-  const onUpdate = () => notify([]);
+  const onUpdate = () => notify(cachedMembers);
   window.addEventListener('team-updated', onUpdate);
 
   try {
@@ -53,7 +59,7 @@ export function subscribeToTeamMembers(teamId, coordinatorUid, callback) {
       const members = snapshot.docs.map(d => ({ uid: d.id, ...d.data() }));
       notify(members);
     }, (error) => {
-      notify([]);
+      notify(cachedMembers);
     });
 
     return () => {
@@ -61,7 +67,7 @@ export function subscribeToTeamMembers(teamId, coordinatorUid, callback) {
       unsub();
     };
   } catch (err) {
-    notify([]);
+    notify(cachedMembers);
     return () => {
       window.removeEventListener('team-updated', onUpdate);
     };
@@ -72,17 +78,23 @@ export function subscribeToTeamMembers(teamId, coordinatorUid, callback) {
  * Escuta todos os usuários (Exclusivo para o Painel do Admin Global).
  */
 export function subscribeToAllUsers(callback) {
-  const notify = (fsUsers = []) => {
+  let cachedUsers = [];
+
+  const notify = (fsUsers = cachedUsers) => {
+    if (Array.isArray(fsUsers) && fsUsers.length > 0) {
+      cachedUsers = fsUsers;
+    }
     const overrides = JSON.parse(localStorage.getItem('user_profile_overrides') || '{}');
     const local = JSON.parse(localStorage.getItem('campaign_members') || '[]');
     const map = new Map();
     local.forEach(u => map.set(u.uid, u));
-    fsUsers.forEach(u => map.set(u.uid, { ...(map.get(u.uid) || {}), ...u }));
+    cachedUsers.forEach(u => map.set(u.uid, { ...(map.get(u.uid) || {}), ...u }));
     
     map.forEach((u, uid) => {
       if (overrides[uid]) {
         if (overrides[uid].role) u.role = overrides[uid].role;
         if (overrides[uid].team_id !== undefined) u.team_id = overrides[uid].team_id;
+        if (overrides[uid].team_name !== undefined) u.team_name = overrides[uid].team_name;
       }
       if (u.email && u.email.toLowerCase() === 'thiagoddsm@gmail.com') {
         u.role = 'admin';
@@ -93,7 +105,7 @@ export function subscribeToAllUsers(callback) {
     callback(all);
   };
 
-  const onUpdate = () => notify([]);
+  const onUpdate = () => notify(cachedUsers);
   window.addEventListener('team-updated', onUpdate);
 
   try {
@@ -101,7 +113,7 @@ export function subscribeToAllUsers(callback) {
       const users = snapshot.docs.map(d => ({ uid: d.id, ...d.data() }));
       notify(users);
     }, (error) => {
-      notify([]);
+      notify(cachedUsers);
     });
 
     return () => {
@@ -109,7 +121,7 @@ export function subscribeToAllUsers(callback) {
       unsub();
     };
   } catch (err) {
-    notify([]);
+    notify(cachedUsers);
     return () => {
       window.removeEventListener('team-updated', onUpdate);
     };
@@ -120,17 +132,22 @@ export function subscribeToAllUsers(callback) {
  * Escuta todas as equipes do tenant.
  */
 export function subscribeToTenantTeams(tenantId = DEFAULT_TENANT_ID, callback) {
-  const notify = (fsTeams = []) => {
+  let cachedTeams = [];
+
+  const notify = (fsTeams = cachedTeams) => {
+    if (Array.isArray(fsTeams) && fsTeams.length > 0) {
+      cachedTeams = fsTeams;
+    }
     const localTeams = JSON.parse(localStorage.getItem('campaign_teams') || '[]');
     const map = new Map();
     localTeams.forEach(t => map.set(t.id, t));
-    fsTeams.forEach(t => map.set(t.id, { ...(map.get(t.id) || {}), ...t }));
+    cachedTeams.forEach(t => map.set(t.id, { ...(map.get(t.id) || {}), ...t }));
     
     const all = Array.from(map.values()).filter(t => t && t.name);
     callback(all);
   };
 
-  const onUpdate = () => notify([]);
+  const onUpdate = () => notify(cachedTeams);
   window.addEventListener('team-updated', onUpdate);
 
   try {
@@ -138,7 +155,7 @@ export function subscribeToTenantTeams(tenantId = DEFAULT_TENANT_ID, callback) {
       const teams = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       notify(teams);
     }, (error) => {
-      notify([]);
+      notify(cachedTeams);
     });
 
     return () => {
@@ -146,7 +163,7 @@ export function subscribeToTenantTeams(tenantId = DEFAULT_TENANT_ID, callback) {
       unsub();
     };
   } catch (err) {
-    notify([]);
+    notify(cachedTeams);
     return () => {
       window.removeEventListener('team-updated', onUpdate);
     };
@@ -296,10 +313,12 @@ export async function createTeamInFirestore({ name, coordinatorUid, coordinatorN
     created_at: new Date().toISOString()
   };
 
+  console.log('[Firestore] 📡 Gravando equipe na coleção /teams:', teamId, teamData);
   try {
     await setDoc(doc(db, 'teams', teamId), teamData);
+    console.log('[Firestore] ✅ Equipe gravada no Cloud Firestore com sucesso:', teamId);
   } catch (e) {
-    console.warn('Firestore cloud rules fallback, gravando equipe no estado local:', e.message);
+    console.error('[Firestore] ❌ Erro de permissão ao gravar equipe no Firestore:', e.code, e.message);
   }
 
   // Sempre grava no cache de equipes local
@@ -395,11 +414,14 @@ export async function updateUserRole(userId, newRole) {
 /**
  * Atualiza a equipe vinculada a um usuário.
  */
-export async function updateUserTeam(userId, newTeamId) {
+export async function updateUserTeam(userId, newTeamId, newTeamName = null) {
+  const updatePayload = {
+    team_id: newTeamId || null,
+    team_name: newTeamName || null
+  };
+
   try {
-    await updateDoc(doc(db, 'users', userId), {
-      team_id: newTeamId
-    });
+    await updateDoc(doc(db, 'users', userId), updatePayload);
   } catch (e) {
     console.warn('Erro ao atualizar equipe no Firestore, aplicando no estado local:', e.message);
   }
@@ -407,15 +429,17 @@ export async function updateUserTeam(userId, newTeamId) {
   // Grava override persistente
   const overrides = JSON.parse(localStorage.getItem('user_profile_overrides') || '{}');
   if (!overrides[userId]) overrides[userId] = {};
-  overrides[userId].team_id = newTeamId;
+  overrides[userId].team_id = newTeamId || null;
+  overrides[userId].team_name = newTeamName || null;
   localStorage.setItem('user_profile_overrides', JSON.stringify(overrides));
 
   const local = JSON.parse(localStorage.getItem('campaign_members') || '[]');
   const target = local.find(m => m.uid === userId);
   if (target) {
-    target.team_id = newTeamId;
+    target.team_id = newTeamId || null;
+    target.team_name = newTeamName || null;
   } else {
-    local.push({ uid: userId, team_id: newTeamId });
+    local.push({ uid: userId, team_id: newTeamId || null, team_name: newTeamName || null });
   }
   localStorage.setItem('campaign_members', JSON.stringify(local));
 

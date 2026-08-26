@@ -35,7 +35,7 @@ export function renderEvolutionManager(container, currentUser) {
   let instanceState = 'close';
   let qrBase64 = null;
   let pollingTimer = null;
-  let activeInstanceName = localStorage.getItem('evolution_active_instance') || defaultInstanceName;
+  let activeInstanceName = localStorage.getItem('evolution_active_instance') || 'IBM';
 
   container.innerHTML = `
     <div class="page-content">
@@ -69,6 +69,12 @@ export function renderEvolutionManager(container, currentUser) {
                 Identificador da Instância (Slug)
               </label>
               <input type="text" id="input-instance-slug" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-family: monospace;" value="${activeInstanceName}">
+              <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.45rem;">
+                <span style="font-size: 0.72rem; color: var(--text-muted);">Instância conectada no servidor:</span>
+                <button type="button" id="btn-use-ibm-instance" class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; cursor: pointer; font-size: 0.72rem; padding: 2px 8px; font-weight: 600;">
+                  ● Usar IBM (Ativa)
+                </button>
+              </div>
             </div>
 
             <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
@@ -202,6 +208,14 @@ export function renderEvolutionManager(container, currentUser) {
     if (url) localStorage.setItem('evolution_api_url', url);
     if (key) localStorage.setItem('evolution_api_key', key);
     alert('Credenciais da Evolution API salvas localmente!');
+    checkStatus();
+  });
+
+  container.querySelector('#btn-use-ibm-instance')?.addEventListener('click', () => {
+    activeInstanceName = 'IBM';
+    slugInput.value = 'IBM';
+    localStorage.setItem('evolution_active_instance', 'IBM');
+    container.querySelector('#instance-name-display').innerHTML = 'Instância: <strong>IBM</strong>';
     checkStatus();
   });
 

@@ -13,17 +13,25 @@ export function renderContactsView(container, currentUser, onNavigate) {
   const isMember = currentUser?.role === 'member';
   const isCoordinator = currentUser?.role === 'coordinator';
   const isAdmin = currentUser?.role === 'admin';
+  const teamLabel = currentUser?.team_name || (currentUser?.team_id ? 'Equipe Vinculada' : '');
 
   container.innerHTML = `
     <div class="page-content">
       <!-- Title & Actions Row -->
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
         <div>
-          <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">
-            ${isMember ? 'Meus Contatos' : isCoordinator ? 'Contatos da Equipe' : 'Base Global de Contatos'}
-          </h2>
+          <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+            <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">
+              ${isMember ? 'Meus Contatos' : isCoordinator ? 'Contatos da Equipe' : 'Base Global de Contatos'}
+            </h2>
+            ${isMember && teamLabel ? `
+              <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem;">
+                👥 Equipe: ${teamLabel}
+              </span>
+            ` : ''}
+          </div>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
-            ${isMember ? 'Gerencie sua lista individual e acompanhe seus envios.' : 'Gerencie e distribua contatos para sua equipe.'}
+            ${isMember ? `Gerencie sua lista individual e acompanhe seus envios${teamLabel ? ` pela equipe <strong>${teamLabel}</strong>` : ''}.` : 'Gerencie e distribua contatos para sua equipe.'}
           </p>
         </div>
 

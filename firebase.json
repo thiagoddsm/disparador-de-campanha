@@ -5,7 +5,6 @@
   "hosting": [
     {
       "target": "alexamarante",
-      "site": "alexamarante",
       "public": "dist",
       "ignore": [
         "firebase.json",

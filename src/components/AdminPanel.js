@@ -380,9 +380,18 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
         sel.addEventListener('change', async () => {
           const uid = sel.getAttribute('data-uid');
           const newTeamId = sel.value;
+          const selectedOption = sel.options[sel.selectedIndex];
+          const newTeamName = newTeamId ? (selectedOption.text || '').replace(/^👥\s*/, '').trim() : null;
           sel.disabled = true;
           try {
-            await updateUserTeam(uid, newTeamId);
+            await updateUserTeam(uid, newTeamId, newTeamName);
+            await recordSystemAuditLog({
+              actor_uid: currentUser.uid,
+              actor_name: currentUser.name,
+              action: newTeamId ? 'user_assigned_team' : 'user_removed_team',
+              target_id: uid,
+              metadata: { team_id: newTeamId, team_name: newTeamName }
+            });
           } catch (e) {
             console.warn('Erro ao atualizar equipe:', e);
           } finally {

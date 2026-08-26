@@ -7,7 +7,7 @@ import {
   onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, getDocs, collection, query, where, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, getDocs, collection, query, where, serverTimestamp, updateDoc, onSnapshot } from 'firebase/firestore';
 
 export const DEFAULT_TENANT_ID = 'tenant_main';
 
@@ -19,7 +19,7 @@ export const DEFAULT_TENANT_ID = 'tenant_main';
 export async function syncUserProfile(
   firebaseUser, 
   defaultRole = 'member', 
-  defaultTeam = 'team_alpha', 
+  defaultTeam = null, 
   coordinatorData = null,
   tenantId = DEFAULT_TENANT_ID
 ) {
@@ -66,7 +66,8 @@ export async function syncUserProfile(
     name: firebaseUser.displayName || (isSuperAdmin ? 'Thiago Moura' : firebaseUser.email.split('@')[0]),
     email: firebaseUser.email,
     role: isSuperAdmin ? 'admin' : defaultRole,
-    team_id: defaultTeam,
+    team_id: isSuperAdmin ? null : defaultTeam,
+    team_name: null,
     coordinator_uid: coordinatorData ? coordinatorData.uid : null,
     coordinator_name: coordinatorData ? coordinatorData.name : null,
     avatar_url: firebaseUser.photoURL || null,
@@ -165,18 +166,49 @@ export async function logoutUser() {
 export function useAuth(callback) {
   callback({ user: null, loading: true, error: null });
 
-  return onAuthStateChanged(auth, async (firebaseUser) => {
+  let unsubDoc = null;
+
+  const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+    if (unsubDoc) {
+      unsubDoc();
+      unsubDoc = null;
+    }
+
     if (!firebaseUser) {
       callback({ user: null, loading: false, error: null });
       return;
     }
 
     try {
-      const profile = await syncUserProfile(firebaseUser);
-      callback({ user: profile, loading: false, error: null });
+      const initialProfile = await syncUserProfile(firebaseUser);
+      callback({ user: initialProfile, loading: false, error: null });
+
+      // Escuta mudanças de equipe/cargo/status em tempo real
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      unsubDoc = onSnapshot(userRef, (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          const isSuperAdmin = (firebaseUser.email || '').toLowerCase() === 'thiagoddsm@gmail.com';
+          const updatedProfile = {
+            uid: snap.id,
+            tenant_id: data.tenant_id || DEFAULT_TENANT_ID,
+            ...data,
+            role: isSuperAdmin ? 'admin' : (data.role || 'member'),
+            is_active: isSuperAdmin ? true : (data.is_active !== false)
+          };
+          callback({ user: updatedProfile, loading: false, error: null });
+        }
+      }, (err) => {
+        console.warn('Erro ao escutar atualizações de perfil:', err);
+      });
     } catch (err) {
       console.error('Erro no useAuth:', err);
       callback({ user: null, loading: false, error: err.message });
     }
   });
+
+  return () => {
+    if (unsubDoc) unsubDoc();
+    unsubAuth();
+  };
 }

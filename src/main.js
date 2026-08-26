@@ -1,6 +1,7 @@
 import './styles/main.css';
 import { useAuth, logoutUser } from './firebase/auth.js';
 import { renderLoginView } from './components/LoginView.js';
+import { renderPendingTeamView } from './components/PendingTeamView.js';
 import { renderSidebar } from './components/Sidebar.js';
 import { renderBottomNav } from './components/BottomNav.js';
 import { renderAdminPanel } from './components/AdminPanel.js';
@@ -12,6 +13,7 @@ import { renderEvolutionManager } from './components/EvolutionManager.js';
 import { renderSettingsGeneral } from './components/SettingsGeneral.js';
 import { renderRolesManagement } from './components/RolesManagement.js';
 import { renderSecuritySettings } from './components/SecuritySettings.js';
+import { subscribeToTenantTeams, DEFAULT_TENANT_ID } from './firebase/realtime.js';
 
 const appEl = document.querySelector('#app');
 
@@ -22,10 +24,26 @@ let activeCleanup = null;
 let currentView = null;
 let currentTeamId = 'team_alpha';
 let currentUserState = null;
+let tenantTeams = [];
+
+// Subscreve às equipes para mapeamento de nome
+subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
+  tenantTeams = teams;
+  if (currentUserState && currentUserState.role === 'member') {
+    const teamObj = tenantTeams.find(t => t.id === currentUserState.team_id);
+    if (teamObj && teamObj.name) {
+      currentUserState.team_name = teamObj.name;
+    }
+  }
+});
 
 function renderProtectedApp(currentUser) {
   currentUserState = currentUser;
   const role = currentUser.role || 'member';
+
+  // Localiza o nome da equipe do operador
+  const teamObj = tenantTeams.find(t => t.id === currentUser.team_id);
+  const teamDisplayName = currentUser.team_name || teamObj?.name || (currentUser.team_id ? 'Equipe Vinculada' : null);
 
   // Define a view padrão com base no papel
   if (!currentView) {
@@ -46,6 +64,7 @@ function renderProtectedApp(currentUser) {
     activeCleanup = null;
   }
 
+  const isMember = role === 'member';
   const isManagerView = currentView === 'manager' || currentView === 'admin';
   const roleLabel = role === 'admin' ? 'Administrador Geral' : role === 'coordinator' ? 'Coordenador de Equipe' : 'Operador de Disparos';
 
@@ -58,11 +77,18 @@ function renderProtectedApp(currentUser) {
       <div class="main-wrapper">
         <!-- Topbar -->
         <header class="topbar">
-          <div class="topbar-left">
+          <div class="topbar-left" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
             <h2>
               ${currentView === 'admin' ? 'Painel Administrativo Global' : currentView === 'manager' ? 'Painel de Gestão da Equipe' : currentView === 'settings' ? 'Enterprise Dashboard' : currentView === 'roles' ? 'Enterprise Dashboard' : currentView === 'security' ? 'Enterprise Dashboard' : 'Enterprise Dashboard'}
             </h2>
             
+            ${isMember && teamDisplayName ? `
+              <div class="topbar-member-team-badge" style="display: inline-flex; align-items: center; gap: 6px; padding: 0.35rem 0.85rem; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; color: #1D4ED8;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                <span>Equipe: ${teamDisplayName}</span>
+              </div>
+            ` : ''}
+
             ${isManagerView ? `
               <select id="topbar-team-select" class="team-selector-pill">
                 <option value="team_alpha" ${currentTeamId === 'team_alpha' ? 'selected' : ''}>Equipe Alpha ⌵</option>
@@ -128,8 +154,11 @@ function renderProtectedApp(currentUser) {
                 <img src="${currentUser.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" style="width: 52px; height: 52px; border-radius: 50%; margin-bottom: 0.5rem; object-fit: cover; border: 2px solid #FFFFFF; box-shadow: var(--shadow-sm);" alt="Avatar">
                 <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${currentUser.name || 'Jane Doe'}</div>
                 <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.1rem;">${currentUser.email}</div>
-                <div style="margin-top: 0.5rem;">
+                <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 4px; align-items: center;">
                   <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-size: 0.72rem;">${roleLabel}</span>
+                  ${teamDisplayName ? `
+                    <span class="pill-btn" style="background: #F0FDF4; color: #15803D; font-size: 0.72rem; font-weight: 600;">👥 Equipe: ${teamDisplayName}</span>
+                  ` : ''}
                 </div>
               </div>
               <div style="padding: 0.5rem 0;">
@@ -167,7 +196,7 @@ function renderProtectedApp(currentUser) {
   renderSidebar(sidebarMount, currentUserState, currentView, (newView) => {
     currentView = newView;
     renderProtectedApp(currentUserState);
-  });
+  }, teamDisplayName);
 
   // Renderiza Bottom Nav
   renderBottomNav(bottomNavMount, currentView, (newView) => {
@@ -289,8 +318,23 @@ useAuth(({ user, loading }) => {
   if (!user) {
     currentView = null;
     renderLoginView(appEl, (loggedUser) => {
-      renderProtectedApp(loggedUser);
+      if ((loggedUser.role || 'member') === 'member' && !loggedUser.team_id) {
+        renderPendingTeamView(appEl, loggedUser);
+      } else {
+        renderProtectedApp(loggedUser);
+      }
     });
+    return;
+  }
+
+  // Se o usuário logado for operador (member) e não estiver alocado em uma equipe, bloqueia o acesso
+  const role = user.role || 'member';
+  if (role === 'member' && !user.team_id) {
+    if (activeCleanup && typeof activeCleanup === 'function') {
+      activeCleanup();
+      activeCleanup = null;
+    }
+    renderPendingTeamView(appEl, user);
     return;
   }
 

@@ -6,14 +6,24 @@ export function renderDispatchView(container, currentUser) {
   let templateText = '';
   
   const isMember = currentUser?.role === 'member';
+  const teamLabel = currentUser?.team_name || (currentUser?.team_id ? 'Equipe Vinculada' : '');
   let selectedStrategy = 'wa.me';
 
   container.innerHTML = `
     <div class="page-content">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
         <div>
-          <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">Envio de Mensagens</h2>
-          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">Dispare mensagens personalizadas e confirme o envio após abrir o WhatsApp.</p>
+          <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+            <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">Envio de Mensagens</h2>
+            ${isMember && teamLabel ? `
+              <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem;">
+                👥 Equipe: ${teamLabel}
+              </span>
+            ` : ''}
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
+            Dispare mensagens personalizadas e confirme o envio após abrir o WhatsApp${isMember && teamLabel ? ` (Equipe: ${teamLabel})` : ''}.
+          </p>
         </div>
 
       </div>

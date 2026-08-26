@@ -62,7 +62,8 @@ export const EvolutionStrategy = {
       throw new Error('PERMISSAO_NEGADA: O motor de disparo via Evolution API é exclusivo para Coordenadores e Administradores.');
     }
 
-    const instanceName = user.team_id ? `instancia_${user.team_id}` : DispatchConfig.evolutionApi.instanceName;
+    const activeStored = typeof localStorage !== 'undefined' ? localStorage.getItem('evolution_active_instance') : null;
+    const instanceName = activeStored || (user.team_id ? `instancia_${user.team_id}` : (DispatchConfig.evolutionApi.instanceName || 'IBM'));
     const result = await sendEvolutionTextMessage({
       instanceName,
       to: formattedPhone,
