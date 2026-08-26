@@ -187,14 +187,14 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
           <button class="btn-select-role-option btn-outline-white" data-role="coordinator" style="padding: 0.85rem 1rem; text-align: left; display: flex; align-items: center; justify-content: space-between; border-radius: var(--radius-md);">
             <div>
               <strong style="color: #1D4ED8; font-size: 0.95rem; display: block;">👔 Coordenador / Gestor</strong>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">Lidera equipes, contatos e operadores</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Lidera equipes, contatos e membros</span>
             </div>
             <span style="font-size: 1.1rem;">›</span>
           </button>
 
           <button class="btn-select-role-option btn-outline-white" data-role="member" style="padding: 0.85rem 1rem; text-align: left; display: flex; align-items: center; justify-content: space-between; border-radius: var(--radius-md);">
             <div>
-              <strong style="color: var(--text-main); font-size: 0.95rem; display: block;">🎯 Operador de Disparos</strong>
+              <strong style="color: var(--text-main); font-size: 0.95rem; display: block;">🎯 Membro da Equipe</strong>
               <span style="font-size: 0.75rem; color: var(--text-muted);">Disparos assistidos (wa.me) e metas</span>
             </div>
             <span style="font-size: 1.1rem;">›</span>
@@ -310,7 +310,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
                     ? '👑 Administrador' 
                     : currentRole === 'coordinator' 
                     ? '👔 Coordenador' 
-                    : '🎯 Operador / Membro';
+                    : '🎯 Membro da Equipe';
 
                   const roleBadgeBg = currentRole === 'admin' 
                     ? '#FEE2E2' 

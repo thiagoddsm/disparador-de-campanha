@@ -44,7 +44,7 @@ export function renderRolesManagement(container, currentUser, onNavigate) {
     },
     {
       id: 'member',
-      name: 'Operador de Disparos',
+      name: 'Membro da Equipe',
       description: 'Disparos assistidos (wa.me) e acompanhamento dos próprios contatos',
       status: 'ATIVO',
       iconBg: '#F1F5F9',
@@ -58,6 +58,9 @@ export function renderRolesManagement(container, currentUser, onNavigate) {
     }
   ];
 
+  let searchQuery = '';
+  let statusFilter = 'ALL'; // ALL, ATIVO, INATIVO
+
   function getMemberCount(roleId, roleName) {
     const rId = (roleId || '').toLowerCase();
     const rName = (roleName || '').toLowerCase();
@@ -68,6 +71,14 @@ export function renderRolesManagement(container, currentUser, onNavigate) {
   }
 
   function renderList() {
+    let filteredRoles = rolesData.filter(r => {
+      const matchSearch = !searchQuery || 
+        (r.name && r.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (r.description && r.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchStatus = statusFilter === 'ALL' || r.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+
     container.innerHTML = `
       <div class="page-content" style="max-width: 1200px;">
         <!-- Header Row -->
@@ -97,12 +108,12 @@ export function renderRolesManagement(container, currentUser, onNavigate) {
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-              <input type="text" id="input-search-roles" class="topbar-search-input" placeholder="Buscar cargo ou perfil..." style="width: 100%; border-radius: var(--radius-md); padding-left: 2.3rem; background: #FFFFFF; font-size: 0.85rem;">
+              <input type="text" id="input-search-roles" class="topbar-search-input" value="${searchQuery}" placeholder="Buscar cargo ou perfil..." style="width: 100%; border-radius: var(--radius-md); padding-left: 2.3rem; background: #FFFFFF; font-size: 0.85rem;">
             </div>
 
             <button id="btn-filter-roles" class="btn-outline-white" style="font-size: 0.85rem; padding: 0.45rem 1rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
-              Filtros
+              Status: ${statusFilter === 'ALL' ? 'Todos' : statusFilter}
             </button>
           </div>
 
@@ -118,9 +129,9 @@ export function renderRolesManagement(container, currentUser, onNavigate) {
                 </tr>
               </thead>
               <tbody id="roles-tbody">
-                ${rolesData.length === 0 ? `
-                  <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 3rem;">Carregando cargos do Firestore...</td></tr>
-                ` : rolesData.map(role => {
+                ${filteredRoles.length === 0 ? `
+                  <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum cargo encontrado.</td></tr>
+                ` : filteredRoles.map(role => {
                   const count = getMemberCount(role.id, role.name);
                   return `
                     <tr>
@@ -225,14 +236,24 @@ export function renderRolesManagement(container, currentUser, onNavigate) {
       renderPermissionsMatrix(newRole);
     });
 
-    // Busca
-    container.querySelector('#input-search-roles')?.addEventListener('input', (e) => {
-      const query = e.target.value.toLowerCase();
-      const rows = container.querySelectorAll('#roles-tbody tr');
-      rows.forEach(tr => {
-        const text = tr.innerText.toLowerCase();
-        tr.style.display = text.includes(query) ? '' : 'none';
+    // Busca em tempo real
+    const searchInput = container.querySelector('#input-search-roles');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        const query = searchQuery.toLowerCase();
+        const rows = container.querySelectorAll('#roles-tbody tr');
+        rows.forEach(tr => {
+          const text = tr.innerText.toLowerCase();
+          tr.style.display = text.includes(query) ? '' : 'none';
+        });
       });
+    }
+
+    // Filtro de Status (Todos -> ATIVO -> INATIVO)
+    container.querySelector('#btn-filter-roles')?.addEventListener('click', () => {
+      statusFilter = statusFilter === 'ALL' ? 'ATIVO' : statusFilter === 'ATIVO' ? 'INATIVO' : 'ALL';
+      renderList();
     });
   }
 

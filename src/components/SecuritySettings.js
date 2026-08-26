@@ -1,31 +1,27 @@
+import { auth, db } from '../firebase/config.js';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
+
 export function renderSecuritySettings(container, currentUser, onNavigate) {
+  const ua = navigator.userAgent;
+  const isWindows = ua.includes('Windows');
+  const isMac = ua.includes('Macintosh');
+  const isLinux = ua.includes('Linux');
+  const isAndroid = ua.includes('Android');
+  const isIOS = ua.includes('iPhone') || ua.includes('iPad');
+
+  const osName = isWindows ? 'Windows PC' : isMac ? 'macOS' : isLinux ? 'Linux' : isAndroid ? 'Android' : isIOS ? 'iOS Device' : 'Computador';
+  const browserName = ua.includes('Chrome') ? 'Google Chrome' : ua.includes('Firefox') ? 'Mozilla Firefox' : ua.includes('Safari') ? 'Apple Safari' : ua.includes('Edge') ? 'Microsoft Edge' : 'Navegador Web';
+
   let sessions = [
     {
-      id: 'sess_1',
-      device: 'MacBook Pro - Chrome',
+      id: 'sess_current',
+      device: `${osName} - ${browserName}`,
       isCurrent: true,
-      location: 'São Paulo, SP',
-      ip: '192.168.1.42',
+      location: 'Sessão Ativa Autenticada',
+      ip: 'Localhost / Cloud Run',
       lastActive: 'Agora mesmo',
       icon: 'laptop'
-    },
-    {
-      id: 'sess_2',
-      device: 'iPhone 13 Pro - Safari',
-      isCurrent: false,
-      location: 'Rio de Janeiro, RJ',
-      ip: '10.0.0.15',
-      lastActive: 'há 2 horas',
-      icon: 'phone'
-    },
-    {
-      id: 'sess_3',
-      device: 'iPad Air - App',
-      isCurrent: false,
-      location: 'Belo Horizonte, MG',
-      ip: '172.16.0.5',
-      lastActive: 'há 3 dias',
-      icon: 'tablet'
     }
   ];
 
@@ -202,22 +198,38 @@ export function renderSecuritySettings(container, currentUser, onNavigate) {
     </div>
   `;
 
-  container.querySelector('#btn-revoke-all')?.addEventListener('click', () => {
-    sessions = sessions.filter(s => s.isCurrent);
-    renderSecuritySettings(container, currentUser, onNavigate);
-    alert('Todas as outras sessões foram revogadas com sucesso!');
+  container.querySelector('#btn-change-password-modal')?.addEventListener('click', async () => {
+    const btn = container.querySelector('#btn-change-password-modal');
+    btn.disabled = true;
+    btn.textContent = 'Enviando link...';
+
+    try {
+      if (currentUser.email) {
+        await sendPasswordResetEmail(auth, currentUser.email);
+        btn.textContent = 'Link Enviado para seu E-mail!';
+      }
+    } catch (err) {
+      console.warn('Erro ao enviar reset de senha:', err);
+      btn.textContent = 'Erro ao enviar e-mail.';
+    }
+
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = 'Alterar Senha';
+    }, 4000);
   });
 
-  container.querySelectorAll('.btn-delete-session').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.getAttribute('data-id');
-      sessions = sessions.filter(s => s.id !== id);
-      renderSecuritySettings(container, currentUser, onNavigate);
-    });
-  });
-
-  container.querySelector('#btn-change-password-modal')?.addEventListener('click', () => {
-    alert('Link para redefinição de senha enviado para seu e-mail.');
+  // Toggle MFA
+  container.querySelector('#toggle-mfa')?.addEventListener('change', async (e) => {
+    const isMfaActive = e.target.checked;
+    currentUser.mfa_enabled = isMfaActive;
+    try {
+      if (currentUser.uid) {
+        await updateDoc(doc(db, 'users', currentUser.uid), { mfa_enabled: isMfaActive });
+      }
+    } catch (err) {
+      console.warn('Erro ao atualizar MFA no Firestore:', err);
+    }
   });
 
   return () => {};

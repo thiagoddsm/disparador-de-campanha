@@ -1,11 +1,13 @@
 import { db } from '../firebase/config.js';
 import { doc, updateDoc } from 'firebase/firestore';
+import { subscribeToIntegrations } from '../firebase/realtime.js';
 
 export function renderSettingsGeneral(container, currentUser, onNavigate) {
   const nameParts = (currentUser.name || 'Thiago Silva').split(' ');
   const firstName = nameParts[0] || 'Thiago';
   const lastName = nameParts.slice(1).join(' ') || 'Silva';
   const email = currentUser.email || 'thiagoddsm@gmail.com';
+  let currentAvatar = currentUser.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face';
 
   container.innerHTML = `
     <div class="page-content" style="max-width: 1200px;">
@@ -36,10 +38,10 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
             <div style="display: flex; gap: 1.75rem; align-items: flex-start; margin-bottom: 1.5rem;">
               <!-- Avatar Column -->
               <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
-                <img src="${currentUser.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" 
+                <img src="${currentAvatar}" 
                      style="width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 3px solid #FFFFFF; box-shadow: var(--shadow-sm);" 
                      id="settings-avatar-preview" alt="Avatar">
-                <a href="#" id="btn-change-avatar" style="font-size: 0.8rem; color: var(--primary-blue); font-weight: 600; text-decoration: none;">Alterar Foto</a>
+                <button type="button" id="btn-change-avatar" style="background: none; border: none; font-size: 0.8rem; color: var(--primary-blue); font-weight: 600; cursor: pointer; padding: 0;">Alterar Foto</button>
               </div>
 
               <!-- Name & Email Inputs -->
@@ -57,7 +59,7 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
 
                 <div>
                   <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.4rem;">E-mail Corporativo</label>
-                  <input type="email" id="input-email" class="topbar-search-input" value="${email}" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; padding: 0.6rem 0.85rem; font-size: 0.9rem;">
+                  <input type="email" id="input-email" class="topbar-search-input" value="${email}" disabled style="width: 100%; border-radius: var(--radius-md); background: #F8FAFC; color: var(--text-muted); padding: 0.6rem 0.85rem; font-size: 0.9rem; cursor: not-allowed;">
                 </div>
               </div>
             </div>
@@ -90,18 +92,18 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
               <div>
                 <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.4rem;">Idioma</label>
                 <select id="select-language" class="form-control" style="padding: 0.6rem 0.85rem; font-size: 0.88rem;">
-                  <option value="pt-BR" selected>Português (Brasil)</option>
-                  <option value="en-US">English (US)</option>
-                  <option value="es-ES">Español</option>
+                  <option value="pt-BR" ${currentUser.language === 'pt-BR' || !currentUser.language ? 'selected' : ''}>Português (Brasil)</option>
+                  <option value="en-US" ${currentUser.language === 'en-US' ? 'selected' : ''}>English (US)</option>
+                  <option value="es-ES" ${currentUser.language === 'es-ES' ? 'selected' : ''}>Español</option>
                 </select>
               </div>
 
               <div>
                 <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.4rem;">Fuso Horário</label>
                 <select id="select-timezone" class="form-control" style="padding: 0.6rem 0.85rem; font-size: 0.88rem;">
-                  <option value="UTC-03:00" selected>UTC-03:00 (Brasília)</option>
-                  <option value="UTC-04:00">UTC-04:00 (Manaus)</option>
-                  <option value="UTC-05:00">UTC-05:00 (Acre)</option>
+                  <option value="UTC-03:00" ${currentUser.timezone === 'UTC-03:00' || !currentUser.timezone ? 'selected' : ''}>UTC-03:00 (Brasília)</option>
+                  <option value="UTC-04:00" ${currentUser.timezone === 'UTC-04:00' ? 'selected' : ''}>UTC-04:00 (Manaus)</option>
+                  <option value="UTC-05:00" ${currentUser.timezone === 'UTC-05:00' ? 'selected' : ''}>UTC-05:00 (Acre)</option>
                 </select>
               </div>
             </div>
@@ -120,7 +122,7 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
             Gerencie conexões externas para mensagens, webhooks e fluxo de dados.
           </p>
 
-          <!-- WhatsApp Business Card -->
+          <!-- WhatsApp Evolution API Card -->
           <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.1rem; margin-bottom: 1rem; background: #FFFFFF;">
             <div style="display: flex; align-items: flex-start; gap: 0.85rem;">
               <div style="width: 38px; height: 38px; border-radius: var(--radius-md); background: #DCFCE7; color: #16A34A; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
@@ -129,15 +131,15 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
                 </svg>
               </div>
               <div style="flex: 1;">
-                <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main);">API do WhatsApp Business</div>
-                <div style="display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: #16A34A; font-weight: 600; margin-top: 0.15rem;">
+                <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main);">Evolution API (WhatsApp)</div>
+                <div id="integration-evolution-status" style="display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: #16A34A; font-weight: 600; margin-top: 0.15rem;">
                   <span style="width: 7px; height: 7px; border-radius: 50%; background: #16A34A;"></span> Conectado
                 </div>
               </div>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
-              <span style="font-size: 0.72rem; color: var(--text-muted);">Sincronizado há 2 min</span>
+              <span id="integration-evolution-details" style="font-size: 0.72rem; color: var(--text-muted);">Instância Ativa</span>
               <button id="btn-config-whatsapp" class="btn-outline-white" style="font-size: 0.78rem; padding: 0.35rem 0.85rem; font-weight: 600;">Configurar</button>
             </div>
           </div>
@@ -156,7 +158,7 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
               <div style="flex: 1;">
                 <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main);">Webhooks Customizados</div>
                 <div style="display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: var(--text-muted); font-weight: 500; margin-top: 0.15rem;">
-                  <span style="width: 7px; height: 7px; border-radius: 50%; background: #9CA3AF;"></span> Não configurado
+                  <span style="width: 7px; height: 7px; border-radius: 50%; background: #9CA3AF;"></span> Pronto para escuta
                 </div>
               </div>
             </div>
@@ -171,22 +173,47 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
     </div>
   `;
 
+  // Alterar Foto de Perfil
+  container.querySelector('#btn-change-avatar')?.addEventListener('click', () => {
+    const newUrl = prompt('Insira a URL da nova imagem de perfil:', currentAvatar);
+    if (newUrl && newUrl.trim().startsWith('http')) {
+      currentAvatar = newUrl.trim();
+      currentUser.avatar_url = currentAvatar;
+      const img = container.querySelector('#settings-avatar-preview');
+      if (img) img.src = currentAvatar;
+    }
+  });
+
+  // Salvar Informações e Preferências
   container.querySelector('#btn-save-profile')?.addEventListener('click', async () => {
     const fName = container.querySelector('#input-first-name').value.trim();
     const lName = container.querySelector('#input-last-name').value.trim();
     const fullName = `${fName} ${lName}`.trim();
+    const language = container.querySelector('#select-language').value;
+    const timezone = container.querySelector('#select-timezone').value;
+
     currentUser.name = fullName;
+    currentUser.language = language;
+    currentUser.timezone = timezone;
+    currentUser.avatar_url = currentAvatar;
 
     const saveBtn = container.querySelector('#btn-save-profile');
     saveBtn.disabled = true;
-    saveBtn.textContent = 'Salvo!';
+    saveBtn.textContent = 'Salvando...';
 
     try {
       if (currentUser.uid) {
-        await updateDoc(doc(db, 'users', currentUser.uid), { name: fullName });
+        await updateDoc(doc(db, 'users', currentUser.uid), { 
+          name: fullName,
+          language,
+          timezone,
+          avatar_url: currentAvatar
+        });
       }
+      saveBtn.textContent = 'Salvo com Sucesso!';
     } catch (e) {
-      console.warn('Erro ao atualizar nome no Firestore:', e);
+      console.warn('Erro ao atualizar perfil no Firestore:', e);
+      saveBtn.textContent = 'Erro ao Salvar';
     }
 
     setTimeout(() => {
@@ -203,5 +230,17 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
     onNavigate('evolution');
   });
 
-  return () => {};
+  const unsubInt = subscribeToIntegrations((integrations) => {
+    const evo = integrations.find(i => i.provider === 'evolution_api');
+    const statusEl = container.querySelector('#integration-evolution-status');
+    const detailsEl = container.querySelector('#integration-evolution-details');
+    if (statusEl && detailsEl && evo) {
+      statusEl.innerHTML = `<span style="width: 7px; height: 7px; border-radius: 50%; background: #16A34A;"></span> ${evo.instance_name || 'Instância Configurada'}`;
+      detailsEl.textContent = evo.base_url ? `Servidor: ${evo.base_url}` : 'Instância Ativa';
+    }
+  });
+
+  return () => {
+    unsubInt();
+  };
 }

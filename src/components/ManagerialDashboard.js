@@ -37,7 +37,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
             <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">${teamName}</h2>
           </div>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
-            Gerencie equipes, vincule coordenadores líderes e acompanhe as metas dos operadores.
+            Gerencie equipes, vincule coordenadores líderes e acompanhe as metas dos membros da equipe.
           </p>
         </div>
 
@@ -65,7 +65,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
-            + Adicionar Operador
+            + Adicionar Membro da Equipe
           </button>
         </div>
       </div>
@@ -75,7 +75,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
         <!-- KPI 1: Total de Membros -->
         <div class="metric-box">
           <div class="metric-info">
-            <span class="metric-label">TOTAL DE OPERADORES</span>
+            <span class="metric-label">MEMBROS DA EQUIPE</span>
             <span class="metric-big-num" id="coord-kpi-members">0</span>
             <span class="metric-subtext" style="color: var(--primary-blue); font-weight: 600;">Na equipe</span>
           </div>
@@ -215,7 +215,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
     <div id="modal-add-member" class="modal-overlay" style="display: none;">
       <div class="modal-content" style="max-width: 460px;">
         <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="font-size: 1.05rem; font-weight: 700;">Adicionar Operador à Equipe</h3>
+          <h3 style="font-size: 1.05rem; font-weight: 700;">Adicionar Membro à Equipe</h3>
           <button id="btn-close-member-modal" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);">✕</button>
         </div>
         <form id="form-add-member" style="padding: 1.5rem;">
@@ -296,8 +296,8 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
         <div class="main-panel-card">
           <div class="panel-top-header">
             <div>
-              <span class="panel-title-text">Desempenho dos Operadores</span>
-              <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.1rem;">Metas individuais e taxa de engajamento por operador.</span>
+              <span class="panel-title-text">Desempenho dos Membros da Equipe</span>
+              <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.1rem;">Metas individuais e taxa de engajamento por membro.</span>
             </div>
 
             <div class="panel-controls-group">
@@ -306,7 +306,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
                   <circle cx="11" cy="11" r="8"></circle>
                   <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
-                <input type="text" id="coord-search-member" class="topbar-search-input" placeholder="Buscar operador..." style="width: 100%; border-radius: var(--radius-md); padding-left: 2.1rem; background: #FFFFFF; font-size: 0.82rem;">
+                <input type="text" id="coord-search-member" class="topbar-search-input" placeholder="Buscar membro..." style="width: 100%; border-radius: var(--radius-md); padding-left: 2.1rem; background: #FFFFFF; font-size: 0.82rem;">
               </div>
             </div>
           </div>
@@ -315,7 +315,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
             <table class="panel-table">
               <thead>
                 <tr>
-                  <th>OPERADOR</th>
+                  <th>MEMBRO DA EQUIPE</th>
                   <th>PROGRESSO DA META</th>
                   <th>DISPAROS / META</th>
                   <th>STATUS</th>
@@ -324,7 +324,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
               </thead>
               <tbody id="coord-table-body">
                 ${teamMembers.length === 0 ? `
-                  <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum operador na equipe ainda. Clique em <strong>+ Adicionar Operador</strong>.</td></tr>
+                  <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum membro na equipe ainda. Clique em <strong>+ Adicionar Membro da Equipe</strong>.</td></tr>
                 ` : teamMembers.map(m => {
                   const goal = m.daily_goal || 30;
                   const memberContacts = teamContacts.filter(c => c.assigned_to === m.uid);
@@ -408,7 +408,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
                 <tr>
                   <th>NOME DA EQUIPE</th>
                   <th>COORDENADOR LÍDER</th>
-                  <th>OPERADORES VINCULADOS</th>
+                  <th>MEMBROS VINCULADOS</th>
                   <th>STATUS</th>
                 </tr>
               </thead>

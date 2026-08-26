@@ -5,11 +5,13 @@ import {
   sanitizeInstanceSlug,
   EVOLUTION_CONFIG 
 } from '../firebase/evolutionApi.js';
+import { db } from '../firebase/config.js';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 export function renderEvolutionManager(container, currentUser) {
-  const isAdmin = currentUser?.role === 'admin';
+  const hasAccess = currentUser?.role === 'admin' || currentUser?.role === 'coordinator';
 
-  if (!isAdmin) {
+  if (!hasAccess) {
     container.innerHTML = `
       <div class="page-content">
         <div class="main-panel-card" style="padding: 3rem 2rem; text-align: center;">
@@ -23,7 +25,7 @@ export function renderEvolutionManager(container, currentUser) {
           <p style="font-size: 0.88rem; color: var(--text-muted); max-width: 480px; margin: 0.5rem auto 1.5rem auto;">
             A gestão de instâncias da Evolution API e conexão de chips de WhatsApp é exclusiva para Coordenadores e Gestores Gerais da campanha.
           </p>
-          <span class="pill-btn" style="background: #F1F5F9; color: #475569;">Modo Atual: Operador de Disparos Assistido (wa.me)</span>
+          <span class="pill-btn" style="background: #F1F5F9; color: #475569;">Modo Atual: Disparo Assistido por Membro da Equipe (wa.me)</span>
         </div>
       </div>
     `;
@@ -35,7 +37,7 @@ export function renderEvolutionManager(container, currentUser) {
   let instanceState = 'close';
   let qrBase64 = null;
   let pollingTimer = null;
-  let activeInstanceName = localStorage.getItem('evolution_active_instance') || 'IBM';
+  let activeInstanceName = localStorage.getItem('evolution_active_instance') || defaultInstanceName;
 
   container.innerHTML = `
     <div class="page-content">
@@ -68,54 +70,49 @@ export function renderEvolutionManager(container, currentUser) {
               <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.35rem;">
                 Identificador da Instância (Slug)
               </label>
-              <input type="text" id="input-instance-slug" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-family: monospace;" value="${activeInstanceName}">
-              <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.45rem;">
-                <span style="font-size: 0.72rem; color: var(--text-muted);">Instância conectada no servidor:</span>
-                <button type="button" id="btn-use-ibm-instance" class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; cursor: pointer; font-size: 0.72rem; padding: 2px 8px; font-weight: 600;">
-                  ● Usar IBM (Ativa)
+              <input type="text" id="input-instance-slug" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-family: monospace;" value="${activeInstanceName}" placeholder="ex: camp_equipe_alpha">
+              <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">Nome único que será criado na Evolution API.</p>
+            </div>
+
+            <!-- Global API Key Card (FestaPay Master Key) -->
+            <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem 1rem; background: #F8FAFC; margin-bottom: 1.25rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">
+                  🔑 Chave Mestra Global (AUTHENTICATION_API_KEY)
+                </label>
+              </div>
+              <p style="font-size: 0.73rem; color: var(--text-muted); margin-bottom: 0.6rem; line-height: 1.3;">
+                Necessária para que a aplicação crie novas instâncias automaticamente via <code>POST /instance/create</code>.
+              </p>
+              <input type="password" id="input-api-key" class="topbar-search-input" style="width: 100%; font-size: 0.8rem; background: #FFFFFF; font-family: monospace; margin-bottom: 0.5rem;" value="${localStorage.getItem('evolution_api_key') || EVOLUTION_CONFIG.apiKey}" placeholder="Cole sua AUTHENTICATION_API_KEY">
+              
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <input type="text" id="input-api-url" class="topbar-search-input" style="width: 65%; font-size: 0.75rem; background: #FFFFFF;" value="${localStorage.getItem('evolution_api_url') || EVOLUTION_CONFIG.baseUrl}" placeholder="URL da Evolution API">
+                <button id="btn-save-api-config" class="btn-outline-white" style="font-size: 0.75rem; padding: 0.35rem 0.65rem; font-weight: 600;">
+                  Salvar
                 </button>
               </div>
             </div>
 
-            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
-              <button id="btn-generate-qr" class="btn-green-action">
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+              <button id="btn-generate-qr" class="btn-green-action" style="font-weight: 700;">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
                 </svg>
-                Gerar QR Code de Conexão
+                Criar Instância & Gerar QR Code
               </button>
 
               <button id="btn-disconnect-instance" class="btn-outline-white" style="color: #DC2626; border-color: #FECACA;">
                 Desconectar
               </button>
             </div>
-
-            <!-- Endpoint & Key Settings Accordion -->
-            <details style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem 1rem; background: #F8FAFC;">
-              <summary style="font-size: 0.82rem; font-weight: 600; color: var(--text-main); cursor: pointer;">
-                ⚙️ Configurações do Servidor & API Key
-              </summary>
-              <div style="margin-top: 0.85rem; display: flex; flex-direction: column; gap: 0.75rem;">
-                <div>
-                  <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem;">URL do Servidor Evolution</label>
-                  <input type="text" id="input-api-url" class="topbar-search-input" style="width: 100%; font-size: 0.8rem; background: #FFFFFF;" value="${localStorage.getItem('evolution_api_url') || EVOLUTION_CONFIG.baseUrl}">
-                </div>
-                <div>
-                  <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem;">Chave Global (API Key)</label>
-                  <input type="password" id="input-api-key" class="topbar-search-input" style="width: 100%; font-size: 0.8rem; background: #FFFFFF; font-family: monospace;" value="${localStorage.getItem('evolution_api_key') || EVOLUTION_CONFIG.apiKey}">
-                </div>
-                <button id="btn-save-api-config" class="btn-outline-white" style="font-size: 0.78rem; align-self: flex-end; padding: 0.35rem 0.85rem;">
-                  Salvar Credenciais
-                </button>
-              </div>
-            </details>
           </div>
 
           <!-- Right: Live QR Code Viewer -->
           <div style="text-align: center; border: 1px dashed var(--border-color); border-radius: var(--radius-lg); padding: 1.5rem; background: #F8FAFC;" id="qr-container">
             <div id="qr-content-mount">
               <div style="color: var(--text-muted); font-size: 0.85rem; padding: 2rem 0;">
-                Clique em <strong>Gerar QR Code</strong> para parear seu WhatsApp.
+                Clique em <strong>Criar Instância & Gerar QR Code</strong> para parear seu WhatsApp.
               </div>
             </div>
           </div>
@@ -177,9 +174,27 @@ export function renderEvolutionManager(container, currentUser) {
         <div style="color: #15803D; padding: 1.5rem 0;">
           <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎉</div>
           <strong>WhatsApp Conectado e Operacional!</strong>
-          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Pronto para receber ordens de disparo da campanha.</p>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Número pareado: ${res.phoneNumber || 'Ativo'}. Pronto para disparos.</p>
         </div>
       `;
+
+      // Persiste no Firestore (padrão FestaPay)
+      if (currentUser?.uid) {
+        updateDoc(doc(db, 'users', currentUser.uid), {
+          'whatsapp.enabled': true,
+          'whatsapp.instanceName': activeInstanceName,
+          'whatsapp.status': 'CONNECTED',
+          'whatsapp.phoneNumber': res.phoneNumber || null,
+          'whatsapp.updatedAt': serverTimestamp()
+        }).catch(() => {});
+      }
+      if (currentUser?.team_id) {
+        updateDoc(doc(db, 'teams', currentUser.team_id), {
+          'whatsapp_instance': activeInstanceName,
+          'whatsapp_connected': true,
+          'whatsapp_phone': res.phoneNumber || null
+        }).catch(() => {});
+      }
     } else if (res.state === 'connecting') {
       statusBadge.innerHTML = `<span class="pill-btn" style="background: #FEF3C7; color: #B45309;">Aguardando Leitura do QR Code...</span>`;
     } else {

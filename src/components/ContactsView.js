@@ -192,7 +192,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
         <form id="form-reassign" style="padding: 1.5rem;">
           <input type="hidden" id="reassign-contact-id">
           <div style="margin-bottom: 1.5rem;">
-            <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.35rem;">Transferir para o Operador:</label>
+            <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.35rem;">Transferir para o Membro da Equipe:</label>
             <select id="select-reassign-member" class="form-control" required></select>
           </div>
           <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">

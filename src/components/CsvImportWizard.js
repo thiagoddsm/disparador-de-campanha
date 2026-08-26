@@ -203,7 +203,7 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
       const memSel = container.querySelector('#import-member-select');
       if (memSel) {
         memSel.innerHTML = `
-          <option value="distribute_equally">Dividir Igualmente entre Membros (${members.length} operadores)</option>
+          <option value="distribute_equally">Dividir Igualmente entre Membros (${members.length} membros da equipe)</option>
           <option value="${currentUser.uid}">${currentUser.name} (Atribuir para Mim)</option>
           ${members.map(m => `<option value="${m.uid}">${m.name} (${m.email})</option>`).join('')}
         `;
@@ -227,13 +227,12 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
       const selectedAssignee = container.querySelector('#import-member-select').value;
       const targetTeamId = container.querySelector('#import-team-select').value;
 
-      let contactsToSave = [];
-      const rawData = rows.length > 0 ? rows : [
-        ['João Silva Santos', '(11) 98765-4321', 'joao.silva@exemplo.com', 'Acme Corp LTDA'],
-        ['Mariana Lima', '(21) 99876-5432', 'mariana@exemplo.com', 'Tech Soluções'],
-        ['Carlos Eduardo', '(31) 97654-3210', 'carlos@exemplo.com', 'Comércio Central']
-      ];
+      if (!rows || rows.length === 0) {
+        console.warn('Nenhum dado de contato encontrado no arquivo CSV.');
+        return;
+      }
 
+      const rawData = rows;
       const validMembers = teamMembers.length > 0 ? teamMembers : [{ uid: currentUser.uid, name: currentUser.name }];
 
       contactsToSave = rawData.map((r, idx) => {

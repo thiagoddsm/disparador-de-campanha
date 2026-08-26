@@ -59,19 +59,31 @@ export async function syncUserProfile(
     return { uid: snap.id, tenant_id: data.tenant_id || tenantId, ...data };
   }
 
-  // Novo perfil cadastrado
+  // Se não encontrou por UID, verifica se existe pré-cadastro pelo e-mail
+  let preProfile = null;
+  try {
+    const qEmail = query(collection(db, 'users'), where('email', '==', firebaseUser.email.toLowerCase()));
+    const emailSnap = await getDocs(qEmail);
+    if (!emailSnap.empty) {
+      preProfile = emailSnap.docs[0].data();
+    }
+  } catch (err) {
+    console.warn('Erro ao verificar pré-cadastro:', err);
+  }
+
+  // Novo perfil cadastrado (ou mesclado com pré-cadastro)
   const newProfile = {
     uid: firebaseUser.uid,
     tenant_id: tenantId,
-    name: firebaseUser.displayName || (isSuperAdmin ? 'Thiago Moura' : firebaseUser.email.split('@')[0]),
-    email: firebaseUser.email,
-    role: isSuperAdmin ? 'admin' : defaultRole,
-    team_id: isSuperAdmin ? null : defaultTeam,
-    team_name: null,
-    coordinator_uid: coordinatorData ? coordinatorData.uid : null,
-    coordinator_name: coordinatorData ? coordinatorData.name : null,
-    avatar_url: firebaseUser.photoURL || null,
-    daily_goal: 30,
+    name: firebaseUser.displayName || preProfile?.name || (isSuperAdmin ? 'Thiago Moura' : firebaseUser.email.split('@')[0]),
+    email: firebaseUser.email.toLowerCase(),
+    role: isSuperAdmin ? 'admin' : (preProfile?.role || defaultRole),
+    team_id: isSuperAdmin ? null : (preProfile?.team_id || defaultTeam),
+    team_name: preProfile?.team_name || null,
+    coordinator_uid: preProfile?.coordinator_uid || (coordinatorData ? coordinatorData.uid : null),
+    coordinator_name: preProfile?.coordinator_name || (coordinatorData ? coordinatorData.name : null),
+    avatar_url: firebaseUser.photoURL || preProfile?.avatar_url || null,
+    daily_goal: preProfile?.daily_goal || 30,
     contacts_opened: 0,
     messages_sent: 0,
     is_active: true,
@@ -82,7 +94,7 @@ export async function syncUserProfile(
   try {
     await setDoc(userRef, newProfile);
   } catch (e) {
-    console.warn('Erro ao gravar novo perfil:', e);
+    console.warn('Erro ao gravar novo perfil no Firestore:', e);
   }
 
   return newProfile;
@@ -118,7 +130,39 @@ export async function createUserProfileDirectly({
   dailyGoal = 30,
   tenantId = DEFAULT_TENANT_ID
 }) {
-  throw new Error('A criação de contas por terceiros exige uma função administrativa segura. Use o cadastro individual e aprove o perfil no painel administrativo.');
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (!cleanEmail) throw new Error('E-mail é obrigatório para cadastrar um usuário.');
+
+  const generatedUid = `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const userRef = doc(db, 'users', generatedUid);
+
+  const profileData = {
+    uid: generatedUid,
+    tenant_id: tenantId,
+    name: name || cleanEmail.split('@')[0],
+    email: cleanEmail,
+    role,
+    team_id: teamId,
+    coordinator_uid: coordinatorData ? coordinatorData.uid : null,
+    coordinator_name: coordinatorData ? coordinatorData.name : null,
+    avatar_url: null,
+    daily_goal: Number(dailyGoal) || 30,
+    contacts_opened: 0,
+    messages_sent: 0,
+    is_active: true,
+    created_at: serverTimestamp(),
+    created_at_iso: new Date().toISOString()
+  };
+
+  try {
+    await setDoc(userRef, profileData);
+  } catch (e) {
+    console.warn('Erro ao salvar usuário no Firestore:', e);
+  }
+
+  // Notifica o app de que um novo membro foi adicionado
+  window.dispatchEvent(new CustomEvent('team-updated'));
+  return { success: true, uid: generatedUid, ...profileData };
 }
 
 /**

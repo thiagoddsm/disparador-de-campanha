@@ -5,7 +5,7 @@ export function renderSidebar(container, currentUser, currentView, onViewChange,
   const isCoordinator = currentUser?.role === 'coordinator';
   const isMember = currentUser?.role === 'member';
 
-  const roleLabel = isAdmin ? 'Admin Global' : isCoordinator ? 'Coordenador' : 'Operador';
+  const roleLabel = isAdmin ? 'Admin Global' : isCoordinator ? 'Coordenador' : 'Membro da Equipe';
   const teamLabel = teamDisplayName || currentUser?.team_name || (currentUser?.team_id ? 'Equipe Vinculada' : null);
 
   container.innerHTML = `

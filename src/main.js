@@ -66,7 +66,7 @@ function renderProtectedApp(currentUser) {
 
   const isMember = role === 'member';
   const isManagerView = currentView === 'manager' || currentView === 'admin';
-  const roleLabel = role === 'admin' ? 'Administrador Geral' : role === 'coordinator' ? 'Coordenador de Equipe' : 'Operador de Disparos';
+  const roleLabel = role === 'admin' ? 'Administrador Geral' : role === 'coordinator' ? 'Coordenador de Equipe' : 'Membro da Equipe';
 
   appEl.innerHTML = `
     <div class="app-container">

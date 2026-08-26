@@ -4,7 +4,7 @@ import { logoutUser } from '../firebase/auth.js';
  * Renderiza a tela de bloqueio e espera para operadores não alocados a uma equipe.
  */
 export function renderPendingTeamView(container, currentUser) {
-  const userName = currentUser?.name || currentUser?.email?.split('@')[0] || 'Operador';
+  const userName = currentUser?.name || currentUser?.email?.split('@')[0] || 'Membro';
   const userEmail = currentUser?.email || '';
 
   container.innerHTML = `
@@ -27,7 +27,7 @@ export function renderPendingTeamView(container, currentUser) {
             <span>⏳</span> Aguardando Alocação em Equipe
           </span>
           <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-size: 0.75rem; font-weight: 700; padding: 0.35rem 0.85rem; border-radius: 9999px;">
-            🎯 Operador
+            🎯 Membro da Equipe
           </span>
         </div>
 
