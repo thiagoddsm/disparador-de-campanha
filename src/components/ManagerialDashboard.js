@@ -42,24 +42,6 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
         </div>
 
         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-          ${isAdmin ? `
-            <button id="btn-open-new-team-modal" class="btn-primary-blue" style="font-weight: 600;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              + Nova Equipe (Com Coordenador)
-            </button>
-
-            <button id="btn-open-new-coord-modal" class="btn-outline-white" style="font-weight: 600;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="8.5" cy="7" r="4"></circle>
-              </svg>
-              + Novo Coordenador
-            </button>
-          ` : ''}
-
           <button id="btn-coord-add-member" class="btn-green-action" style="font-weight: 600;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"></line>
