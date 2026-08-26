@@ -32,8 +32,8 @@ subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
   if (!currentTeamId && teams.length > 0) {
     currentTeamId = teams[0].id;
   }
-  if (currentUserState && currentUserState.role === 'member') {
-    const teamObj = tenantTeams.find(t => t.id === currentUserState.team_id);
+  if (currentUserState && currentUserState.team_id) {
+    const teamObj = tenantTeams.find(t => t.id === currentUserState.team_id || t.name === currentUserState.team_name);
     if (teamObj && teamObj.name) {
       currentUserState.team_name = teamObj.name;
     }
@@ -45,6 +45,15 @@ subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
     topbarSel.innerHTML = tenantTeams.length === 0 
       ? `<option value="">Nenhuma equipe cadastrada</option>`
       : tenantTeams.map(t => `<option value="${t.id}" ${currentTeamId === t.id ? 'selected' : ''}>👥 ${t.name} ⌵</option>`).join('');
+  }
+
+  // Atualiza o selo da equipe na topbar para membros e coordenadores
+  const topbarBadge = appEl?.querySelector('#topbar-team-badge-name');
+  if (topbarBadge && currentUserState?.team_id) {
+    const myTeam = tenantTeams.find(t => t.id === currentUserState.team_id || t.name === currentUserState.team_name);
+    if (myTeam && myTeam.name) {
+      topbarBadge.textContent = myTeam.name;
+    }
   }
 });
 
@@ -58,9 +67,9 @@ function renderProtectedApp(currentUser) {
     currentTeamId = currentUser.team_id;
   }
 
-  // Localiza o nome da equipe do operador
-  const teamObj = tenantTeams.find(t => t.id === currentUser.team_id);
-  const teamDisplayName = currentUser.team_name || teamObj?.name || (currentUser.team_id ? 'Equipe Vinculada' : null);
+  // Localiza o nome real da equipe do operador ou coordenador
+  const teamObj = tenantTeams.find(t => t.id === currentUser.team_id || t.name === currentUser.team_name);
+  const teamDisplayName = currentUser.team_name || teamObj?.name || (currentUser.team_id ? currentUser.team_id.replace(/^team_/, '').toUpperCase() : null);
 
   // Define a view padrão com base no papel
   if (!currentView) {
@@ -110,7 +119,7 @@ function renderProtectedApp(currentUser) {
             ` : (role === 'coordinator' || role === 'member') && teamDisplayName ? `
               <div class="topbar-member-team-badge" style="display: inline-flex; align-items: center; gap: 6px; padding: 0.35rem 0.85rem; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; color: #1D4ED8;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                <span>Equipe: ${teamDisplayName}</span>
+                <span>Equipe: <strong id="topbar-team-badge-name">${teamDisplayName}</strong></span>
               </div>
             ` : `
               <div class="topbar-search-wrap">

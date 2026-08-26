@@ -493,20 +493,20 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
     }
   );
 
-  let unsubTeams = null;
-  let unsubUsers = null;
-
-  if (isAdmin) {
-    unsubTeams = subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
-      allTeams = teams;
-      const currentTeam = allTeams.find(t => t.id === targetTeamId);
-      if (currentTeam && currentTeam.name) {
-        const headerTitle = container.querySelector('#team-dashboard-title');
-        if (headerTitle) headerTitle.textContent = currentTeam.name;
-      }
+  const unsubTeams = subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
+    allTeams = teams;
+    const currentTeam = allTeams.find(t => t.id === targetTeamId || t.name === currentUser.team_name || t.id === currentUser.team_id);
+    if (currentTeam && currentTeam.name) {
+      const headerTitle = container.querySelector('#team-dashboard-title');
+      if (headerTitle) headerTitle.textContent = currentTeam.name;
+    }
+    if (isAdmin) {
       renderTabContent();
-    });
+    }
+  });
 
+  let unsubUsers = null;
+  if (isAdmin) {
     unsubUsers = subscribeToAllUsers((users) => {
       allCoordinators = users.filter(u => u.role === 'coordinator' || u.role === 'admin');
       updateCoordinatorsDropdown();
