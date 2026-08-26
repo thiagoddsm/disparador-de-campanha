@@ -383,9 +383,8 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
           sel.disabled = true;
           try {
             await updateUserTeam(uid, newTeamId);
-            alert('Equipe do usuário atualizada com sucesso!');
           } catch (e) {
-            alert('Erro ao atualizar equipe.');
+            console.warn('Erro ao atualizar equipe:', e);
           } finally {
             sel.disabled = false;
           }
@@ -469,9 +468,8 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
       roleModal.style.display = 'none';
       try {
         await updateUserRole(uid, role);
-        alert(`Cargo atualizado para "${role.toUpperCase()}" com sucesso!`);
       } catch (err) {
-        alert('Erro ao atualizar cargo.');
+        console.warn('Erro ao atualizar cargo:', err);
       }
     });
   });
@@ -584,10 +582,9 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
       });
       teamModal.style.display = 'none';
       container.querySelector('#form-new-team').reset();
-      alert(`🎉 Equipe "${name}" criada com sucesso sob liderança de ${coordName}!`);
       switchTab('teams');
     } catch (err) {
-      alert('Erro ao criar equipe: ' + (err.message || 'Verifique as permissões.'));
+      console.warn('Erro ao criar equipe:', err);
     } finally {
       saveBtn.disabled = false;
       saveBtn.textContent = 'Criar Equipe';
@@ -624,9 +621,8 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
       });
       coordModal.style.display = 'none';
       container.querySelector('#form-new-coord').reset();
-      alert(`Coordenador ${name} registrado no Firestore com sucesso!`);
     } catch (err) {
-      alert('Erro ao registrar coordenador.');
+      console.warn('Erro ao registrar coordenador:', err);
     } finally {
       saveBtn.disabled = false;
       saveBtn.textContent = 'Cadastrar Coordenador';

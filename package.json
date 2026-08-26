@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "node server.js",
     "deploy": "vite build && firebase deploy --only hosting:alexamarante",
     "deploy:rules": "firebase deploy --only firestore:rules",
     "deploy:all": "vite build && firebase deploy"

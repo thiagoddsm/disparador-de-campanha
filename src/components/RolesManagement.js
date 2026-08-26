@@ -459,10 +459,8 @@ export function renderRolesManagement(container, currentUser, onNavigate) {
           ...role,
           updated_at: serverTimestamp()
         }, { merge: true });
-        alert(`Cargo "${role.name}" e permissões salvos com sucesso no Cloud Firestore!`);
       } catch (err) {
         console.warn('Erro ao salvar no Firestore:', err);
-        alert('Cargo salvo localmente.');
       }
 
       renderList();

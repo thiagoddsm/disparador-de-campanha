@@ -563,11 +563,10 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
       });
       teamModal.style.display = 'none';
       container.querySelector('#form-create-team').reset();
-      alert(`🎉 Equipe "${teamNameInput}" criada com sucesso sob liderança de ${coordName}!`);
       activeTab = 'teams_list';
       renderTabContent();
     } catch (err) {
-      alert('Erro ao criar equipe: ' + (err.message || 'Verifique as permissões.'));
+      console.warn('Erro ao criar equipe:', err);
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Criar Equipe & Vincular Líder';
@@ -599,9 +598,8 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
       });
       coordModal.style.display = 'none';
       container.querySelector('#form-create-coordinator').reset();
-      alert(`Coordenador "${name}" cadastrado com sucesso! Agora você já pode selecioná-lo ao criar uma nova equipe.`);
     } catch (err) {
-      alert('Erro ao cadastrar coordenador.');
+      console.warn('Erro ao cadastrar coordenador:', err);
     } finally {
       saveBtn.disabled = false;
       saveBtn.textContent = 'Cadastrar Coordenador';
@@ -636,9 +634,8 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
       });
       memberModal.style.display = 'none';
       container.querySelector('#form-add-member').reset();
-      alert(`Operador ${name} adicionado à equipe com meta de ${goal} contatos!`);
     } catch (err) {
-      alert('Erro ao adicionar operador.');
+      console.warn('Erro ao adicionar operador:', err);
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Adicionar à Equipe';
