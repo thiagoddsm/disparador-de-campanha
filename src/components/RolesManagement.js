@@ -492,12 +492,9 @@ export function renderRolesManagement(container, currentUser, onNavigate) {
     `;
   }
 
-  // Subscribe em tempo real à coleção /users (para calcular contagem real de membros por cargo)
-  const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
-    allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-    renderList();
-  }, (err) => {
-    allUsers = JSON.parse(localStorage.getItem('campaign_members') || '[]');
+  // Subscribe em tempo real à lista de usuários unificada
+  const unsubUsers = subscribeToAllUsers((users) => {
+    allUsers = users;
     renderList();
   });
 
