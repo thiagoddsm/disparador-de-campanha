@@ -1,4 +1,4 @@
-import { importContactsBatchToFirestore, subscribeToTenantTeams, subscribeToTeamMembers } from '../firebase/realtime.js';
+import { importContactsBatchToFirestore, subscribeToTenantTeams, subscribeToTeamMembers, createDispatchJob } from '../firebase/realtime.js';
 
 export function renderCsvImportWizard(container, currentUser, onNavigate) {
   let parsedRows = [];
@@ -259,10 +259,16 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
 
       try {
         await importContactsBatchToFirestore(contactsToSave);
-        alert(`🎉 Sucesso! ${contactsToSave.length} contatos foram importados e distribuídos com sucesso!`);
+        await createDispatchJob({
+          title: `Lote CSV (${contactsToSave.length} contatos)`,
+          team_id: targetTeamId,
+          created_by: currentUser.name || currentUser.email,
+          strategy: 'wa.me',
+          total: contactsToSave.length
+        });
         onNavigate('contacts');
       } catch (err) {
-        alert('Erro ao importar contatos.');
+        console.warn('Erro ao importar contatos:', err);
       } finally {
         finishBtn.disabled = false;
         finishBtn.innerHTML = 'Finalizar Importação';

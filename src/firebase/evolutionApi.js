@@ -18,8 +18,12 @@ export const EVOLUTION_CONFIG = {
 };
 
 function getEvolutionConfig(customApiKey) {
-  const apiKey = customApiKey || EVOLUTION_CONFIG.apiKey || import.meta.env.VITE_EVOLUTION_API_KEY;
-  const baseUrl = EVOLUTION_CONFIG.baseUrl || import.meta.env.VITE_EVOLUTION_API_BASE_URL;
+  const localUrl = typeof localStorage !== 'undefined' ? localStorage.getItem('evolution_api_url') : null;
+  const localKey = typeof localStorage !== 'undefined' ? localStorage.getItem('evolution_api_key') : null;
+
+  const apiKey = customApiKey || localKey || EVOLUTION_CONFIG.apiKey || import.meta.env.VITE_EVOLUTION_API_KEY;
+  const baseUrl = localUrl || EVOLUTION_CONFIG.baseUrl || import.meta.env.VITE_EVOLUTION_API_BASE_URL;
+
   if (!baseUrl || !apiKey) {
     throw new Error('Integração Evolution API não configurada.');
   }
@@ -116,8 +120,13 @@ export async function createEvolutionInstanceIfNotExists(instanceName, customApi
     });
 
     const data = await res.json();
-    if (!res.ok && res.status !== 403 && !data.error?.includes('already in use')) {
-      return { success: false, error: data.message || 'Erro ao criar instância na Evolution API.' };
+    if (!res.ok) {
+      if (res.status === 401) {
+        return { success: false, error: 'Chave de API (apikey) não autorizada no servidor Evolution API.' };
+      }
+      if (res.status !== 403 && !data.error?.includes('already in use')) {
+        return { success: false, error: data.message || `Erro HTTP ${res.status} ao criar instância.` };
+      }
     }
 
     return { success: true };
@@ -144,10 +153,15 @@ export async function getEvolutionQrCode(instanceName, customApiKey) {
     const data = await res.json();
 
     if (!res.ok) {
+      if (res.status === 401) {
+        return { success: false, instanceName, error: 'Chave de API (apikey) não autorizada no servidor Evolution API.' };
+      }
       if (res.status === 404) {
         const createRes = await createEvolutionInstanceIfNotExists(instanceName, apiKey);
         if (createRes.success) {
           return await getEvolutionQrCode(instanceName, apiKey);
+        } else {
+          return { success: false, instanceName, error: createRes.error || 'Instância não encontrada e falha ao criá-la.' };
         }
       }
       return { success: false, instanceName, error: data.message || `Erro HTTP ${res.status}` };

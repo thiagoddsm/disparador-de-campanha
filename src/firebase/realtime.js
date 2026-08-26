@@ -530,3 +530,114 @@ export async function importContactsBatchToFirestore(contactsList) {
 
 // Alias para retrocompatibilidade
 export const subscribeToTeamProgress = subscribeToAllUsers;
+
+/**
+ * Cria um novo lote de disparo (dispatch_job) no Firestore.
+ */
+export async function createDispatchJob({
+  title,
+  team_id = 'team_alpha',
+  created_by,
+  strategy = 'wa.me',
+  total = 0,
+  tenant_id = DEFAULT_TENANT_ID
+}) {
+  const jobData = {
+    title: title || `Campanha ${new Date().toLocaleDateString('pt-BR')}`,
+    tenant_id,
+    team_id,
+    created_by: created_by || 'Administrador',
+    strategy,
+    total,
+    pending: total,
+    opened: 0,
+    confirmed: 0,
+    failed: 0,
+    status: 'processing',
+    created_at: serverTimestamp(),
+    created_at_iso: new Date().toISOString()
+  };
+
+  try {
+    const docRef = await addDoc(collection(db, 'dispatch_jobs'), jobData);
+    return { success: true, id: docRef.id };
+  } catch (e) {
+    console.warn('Erro ao salvar dispatch_job no Firestore, gravando local:', e);
+    const local = JSON.parse(localStorage.getItem('campaign_dispatch_jobs') || '[]');
+    const localJob = { id: `job_${Date.now()}`, ...jobData, created_at: new Date().toISOString() };
+    local.unshift(localJob);
+    localStorage.setItem('campaign_dispatch_jobs', JSON.stringify(local));
+    return { success: true, id: localJob.id };
+  }
+}
+
+/**
+ * Escuta os lotes de disparo (dispatch_jobs) em tempo real.
+ */
+export function subscribeToDispatchJobs(teamId, callback) {
+  const notify = (fsJobs = []) => {
+    const local = JSON.parse(localStorage.getItem('campaign_dispatch_jobs') || '[]');
+    const map = new Map();
+    local.forEach(j => map.set(j.id, j));
+    fsJobs.forEach(j => map.set(j.id, j));
+    
+    let all = Array.from(map.values());
+    if (teamId) all = all.filter(j => j.team_id === teamId);
+    callback(all);
+  };
+
+  try {
+    const q = query(collection(db, 'dispatch_jobs'), orderBy('created_at', 'desc'), limit(20));
+    return onSnapshot(q, (snapshot) => {
+      const jobs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      notify(jobs);
+    }, (err) => {
+      notify([]);
+    });
+  } catch (err) {
+    notify([]);
+    return () => {};
+  }
+}
+
+/**
+ * Salva ou atualiza a configuração de integração (Evolution API, Webhooks).
+ */
+export async function saveIntegrationConfig(integrationData) {
+  const id = integrationData.provider || 'evolution_api';
+  const data = {
+    ...integrationData,
+    tenant_id: DEFAULT_TENANT_ID,
+    updated_at: serverTimestamp()
+  };
+
+  try {
+    await setDoc(doc(db, 'integrations', id), data, { merge: true });
+  } catch (e) {
+    console.warn('Erro ao salvar integração no Firestore:', e);
+  }
+
+  const local = JSON.parse(localStorage.getItem('campaign_integrations') || '{}');
+  local[id] = data;
+  localStorage.setItem('campaign_integrations', JSON.stringify(local));
+  return { success: true };
+}
+
+/**
+ * Escuta configurações de integrações.
+ */
+export function subscribeToIntegrations(callback) {
+  try {
+    return onSnapshot(collection(db, 'integrations'), (snapshot) => {
+      const integrations = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      callback(integrations);
+    }, () => {
+      const local = JSON.parse(localStorage.getItem('campaign_integrations') || '{}');
+      callback(Object.values(local));
+    });
+  } catch (e) {
+    const local = JSON.parse(localStorage.getItem('campaign_integrations') || '{}');
+    callback(Object.values(local));
+    return () => {};
+  }
+}

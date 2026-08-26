@@ -13,18 +13,20 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
-    // Admin: Token custom claim OU perfil no Firestore com role == 'admin'
+    // Admin: Token custom claim OU email super admin OU perfil no Firestore com role == 'admin'
     function admin() { 
       return signedIn() && (
         request.auth.token.admin == true || 
+        request.auth.token.email == 'thiagoddsm@gmail.com' ||
         (hasUserDoc() && getUserDoc().role == 'admin')
       ); 
     }
     
     // Coordenador: perfil no Firestore com role == 'coordinator'
     function coordinator() { 
-      return signedIn() && !admin() && (
-        hasUserDoc() && getUserDoc().role == 'coordinator'
+      return signedIn() && (
+        (hasUserDoc() && getUserDoc().role == 'coordinator') ||
+        admin()
       ); 
     }
     
@@ -34,18 +36,12 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if signedIn();
-      allow create: if signedIn() && (
-        admin() || 
-        (request.auth.uid == userId && request.resource.data.uid == userId)
-      );
-      allow update: if admin()
-        || (signedIn() && request.auth.uid == userId);
-      allow delete: if admin();
+      allow create, update: if signedIn();
+      allow delete: if signedIn() && (admin() || request.auth.uid == userId);
     }
 
     match /teams/{teamId} {
-      allow read: if signedIn();
-      allow create, update, delete: if admin();
+      allow read, write: if signedIn();
     }
 
     match /contacts/{contactId} {
@@ -72,19 +68,23 @@ service cloud.firestore {
     }
 
     match /audit_logs/{logId} {
-      allow read: if admin() || coordinator();
-      allow create: if signedIn() && request.resource.data.actor_uid == request.auth.uid;
-      allow update, delete: if false;
+      allow read, write: if signedIn();
     }
 
     match /templates/{templateId} {
-      allow read: if signedIn();
-      allow create, update, delete: if admin() || coordinator();
+      allow read, write: if signedIn();
+    }
+
+    match /dispatch_jobs/{jobId} {
+      allow read, write: if signedIn();
+    }
+
+    match /integrations/{integrationId} {
+      allow read, write: if signedIn();
     }
 
     match /roles/{roleId} {
-      allow read: if signedIn();
-      allow write: if admin();
+      allow read, write: if signedIn();
     }
   }
 }

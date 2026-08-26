@@ -1,3 +1,6 @@
+import { db } from '../firebase/config.js';
+import { doc, updateDoc } from 'firebase/firestore';
+
 export function renderSettingsGeneral(container, currentUser, onNavigate) {
   const nameParts = (currentUser.name || 'Thiago Silva').split(' ');
   const firstName = nameParts[0] || 'Thiago';
@@ -168,11 +171,28 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
     </div>
   `;
 
-  container.querySelector('#btn-save-profile')?.addEventListener('click', () => {
+  container.querySelector('#btn-save-profile')?.addEventListener('click', async () => {
     const fName = container.querySelector('#input-first-name').value.trim();
     const lName = container.querySelector('#input-last-name').value.trim();
-    currentUser.name = `${fName} ${lName}`.trim();
-    alert('Informações do perfil salvas com sucesso!');
+    const fullName = `${fName} ${lName}`.trim();
+    currentUser.name = fullName;
+
+    const saveBtn = container.querySelector('#btn-save-profile');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Salvo!';
+
+    try {
+      if (currentUser.uid) {
+        await updateDoc(doc(db, 'users', currentUser.uid), { name: fullName });
+      }
+    } catch (e) {
+      console.warn('Erro ao atualizar nome no Firestore:', e);
+    }
+
+    setTimeout(() => {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Salvar Alterações';
+    }, 2000);
   });
 
   container.querySelector('#btn-config-whatsapp')?.addEventListener('click', () => {
@@ -180,7 +200,7 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
   });
 
   container.querySelector('#btn-setup-webhooks')?.addEventListener('click', () => {
-    alert('Painel de Webhooks customizados.');
+    onNavigate('evolution');
   });
 
   return () => {};

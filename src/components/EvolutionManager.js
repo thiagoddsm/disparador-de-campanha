@@ -71,7 +71,7 @@ export function renderEvolutionManager(container, currentUser) {
               <input type="text" id="input-instance-slug" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-family: monospace;" value="${activeInstanceName}">
             </div>
 
-            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
               <button id="btn-generate-qr" class="btn-green-action">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
@@ -83,6 +83,26 @@ export function renderEvolutionManager(container, currentUser) {
                 Desconectar
               </button>
             </div>
+
+            <!-- Endpoint & Key Settings Accordion -->
+            <details style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem 1rem; background: #F8FAFC;">
+              <summary style="font-size: 0.82rem; font-weight: 600; color: var(--text-main); cursor: pointer;">
+                ⚙️ Configurações do Servidor & API Key
+              </summary>
+              <div style="margin-top: 0.85rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                <div>
+                  <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem;">URL do Servidor Evolution</label>
+                  <input type="text" id="input-api-url" class="topbar-search-input" style="width: 100%; font-size: 0.8rem; background: #FFFFFF;" value="${localStorage.getItem('evolution_api_url') || EVOLUTION_CONFIG.baseUrl}">
+                </div>
+                <div>
+                  <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem;">Chave Global (API Key)</label>
+                  <input type="password" id="input-api-key" class="topbar-search-input" style="width: 100%; font-size: 0.8rem; background: #FFFFFF; font-family: monospace;" value="${localStorage.getItem('evolution_api_key') || EVOLUTION_CONFIG.apiKey}">
+                </div>
+                <button id="btn-save-api-config" class="btn-outline-white" style="font-size: 0.78rem; align-self: flex-end; padding: 0.35rem 0.85rem;">
+                  Salvar Credenciais
+                </button>
+              </div>
+            </details>
           </div>
 
           <!-- Right: Live QR Code Viewer -->
@@ -175,6 +195,16 @@ export function renderEvolutionManager(container, currentUser) {
     }, 3000);
   }
 
+  const saveApiConfigBtn = container.querySelector('#btn-save-api-config');
+  saveApiConfigBtn?.addEventListener('click', () => {
+    const url = container.querySelector('#input-api-url')?.value.trim();
+    const key = container.querySelector('#input-api-key')?.value.trim();
+    if (url) localStorage.setItem('evolution_api_url', url);
+    if (key) localStorage.setItem('evolution_api_key', key);
+    alert('Credenciais da Evolution API salvas localmente!');
+    checkStatus();
+  });
+
   genQrBtn?.addEventListener('click', async () => {
     activeInstanceName = sanitizeInstanceSlug(slugInput.value);
     localStorage.setItem('evolution_active_instance', activeInstanceName);
@@ -206,10 +236,11 @@ export function renderEvolutionManager(container, currentUser) {
       } else if (res.state === 'open') {
         checkStatus();
       } else {
-        qrMount.innerHTML = `<div style="color: #DC2626; font-size: 0.85rem; padding: 1.5rem 0;">Não foi possível obter o QR Code. Verifique o servidor Evolution API.</div>`;
+        const errMsg = res.error || 'Não foi possível obter o QR Code. Verifique o servidor e chave Evolution API.';
+        qrMount.innerHTML = `<div style="color: #DC2626; font-size: 0.85rem; padding: 1.5rem 0; line-height: 1.4;">${errMsg}</div>`;
       }
     } catch (err) {
-      qrMount.innerHTML = `<div style="color: #DC2626; font-size: 0.85rem;">Erro de conexão com o servidor.</div>`;
+      qrMount.innerHTML = `<div style="color: #DC2626; font-size: 0.85rem; padding: 1.5rem 0;">${err.message || 'Erro de conexão com o servidor.'}</div>`;
     } finally {
       genQrBtn.disabled = false;
       genQrBtn.innerHTML = `Gerar QR Code de Conexão`;
