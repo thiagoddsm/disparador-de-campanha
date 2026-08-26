@@ -3,6 +3,7 @@ import {
   subscribeToTeamContacts, 
   subscribeToTenantTeams,
   subscribeToAllUsers,
+  subscribeToMessagesHistory,
   createTeamInFirestore,
   updateTeamCoordinator,
   updateMemberGoal, 
@@ -14,6 +15,7 @@ import { createUserProfileDirectly } from '../firebase/auth.js';
 export function renderManagerialDashboard(container, currentUser, currentTeamId, onTeamChange) {
   let teamMembers = [];
   let teamContacts = [];
+  let teamMessages = [];
   let allTeams = [];
   let allCoordinators = [];
   let activeTab = 'performance'; // 'performance' | 'teams_list'
@@ -22,7 +24,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
   const isCoordinator = currentUser?.role === 'coordinator';
 
   const teamName = isCoordinator 
-    ? `Equipe de ${currentUser.name || 'Coordenação'}` 
+    ? (currentUser.team_name || 'Minha Equipe') 
     : 'Gestão de Equipes & Coordenadores';
 
   container.innerHTML = `
@@ -37,7 +39,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
             <h2 id="team-dashboard-title" style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">${teamName}</h2>
           </div>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
-            Gerencie equipes, vincule coordenadores líderes e acompanhe as metas dos membros da equipe.
+            ${isCoordinator ? 'Acompanhe as metas e o desempenho dos membros da sua equipe.' : 'Gerencie equipes, vincule coordenadores líderes e acompanhe as metas dos membros da equipe.'}
           </p>
         </div>
 
@@ -114,15 +116,21 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
         </div>
       </div>
 
-      <!-- Navigation Sub-Tabs -->
-      <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-        <button class="nav-tab-btn" id="subtab-performance" style="padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid ${activeTab === 'performance' ? 'var(--primary-blue)' : 'transparent'}; color: ${activeTab === 'performance' ? 'var(--primary-blue)' : 'var(--text-muted)'};">
-          Desempenho dos Operadores
-        </button>
-        <button class="nav-tab-btn" id="subtab-teams" style="padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid ${activeTab === 'teams_list' ? 'var(--primary-blue)' : 'transparent'}; color: ${activeTab === 'teams_list' ? 'var(--primary-blue)' : 'var(--text-muted)'};">
-          Equipes & Coordenadores Líderes
-        </button>
-      </div>
+      ${isAdmin ? `
+        <!-- Navigation Sub-Tabs (Exclusivo Administrador) -->
+        <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+          <button class="nav-tab-btn" id="subtab-performance" style="padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid ${activeTab === 'performance' ? 'var(--primary-blue)' : 'transparent'}; color: ${activeTab === 'performance' ? 'var(--primary-blue)' : 'var(--text-muted)'};">
+            Desempenho dos Operadores
+          </button>
+          <button class="nav-tab-btn" id="subtab-teams" style="padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid ${activeTab === 'teams_list' ? 'var(--primary-blue)' : 'transparent'}; color: ${activeTab === 'teams_list' ? 'var(--primary-blue)' : 'var(--text-muted)'};">
+            Equipes & Coordenadores Líderes
+          </button>
+        </div>
+      ` : ''}
+
+      <!-- Tab Content Area -->
+      <div id="manager-tab-content-area"></div>
+    </div>
 
       <!-- Tab Content Area -->
       <div id="manager-tab-content-area"></div>
@@ -455,7 +463,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
     container.querySelector('#modal-create-team').style.display = 'flex';
   }
 
-  const targetTeamId = currentTeamId || currentUser?.team_id || (allTeams.length > 0 ? allTeams[0].id : null);
+  const targetTeamId = isCoordinator ? (currentUser?.team_id || 'team_alpha') : (currentTeamId || currentUser?.team_id || (allTeams.length > 0 ? allTeams[0].id : null));
 
   // Subscriptions
   const unsubMembers = subscribeToTeamMembers(
@@ -477,22 +485,36 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
     }
   );
 
-  const unsubTeams = subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
-    allTeams = teams;
-    const currentTeam = allTeams.find(t => t.id === targetTeamId);
-    if (currentTeam && currentTeam.name) {
-      const headerTitle = container.querySelector('#team-dashboard-title');
-      if (headerTitle) headerTitle.textContent = currentTeam.name;
+  const unsubMessages = subscribeToMessagesHistory(
+    targetTeamId,
+    (msgs) => {
+      teamMessages = msgs;
+      updateKpis();
     }
-    renderTabContent();
-  });
+  );
 
-  const unsubUsers = subscribeToAllUsers((users) => {
-    allCoordinators = users.filter(u => u.role === 'coordinator' || u.role === 'admin');
-    updateCoordinatorsDropdown();
-  });
+  let unsubTeams = null;
+  let unsubUsers = null;
+
+  if (isAdmin) {
+    unsubTeams = subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
+      allTeams = teams;
+      const currentTeam = allTeams.find(t => t.id === targetTeamId);
+      if (currentTeam && currentTeam.name) {
+        const headerTitle = container.querySelector('#team-dashboard-title');
+        if (headerTitle) headerTitle.textContent = currentTeam.name;
+      }
+      renderTabContent();
+    });
+
+    unsubUsers = subscribeToAllUsers((users) => {
+      allCoordinators = users.filter(u => u.role === 'coordinator' || u.role === 'admin');
+      updateCoordinatorsDropdown();
+    });
+  }
 
   function switchSubTab(tabName) {
+    if (!isAdmin) return; // Coordenador só acessa performance
     activeTab = tabName;
     const btnPerf = container.querySelector('#subtab-performance');
     const btnTeams = container.querySelector('#subtab-teams');
@@ -654,7 +676,8 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
   return () => {
     unsubMembers();
     unsubContacts();
-    unsubTeams();
-    unsubUsers();
+    if (unsubMessages) unsubMessages();
+    if (unsubTeams) unsubTeams();
+    if (unsubUsers) unsubUsers();
   };
 }

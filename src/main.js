@@ -99,14 +99,7 @@ function renderProtectedApp(currentUser) {
               ${currentView === 'admin' ? 'Painel Administrativo Global' : currentView === 'manager' ? 'Painel de Gestão da Equipe' : currentView === 'settings' ? 'Enterprise Dashboard' : currentView === 'roles' ? 'Enterprise Dashboard' : currentView === 'security' ? 'Enterprise Dashboard' : 'Enterprise Dashboard'}
             </h2>
             
-            ${isMember && teamDisplayName ? `
-              <div class="topbar-member-team-badge" style="display: inline-flex; align-items: center; gap: 6px; padding: 0.35rem 0.85rem; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; color: #1D4ED8;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                <span>Equipe: ${teamDisplayName}</span>
-              </div>
-            ` : ''}
-
-            ${isManagerView ? `
+            ${role === 'admin' && isManagerView ? `
               <select id="topbar-team-select" class="team-selector-pill" style="padding: 0.35rem 0.85rem; font-size: 0.82rem; font-weight: 700; border-radius: 9999px; background: #FFFFFF; border: 1px solid var(--border-color); cursor: pointer; color: var(--text-main); outline: none;">
                 ${tenantTeams.length === 0 ? `
                   <option value="">Nenhuma equipe cadastrada</option>
@@ -114,6 +107,11 @@ function renderProtectedApp(currentUser) {
                   <option value="${t.id}" ${currentTeamId === t.id ? 'selected' : ''}>👥 ${t.name} ⌵</option>
                 `).join('')}
               </select>
+            ` : (role === 'coordinator' || role === 'member') && teamDisplayName ? `
+              <div class="topbar-member-team-badge" style="display: inline-flex; align-items: center; gap: 6px; padding: 0.35rem 0.85rem; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; color: #1D4ED8;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                <span>Equipe: ${teamDisplayName}</span>
+              </div>
             ` : `
               <div class="topbar-search-wrap">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);">

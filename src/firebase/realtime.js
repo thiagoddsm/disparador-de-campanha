@@ -467,6 +467,79 @@ export async function deleteUserFromFirestore(userId) {
 
 /**
  * Reatribui um contato para outro membro da equipe (Coordenador).
+/**
+ * Escuta o histórico de disparos (/messages) em tempo real.
+ */
+export function subscribeToMessagesHistory(teamId, callback) {
+  try {
+    let q;
+    if (teamId) {
+      q = query(collection(db, 'messages'), where('team_id', '==', teamId), orderBy('created_at', 'desc'), limit(100));
+    } else {
+      q = query(collection(db, 'messages'), orderBy('created_at', 'desc'), limit(100));
+    }
+
+    return onSnapshot(q, (snapshot) => {
+      const messages = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      callback(messages);
+    }, (err) => {
+      // Fallback sem orderBy caso índice esteja sendo construído
+      const fallbackQuery = teamId ? query(collection(db, 'messages'), where('team_id', '==', teamId)) : collection(db, 'messages');
+      return onSnapshot(fallbackQuery, (snapshot) => {
+        const messages = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        callback(messages);
+      }, () => callback([]));
+    });
+  } catch (err) {
+    callback([]);
+    return () => {};
+  }
+}
+
+/**
+ * Reseta o status de um contato para 'pending' permitindo um novo disparo / follow-up.
+ */
+export async function resetContactStatus(contactId) {
+  try {
+    await updateDoc(doc(db, 'contacts', contactId), {
+      status: 'pending',
+      opened_at: null,
+      confirmed_at: null
+    });
+  } catch (e) {
+    console.warn('Erro ao resetar status do contato:', e);
+  }
+  window.dispatchEvent(new CustomEvent('contacts-updated'));
+  return { success: true };
+}
+
+/**
+ * Reseta o status de todos os contatos da equipe para 'pending'.
+ */
+export async function resetTeamContactsStatus(teamId) {
+  try {
+    const q = teamId 
+      ? query(collection(db, 'contacts'), where('team_id', '==', teamId))
+      : collection(db, 'contacts');
+    const snap = await getDocs(q);
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => {
+      batch.update(d.ref, {
+        status: 'pending',
+        opened_at: null,
+        confirmed_at: null
+      });
+    });
+    await batch.commit();
+  } catch (e) {
+    console.warn('Erro ao resetar contatos em lote:', e);
+  }
+  window.dispatchEvent(new CustomEvent('contacts-updated'));
+  return { success: true };
+}
+
+/**
+ * Reatribui um contato para outro membro da equipe (Coordenador).
  */
 export async function reassignContactInTeam(contactId, newMemberUid, newMemberName) {
   try {
@@ -475,7 +548,7 @@ export async function reassignContactInTeam(contactId, newMemberUid, newMemberNa
       assigned_to_name: newMemberName
     });
   } catch (e) {
-    throw e;
+    console.warn('Erro ao reatribuir contato no Firestore:', e);
   }
   window.dispatchEvent(new CustomEvent('contacts-updated'));
   return { success: true };

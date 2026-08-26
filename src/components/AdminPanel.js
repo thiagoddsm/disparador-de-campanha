@@ -3,6 +3,7 @@ import {
   subscribeToTenantTeams, 
   subscribeToAllContacts, 
   subscribeToSystemAuditLogs,
+  subscribeToMessagesHistory,
   createTeamInFirestore,
   toggleUserActiveStatus,
   updateUserRole,
@@ -19,6 +20,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
   let allUsers = [];
   let allTeams = [];
   let allContacts = [];
+  let allMessages = [];
   let auditLogs = [];
   let currentTab = 'teams'; // 'teams' | 'users' | 'audit'
 
@@ -209,7 +211,8 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
     const coordsCount = validUsers.filter(u => u.role === 'coordinator' || u.role === 'admin').length;
     const teamsCount = allTeams.length;
     const contactsCount = allContacts.length;
-    const dispatchesCount = allContacts.filter(c => c.status === 'user_confirmed' || c.status === 'confirmed').length;
+    const confirmedFromContacts = allContacts.filter(c => c.status === 'user_confirmed' || c.status === 'confirmed').length;
+    const dispatchesCount = Math.max(confirmedFromContacts, allMessages.length);
 
     const kpiCoords = container.querySelector('#adm-kpi-coordinators');
     const kpiTeams = container.querySelector('#adm-kpi-teams');
@@ -518,6 +521,11 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
     if (currentTab === 'audit') renderTabContent();
   });
 
+  const unsubMessages = subscribeToMessagesHistory(null, (msgs) => {
+    allMessages = msgs;
+    updateKpis();
+  });
+
   function updateCoordinatorSelect() {
     const sel = container.querySelector('#select-team-coord');
     if (!sel) return;
@@ -644,5 +652,6 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
     unsubTeams();
     unsubContacts();
     unsubAudit();
+    if (unsubMessages) unsubMessages();
   };
 }
