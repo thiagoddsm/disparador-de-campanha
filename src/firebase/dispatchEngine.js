@@ -127,8 +127,9 @@ export async function executeDispatch({
 
       if (contactSnap.exists()) {
         const contactData = contactSnap.data();
-        if (contactData.status && contactData.status !== 'pending') {
-          throw new Error('CONCURRENCY_ERROR: Este contato já está sendo trabalhado por outra pessoa.');
+        // Previne conflito apenas se o contato estiver atribuído a OUTRO operador e sendo trabalhado no mesmo instante
+        if (contactData.assigned_to && contactData.assigned_to !== userId && contactData.status === 'opened' && user?.role !== 'admin') {
+          throw new Error('CONCURRENCY_ERROR: Este contato já está sendo trabalhado por outro operador.');
         }
       }
 
@@ -216,8 +217,8 @@ export async function confirmUserDispatch({ contactId, messageId, user }) {
       const contactSnap = await transaction.get(contactRef);
       if (contactSnap.exists()) {
         const data = contactSnap.data();
-        if (data.status !== 'opened') {
-          throw new Error('O contato deve estar no status opened para ser confirmado.');
+        if (data.status === 'user_confirmed') {
+          // Já confirmado, atualiza apenas timestamp sem bloquear
         }
       }
 
