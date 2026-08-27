@@ -1,11 +1,12 @@
 import { 
-  subscribeToMemberContacts, 
+  subscribeToOperatorContacts, 
   subscribeToTeamContacts, 
   subscribeToAllContacts, 
-  addContactToFirestore, 
-  reassignContactInTeam,
+  saveContactsBatch, 
+  reassignContactInFirestore,
   subscribeToTeamMembers
 } from '../firebase/realtime.js';
+import { showToast } from '../utils/feedback.js';
 
 export function renderContactsView(container, currentUser, onNavigate) {
   let contacts = [];
@@ -304,12 +305,12 @@ export function renderContactsView(container, currentUser, onNavigate) {
       renderTable(contacts);
     });
   } else if (isCoordinator) {
-    unsubscribe = subscribeToTeamContacts(currentUser?.team_id || 'team_alpha', (realContacts) => {
+    unsubscribe = subscribeToTeamContacts(currentUser?.team_id || null, (realContacts) => {
       contacts = realContacts;
       renderTable(contacts);
     });
   } else {
-    unsubscribe = subscribeToMemberContacts(currentUser?.uid, (realContacts) => {
+    unsubscribe = subscribeToOperatorContacts(currentUser?.uid, (realContacts) => {
       contacts = realContacts;
       renderTable(contacts);
     });
@@ -355,20 +356,34 @@ export function renderContactsView(container, currentUser, onNavigate) {
     const assignedUid = assignSel ? assignSel.value : currentUser.uid;
     const assignedName = assignSel ? assignSel.options[assignSel.selectedIndex]?.text : currentUser.name;
 
+    const saveBtn = container.querySelector('#btn-save-contact-submit');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Salvando...';
+    }
+
     try {
-      await addContactToFirestore({
+      await saveContactsBatch([{
         name,
         phone,
         company,
         tenant_id: currentUser.tenant_id || 'tenant_main',
-        team_id: currentUser.team_id || 'team_alpha',
+        team_id: currentUser.team_id || null,
         assigned_to: assignedUid,
-        assigned_to_name: assignedName
-      });
+        assigned_to_name: assignedName,
+        status: 'pending'
+      }]);
+      showToast(`Contato "${name}" adicionado com sucesso!`, 'success');
       modal.style.display = 'none';
       container.querySelector('#add-contact-form').reset();
     } catch (err) {
-      alert('Erro ao adicionar contato.');
+      console.error('Erro ao adicionar contato:', err);
+      showToast(`Erro ao salvar contato: ${err.message}`, 'error');
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Salvar Contato';
+      }
     }
   });
 
@@ -385,15 +400,17 @@ export function renderContactsView(container, currentUser, onNavigate) {
     const newName = reassignSel.options[reassignSel.selectedIndex]?.text;
 
     try {
-      await reassignContactInTeam(contactId, newUid, newName);
+      await reassignContactInFirestore(contactId, newUid, newName);
+      showToast('Contato reatribuído com sucesso!', 'success');
       reassignModal.style.display = 'none';
     } catch (err) {
-      alert('Erro ao reatribuir contato.');
+      console.error('Erro ao reatribuir contato:', err);
+      showToast('Erro ao reatribuir contato no Firestore.', 'error');
     }
   });
 
   return () => {
     if (unsubscribe) unsubscribe();
-    unsubMembers();
+    if (unsubMembers) unsubMembers();
   };
 }

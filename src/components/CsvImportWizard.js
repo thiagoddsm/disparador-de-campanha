@@ -1,4 +1,22 @@
-import { importContactsBatchToFirestore, subscribeToTenantTeams, subscribeToTeamMembers, createDispatchJob } from '../firebase/realtime.js';
+import { saveContactsBatch, subscribeToTenantTeams, subscribeToTeamMembers } from '../firebase/realtime.js';
+import { showToast } from '../utils/feedback.js';
+
+/**
+ * Sanitiza e valida números de telefone brasileiros (E.164)
+ */
+function sanitizePhoneNumber(rawPhone) {
+  if (!rawPhone) return null;
+  const digits = String(rawPhone).replace(/\D/g, '');
+  if (digits.length < 10 || digits.length > 13) return null;
+
+  if (digits.length === 10 || digits.length === 11) {
+    return `+55${digits}`;
+  }
+  if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
+    return `+${digits}`;
+  }
+  return `+${digits}`;
+}
 
 export function renderCsvImportWizard(container, currentUser, onNavigate) {
   let parsedRows = [];
@@ -85,6 +103,12 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
   }
 
   function handleFile(file) {
+    if (!file) return;
+    if (file.size === 0) {
+      showToast('O arquivo selecionado está vazio.', 'error');
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target.result;
@@ -94,9 +118,14 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
   }
 
   function parseCsvContent(text) {
-    const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+    if (!text || text.trim().length === 0) {
+      showToast('O arquivo CSV está vazio.', 'error');
+      return;
+    }
+
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(line => line.length > 0);
     if (lines.length < 2) {
-      alert('O arquivo CSV precisa ter ao menos o cabeçalho e 1 linha de dados.');
+      showToast('O arquivo CSV precisa ter ao menos o cabeçalho e 1 linha de contato.', 'warning');
       return;
     }
 
@@ -106,16 +135,21 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
     parsedRows = [];
     for (let i = 1; i < lines.length; i++) {
       const cols = lines[i].split(separator).map(c => c.trim().replace(/^["']|["']$/g, ''));
-      if (cols.length >= 2) {
+      if (cols.some(val => val.length > 0)) {
         parsedRows.push(cols);
       }
+    }
+
+    if (parsedRows.length === 0) {
+      showToast('Nenhum dado válido encontrado no arquivo CSV.', 'error');
+      return;
     }
 
     renderStep2(headers, parsedRows);
   }
 
-  function renderStep2(headers = ['Nome do Cliente', 'Celular', 'Email Contato', 'Empresa Atual'], rows = []) {
-    const sampleRow = rows.length > 0 ? rows[0] : ['João Silva Santos', '(11) 98765-4321', 'joao.silva@exemplo.com', 'Acme Corp LTDA'];
+  function renderStep2(headers, rows) {
+    const sampleRow = rows[0] || [];
 
     container.innerHTML = `
       <div class="page-content">
@@ -130,8 +164,8 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
             <div>
               <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.35rem;">Equipe Destino</label>
               <select id="import-team-select" class="form-control" ${!isAdmin ? 'disabled' : ''}>
-                <option value="${currentUser.team_id || 'team_alpha'}">
-                  ${currentUser.team_id || 'Equipe Alpha'}
+                <option value="${currentUser.team_id || ''}">
+                  ${currentUser.team_name || (currentUser.team_id ? 'Minha Equipe' : 'Selecione uma equipe')}
                 </option>
               </select>
             </div>
@@ -160,16 +194,16 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
                   const lower = h.toLowerCase();
                   const isName = lower.includes('nome') || lower.includes('name') || idx === 0;
                   const isPhone = lower.includes('tel') || lower.includes('cel') || lower.includes('phone') || idx === 1;
-                  const isComp = lower.includes('empresa') || lower.includes('company') || lower.includes('bairro') || idx === 3;
+                  const isComp = lower.includes('cidade') || lower.includes('empresa') || lower.includes('company') || lower.includes('bairro');
 
                   return `
                     <tr>
                       <td style="font-weight: 600; color: var(--text-main);">${h}</td>
                       <td>
                         <select class="topbar-search-input col-map-select" data-col-index="${idx}" style="width: 220px; background: #FFFFFF; border-radius: var(--radius-md); padding: 0.45rem 0.75rem;">
-                          <option value="name" ${isName ? 'selected' : ''}>Nome</option>
-                          <option value="phone" ${isPhone ? 'selected' : ''}>Telefone</option>
-                          <option value="company" ${isComp ? 'selected' : ''}>Empresa / Região</option>
+                          <option value="name" ${isName ? 'selected' : ''}>Nome do Contato</option>
+                          <option value="phone" ${isPhone ? 'selected' : ''}>Telefone / WhatsApp (Obrigatório)</option>
+                          <option value="city" ${isComp ? 'selected' : ''}>Cidade / Região</option>
                           <option value="ignore" ${!isName && !isPhone && !isComp ? 'selected' : ''}>Ignorar coluna</option>
                         </select>
                       </td>
@@ -181,9 +215,19 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
             </table>
           </div>
 
+          <div id="import-progress-area" style="display: none; margin-bottom: 1.5rem; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: var(--radius-md); padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; color: #1D4ED8; margin-bottom: 0.5rem;">
+              <span id="import-progress-label">Salvando no Firestore...</span>
+              <span id="import-progress-percent">0%</span>
+            </div>
+            <div style="width: 100%; height: 8px; background: #DBEAFE; border-radius: 9999px; overflow: hidden;">
+              <div id="import-progress-bar" style="width: 0%; height: 100%; background: #2563EB; transition: width 0.2s;"></div>
+            </div>
+          </div>
+
           <div class="note-box-blue" style="margin-bottom: 2rem; display: flex; align-items: center; gap: 0.5rem;">
             <span style="font-weight: bold; font-size: 1rem;">ⓘ</span>
-            <span>${headers.length} colunas identificadas. ${rows.length > 0 ? `${rows.length} contatos prontos para distribuição.` : 'Pronto para processar.'}</span>
+            <span>${headers.length} colunas identificadas. <strong>${rows.length} contatos</strong> prontos para distribuição.</span>
           </div>
 
           <div style="display: flex; justify-content: flex-end; gap: 0.85rem; align-items: center;">
@@ -203,19 +247,30 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
       const memSel = container.querySelector('#import-member-select');
       if (memSel) {
         memSel.innerHTML = `
-          <option value="distribute_equally">Dividir Igualmente entre Membros (${members.length} membros da equipe)</option>
+          <option value="distribute_equally">Dividir Igualmente entre Membros (${members.length} membros)</option>
           <option value="${currentUser.uid}">${currentUser.name} (Atribuir para Mim)</option>
           ${members.map(m => `<option value="${m.uid}">${m.name} (${m.email})</option>`).join('')}
         `;
       }
     });
 
+    if (isAdmin) {
+      subscribeToTenantTeams('tenant_main', (teams) => {
+        availableTeams = teams;
+        const teamSel = container.querySelector('#import-team-select');
+        if (teamSel && teams.length > 0) {
+          teamSel.innerHTML = teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        }
+      });
+    }
+
     container.querySelector('#btn-import-back')?.addEventListener('click', () => renderStep1());
 
     container.querySelector('#btn-finish-import')?.addEventListener('click', async () => {
       const finishBtn = container.querySelector('#btn-finish-import');
-      finishBtn.disabled = true;
-      finishBtn.innerHTML = 'Processando lote no Firestore...';
+      const progressArea = container.querySelector('#import-progress-area');
+      const progressBar = container.querySelector('#import-progress-bar');
+      const progressPercent = container.querySelector('#import-progress-percent');
 
       const selects = container.querySelectorAll('.col-map-select');
       const map = {};
@@ -224,53 +279,72 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
         map[s.value] = colIdx;
       });
 
-      const selectedAssignee = container.querySelector('#import-member-select').value;
-      const targetTeamId = container.querySelector('#import-team-select').value;
-
-      if (!rows || rows.length === 0) {
-        console.warn('Nenhum dado de contato encontrado no arquivo CSV.');
+      if (map.phone === undefined) {
+        showToast('Você deve mapear qual coluna contém o Telefone/WhatsApp.', 'warning');
         return;
       }
 
-      const rawData = rows;
+      const selectedAssignee = container.querySelector('#import-member-select').value;
+      const targetTeamId = container.querySelector('#import-team-select').value;
+
+      finishBtn.disabled = true;
+      progressArea.style.display = 'block';
+
       const validMembers = teamMembers.length > 0 ? teamMembers : [{ uid: currentUser.uid, name: currentUser.name }];
 
-      contactsToSave = rawData.map((r, idx) => {
+      const contactsToSave = [];
+      let skippedCount = 0;
+
+      rows.forEach((r, idx) => {
+        const rawPhone = map.phone !== undefined ? r[map.phone] : '';
+        const cleanPhone = sanitizePhoneNumber(rawPhone);
+
+        if (!cleanPhone) {
+          skippedCount++;
+          return;
+        }
+
         let assignedUid = selectedAssignee;
         let assignedName = currentUser.name;
 
         if (selectedAssignee === 'distribute_equally') {
-          const memberIndex = idx % validMembers.length;
+          const memberIndex = contactsToSave.length % validMembers.length;
           assignedUid = validMembers[memberIndex].uid;
           assignedName = validMembers[memberIndex].name;
         }
 
-        return {
+        contactsToSave.push({
           name: map.name !== undefined ? (r[map.name] || 'Contato') : 'Contato',
-          phone: map.phone !== undefined ? (r[map.phone] || '') : '',
-          company: map.company !== undefined ? (r[map.company] || '') : '',
+          phone: cleanPhone,
+          city: map.city !== undefined ? (r[map.city] || '') : '',
           tenant_id: currentUser.tenant_id || 'tenant_main',
-          team_id: targetTeamId,
+          team_id: targetTeamId || null,
           assigned_to: assignedUid,
-          assigned_to_name: assignedName
-        };
-      }).filter(c => c.phone);
+          assigned_to_name: assignedName,
+          status: 'pending'
+        });
+      });
+
+      if (contactsToSave.length === 0) {
+        showToast('Nenhum número de telefone válido encontrado no CSV.', 'error');
+        finishBtn.disabled = false;
+        progressArea.style.display = 'none';
+        return;
+      }
 
       try {
-        await importContactsBatchToFirestore(contactsToSave);
-        await createDispatchJob({
-          title: `Lote CSV (${contactsToSave.length} contatos)`,
-          team_id: targetTeamId,
-          created_by: currentUser.name || currentUser.email,
-          strategy: 'wa.me',
-          total: contactsToSave.length
+        await saveContactsBatch(contactsToSave, (saved, total) => {
+          const pct = Math.round((saved / total) * 100);
+          progressBar.style.width = `${pct}%`;
+          progressPercent.textContent = `${pct}% (${saved}/${total})`;
         });
-        onNavigate('contacts');
+
+        showToast(`${contactsToSave.length} contatos importados com sucesso!`, 'success');
+        setTimeout(() => onNavigate('contacts'), 800);
       } catch (err) {
-        console.warn('Erro ao importar contatos:', err);
-      } finally {
+        console.error('Erro ao importar contatos:', err);
+        showToast(`Erro ao gravar no Firestore: ${err.message || 'Falha de conexão'}`, 'error');
         finishBtn.disabled = false;
-        finishBtn.innerHTML = 'Finalizar Importação';
       }
     });
   }
@@ -278,3 +352,4 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
   renderStep1();
   return () => {};
 }
+

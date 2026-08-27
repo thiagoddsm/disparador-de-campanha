@@ -1,6 +1,6 @@
 import { executeDispatch, confirmUserDispatch } from '../firebase/dispatchEngine.js';
 import { 
-  subscribeToMemberContacts, 
+  subscribeToOperatorContacts, 
   subscribeToTeamContacts, 
   subscribeToAllContacts, 
   subscribeToMessagesHistory, 
@@ -743,11 +743,15 @@ export function renderDispatchView(container, currentUser) {
       if (stateRes.state === 'open') {
         isApiConnected = true;
         connectedPhone = stateRes.phoneNumber || 'Ativo';
+        // Define Evolution API como primário padrão quando o chip estiver conectado
+        selectedStrategy = 'evolution_api';
       } else {
         isApiConnected = false;
+        selectedStrategy = 'wa.me';
       }
     } catch (e) {
       isApiConnected = false;
+      selectedStrategy = 'wa.me';
     }
     updateStrategyUI();
   }
@@ -766,7 +770,7 @@ export function renderDispatchView(container, currentUser) {
       if (activeTab === 'queue') renderQueueTable();
     });
   } else {
-    unsubContacts = subscribeToMemberContacts(currentUser?.uid, (list) => {
+    unsubContacts = subscribeToOperatorContacts(currentUser?.uid, (list) => {
       contacts = list;
       if (activeTab === 'queue') renderQueueTable();
     });

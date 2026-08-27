@@ -5,12 +5,14 @@ import {
   subscribeToAllUsers,
   subscribeToMessagesHistory,
   createTeamInFirestore,
+  deleteTeamFromFirestore,
   updateTeamCoordinator,
   updateMemberGoal, 
   recordSystemAuditLog,
   DEFAULT_TENANT_ID
 } from '../firebase/realtime.js';
 import { createUserProfileDirectly } from '../firebase/auth.js';
+import { showToast } from '../utils/feedback.js';
 
 export function renderManagerialDashboard(container, currentUser, currentTeamId, onTeamChange) {
   let teamMembers = [];
@@ -465,11 +467,12 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
                   <th>COORDENADOR LÍDER</th>
                   <th>MEMBROS VINCULADOS</th>
                   <th>STATUS</th>
+                  ${isAdmin ? '<th style="text-align: right;">AÇÕES</th>' : ''}
                 </tr>
               </thead>
               <tbody>
                 ${allTeams.length === 0 ? `
-                  <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhuma equipe cadastrada. Clique no botão acima para criar a primeira equipe e vincular um coordenador!</td></tr>
+                  <tr><td colspan="${isAdmin ? 5 : 4}" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhuma equipe cadastrada. Clique no botão acima para criar a primeira equipe e vincular um coordenador!</td></tr>
                 ` : allTeams.map(t => {
                   return `
                     <tr>
@@ -491,6 +494,13 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
                         Equipe Ativa
                       </td>
                       <td><span class="status-pill ativo">OPERACIONAL</span></td>
+                      ${isAdmin ? `
+                        <td style="text-align: right;">
+                          <button class="btn-delete-team-mgmt btn-outline-white" data-team-id="${t.id}" data-team-name="${t.name}" style="color: #DC2626; border-color: #FECACA; font-size: 0.75rem; padding: 0.35rem 0.65rem;" title="Excluir Equipe">
+                            🗑️ Excluir
+                          </button>
+                        </td>
+                      ` : ''}
                     </tr>
                   `;
                 }).join('')}
@@ -502,6 +512,29 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
 
       mount.querySelector('#btn-inner-new-team')?.addEventListener('click', () => {
         openTeamModal();
+      });
+
+      mount.querySelectorAll('.btn-delete-team-mgmt').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const teamId = btn.getAttribute('data-team-id');
+          const teamName = btn.getAttribute('data-team-name');
+          if (confirm(`Tem certeza que deseja excluir a equipe "${teamName}"?\n\nOs membros e contatos vinculados serão liberados para uso global.`)) {
+            try {
+              btn.disabled = true;
+              btn.textContent = 'Excluindo...';
+              await deleteTeamFromFirestore(teamId);
+              await recordSystemAuditLog({
+                actor_uid: currentUser.uid,
+                actor_name: currentUser.name,
+                action: 'team_deleted',
+                metadata: { team_id: teamId, team_name: teamName }
+              });
+              showToast(`Equipe "${teamName}" excluída com sucesso!`, 'success');
+            } catch (e) {
+              alert('Erro ao excluir equipe: ' + e.message);
+            }
+          }
+        });
       });
     }
   }
@@ -704,14 +737,16 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
         email,
         name,
         role: 'member',
-        teamId: currentUser.team_id || 'team_alpha',
+        teamId: targetTeamId || currentUser.team_id || null,
         coordinatorData: coordData,
         dailyGoal: goal
       });
+      showToast(`Membro "${name}" adicionado à equipe com sucesso!`, 'success');
       memberModal.style.display = 'none';
       container.querySelector('#form-add-member').reset();
     } catch (err) {
-      console.warn('Erro ao adicionar operador:', err);
+      console.error('Erro ao adicionar membro:', err);
+      showToast(`Erro ao adicionar membro: ${err.message}`, 'error');
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Adicionar à Equipe';
@@ -730,9 +765,11 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
 
     try {
       await updateMemberGoal(uid, newGoal);
+      showToast('Meta diária atualizada com sucesso!', 'success');
       goalModal.style.display = 'none';
     } catch (err) {
-      alert('Erro ao atualizar meta.');
+      console.error('Erro ao atualizar meta:', err);
+      showToast('Erro ao atualizar meta no Firestore.', 'error');
     }
   });
 

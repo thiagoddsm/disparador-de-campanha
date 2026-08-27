@@ -2,9 +2,10 @@ import {
   subscribeToAllUsers, 
   subscribeToTenantTeams, 
   subscribeToAllContacts, 
-  subscribeToSystemAuditLogs,
+  subscribeToAuditLogs,
   subscribeToMessagesHistory,
   createTeamInFirestore,
+  deleteTeamFromFirestore,
   toggleUserActiveStatus,
   updateUserRole,
   updateUserTeam,
@@ -13,6 +14,7 @@ import {
   DEFAULT_TENANT_ID 
 } from '../firebase/realtime.js';
 import { createUserProfileDirectly } from '../firebase/auth.js';
+import { showToast } from '../utils/feedback.js';
 import { db } from '../firebase/config.js';
 import { doc, updateDoc } from 'firebase/firestore';
 
@@ -267,9 +269,14 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
                       <td style="color: var(--text-muted); font-size: 0.85rem;">Equipe Ativa</td>
                       <td><span class="status-pill ativo">OPERACIONAL</span></td>
                       <td style="text-align: right;">
-                        <button class="btn-manage-team-view btn-primary-blue" data-team="${t.id}" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;">
-                          Ver Painel
-                        </button>
+                        <div style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                          <button class="btn-manage-team-view btn-primary-blue" data-team="${t.id}" style="font-size: 0.75rem; padding: 0.35rem 0.75rem;">
+                            Ver Painel
+                          </button>
+                          <button class="btn-delete-team btn-outline-white" data-team-id="${t.id}" data-team-name="${t.name}" style="font-size: 0.75rem; padding: 0.35rem 0.6rem; color: #DC2626; border-color: #FECACA;" title="Excluir Equipe">
+                            🗑️ Excluir
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   `;
@@ -296,9 +303,12 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
                     </div>
                     <span class="status-pill ativo">ATIVO</span>
                   </div>
-                  <div class="team-mobile-card-footer">
-                    <button class="btn-manage-team-view btn-primary-blue" data-team="${t.id}" style="width: 100%; font-size: 0.82rem; padding: 0.5rem; font-weight: 600; justify-content: center; border-radius: var(--radius-md);">
-                      📊 Ver Painel da Equipe
+                  <div class="team-mobile-card-footer" style="display: flex; gap: 0.5rem;">
+                    <button class="btn-manage-team-view btn-primary-blue" data-team="${t.id}" style="flex: 1; font-size: 0.82rem; padding: 0.5rem; font-weight: 600; justify-content: center; border-radius: var(--radius-md);">
+                      📊 Ver Painel
+                    </button>
+                    <button class="btn-delete-team btn-outline-white" data-team-id="${t.id}" data-team-name="${t.name}" style="color: #DC2626; border-color: #FECACA; font-size: 0.82rem; padding: 0.5rem 0.85rem; font-weight: 600; border-radius: var(--radius-md);" title="Excluir Equipe">
+                      🗑️
                     </button>
                   </div>
                 </div>
@@ -312,6 +322,29 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
         btn.addEventListener('click', () => {
           const teamId = btn.getAttribute('data-team');
           onNavigate('manager', teamId);
+        });
+      });
+
+      contentEl.querySelectorAll('.btn-delete-team').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const teamId = btn.getAttribute('data-team-id');
+          const teamName = btn.getAttribute('data-team-name');
+          if (confirm(`Tem certeza que deseja excluir a equipe "${teamName}"?\n\nOs membros e contatos vinculados serão liberados para uso global.`)) {
+            try {
+              btn.disabled = true;
+              btn.textContent = 'Excluindo...';
+              await deleteTeamFromFirestore(teamId);
+              await recordSystemAuditLog({
+                actor_uid: currentUser.uid,
+                actor_name: currentUser.name,
+                action: 'team_deleted',
+                metadata: { team_id: teamId, team_name: teamName }
+              });
+              showToast(`Equipe "${teamName}" excluída com sucesso!`, 'success');
+            } catch (e) {
+              alert('Erro ao excluir equipe: ' + e.message);
+            }
+          }
         });
       });
     } else if (currentTab === 'users') {
@@ -512,7 +545,14 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
           const uid = btn.getAttribute('data-uid');
           const active = btn.getAttribute('data-active') === 'true';
           btn.disabled = true;
-          await toggleUserActiveStatus(uid, !active);
+          try {
+            await toggleUserActiveStatus(uid, active);
+            showToast(`Status do usuário atualizado para ${!active ? 'Ativo' : 'Inativo'}.`, 'success');
+          } catch (err) {
+            console.error('Erro ao alternar status:', err);
+            showToast('Erro ao atualizar status do usuário.', 'error');
+            btn.disabled = false;
+          }
         });
       });
 
@@ -521,7 +561,13 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
           const uid = btn.getAttribute('data-uid');
           const name = btn.getAttribute('data-name');
           if (confirm(`Deseja realmente excluir o usuário "${name}"?`)) {
-            await deleteUserFromFirestore(uid);
+            try {
+              await deleteUserFromFirestore(uid);
+              showToast(`Usuário "${name}" excluído com sucesso.`, 'success');
+            } catch (err) {
+              console.error('Erro ao excluir usuário:', err);
+              showToast('Erro ao excluir usuário do Firestore.', 'error');
+            }
           }
         });
       });
@@ -542,7 +588,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
                 ${auditLogs.length === 0 ? `
                   <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum registro de auditoria no momento.</td></tr>
                 ` : auditLogs.map(l => {
-                  const dateStr = l.timestamp?.toDate ? l.timestamp.toDate().toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
+                  const dateStr = l.created_at?.toDate ? l.created_at.toDate().toLocaleString('pt-BR') : (l.created_at_iso ? new Date(l.created_at_iso).toLocaleString('pt-BR') : '—');
                   return `
                     <tr>
                       <td style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">${dateStr}</td>
@@ -573,25 +619,17 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
       roleModal.style.display = 'none';
       try {
         await updateUserRole(uid, role);
+        showToast('Cargo atualizado com sucesso!', 'success');
       } catch (err) {
-        console.warn('Erro ao atualizar cargo:', err);
+        console.error('Erro ao atualizar cargo:', err);
+        showToast('Erro ao atualizar cargo do usuário.', 'error');
       }
     });
   });
 
   // Subscriptions
-  let isPromotingThiago = false;
   const unsubUsers = subscribeToAllUsers((users) => {
     allUsers = users.filter(u => u && (u.email || u.name));
-    
-    // Auto-promove thiagoddsm@gmail.com para admin uma única vez se necessário
-    const thiagoUser = allUsers.find(u => u.email && u.email.toLowerCase() === 'thiagoddsm@gmail.com');
-    if (thiagoUser && thiagoUser.role !== 'admin' && !isPromotingThiago) {
-      isPromotingThiago = true;
-      thiagoUser.role = 'admin';
-      updateDoc(doc(db, 'users', thiagoUser.uid), { role: 'admin' }).catch(() => {});
-    }
-
     updateKpis();
     renderTabContent();
     updateCoordinatorSelect();
@@ -608,7 +646,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
     updateKpis();
   });
 
-  const unsubAudit = subscribeToSystemAuditLogs(DEFAULT_TENANT_ID, (logs) => {
+  const unsubAudit = subscribeToAuditLogs((logs) => {
     auditLogs = logs;
     if (currentTab === 'audit') renderTabContent();
   });
@@ -622,8 +660,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
     const sel = container.querySelector('#select-team-coord');
     if (!sel) return;
 
-    let coords = allUsers.filter(u => u.role === 'coordinator' || u.role === 'admin' || (u.email && u.email.toLowerCase() === 'thiagoddsm@gmail.com'));
-    
+    let coords = allUsers.filter(u => u.role === 'coordinator' || u.role === 'admin');
     if (coords.length === 0) {
       coords = allUsers.length > 0 ? allUsers : [{ uid: currentUser.uid, name: currentUser.name || currentUser.email, role: 'admin' }];
     }
@@ -674,7 +711,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
     const coordName = coordSel.options[coordSel.selectedIndex]?.getAttribute('data-name') || 'Coordenador';
 
     if (!coordUid) {
-      alert('Por favor, selecione um Coordenador Líder.');
+      showToast('Por favor, selecione um Coordenador Líder.', 'warning');
       return;
     }
 
@@ -690,11 +727,13 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
         action: 'team_created',
         metadata: { team_name: name, coordinator: coordName }
       });
+      showToast(`Equipe "${name}" criada com sucesso!`, 'success');
       teamModal.style.display = 'none';
       container.querySelector('#form-new-team').reset();
       switchTab('teams');
     } catch (err) {
-      console.warn('Erro ao criar equipe:', err);
+      console.error('Erro ao criar equipe:', err);
+      showToast(`Erro ao criar equipe: ${err.message}`, 'error');
     } finally {
       saveBtn.disabled = false;
       saveBtn.textContent = 'Criar Equipe';
@@ -721,7 +760,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
         email,
         name,
         role: 'coordinator',
-        teamId: 'team_alpha'
+        teamId: null
       });
       await recordSystemAuditLog({
         actor_uid: currentUser.uid,
@@ -729,10 +768,12 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
         action: 'user_created',
         metadata: { role: 'coordinator', email }
       });
+      showToast(`Coordenador "${name}" cadastrado com sucesso!`, 'success');
       coordModal.style.display = 'none';
       container.querySelector('#form-new-coord').reset();
     } catch (err) {
-      console.warn('Erro ao registrar coordenador:', err);
+      console.error('Erro ao registrar coordenador:', err);
+      showToast(`Erro ao registrar coordenador: ${err.message}`, 'error');
     } finally {
       saveBtn.disabled = false;
       saveBtn.textContent = 'Cadastrar Coordenador';

@@ -1,12 +1,11 @@
-import { db } from '../firebase/config.js';
-import { doc, updateDoc } from 'firebase/firestore';
-import { subscribeToIntegrations } from '../firebase/realtime.js';
+import { updateUserProfileSettings, resetUserPassword } from '../firebase/auth.js';
+import { showToast } from '../utils/feedback.js';
 
 export function renderSettingsGeneral(container, currentUser, onNavigate) {
-  const nameParts = (currentUser.name || 'Thiago Silva').split(' ');
-  const firstName = nameParts[0] || 'Thiago';
-  const lastName = nameParts.slice(1).join(' ') || 'Silva';
-  const email = currentUser.email || 'thiagoddsm@gmail.com';
+  const nameParts = (currentUser.name || 'Usuário').split(' ');
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.slice(1).join(' ') || '';
+  const email = currentUser.email || '';
   let currentAvatar = currentUser.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face';
 
   container.innerHTML = `
@@ -15,7 +14,7 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
       <div style="margin-bottom: 2rem;">
         <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px;">Configurações Gerais</h1>
         <p style="font-size: 0.95rem; color: var(--text-muted); margin-top: 0.25rem;">
-          Gerencie suas informações de perfil, preferências de conta e integrações corporativas.
+          Gerencie suas informações de perfil, preferências de conta e segurança.
         </p>
       </div>
 
@@ -35,7 +34,7 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
               <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Informações do Perfil</h3>
             </div>
 
-            <div style="display: flex; gap: 1.75rem; align-items: flex-start; margin-bottom: 1.5rem;">
+            <div style="display: flex; gap: 1.75rem; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap;">
               <!-- Avatar Column -->
               <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
                 <img src="${currentAvatar}" 
@@ -45,7 +44,7 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
               </div>
 
               <!-- Name & Email Inputs -->
-              <div style="flex: 1; display: flex; flex-direction: column; gap: 1.1rem;">
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 1.1rem; min-width: 260px;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                   <div>
                     <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.4rem;">Primeiro Nome</label>
@@ -75,17 +74,10 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
           <div class="main-panel-card" style="padding: 1.75rem; border-radius: var(--radius-lg);">
             <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="4" y1="21" x2="4" y2="14"></line>
-                <line x1="4" y1="10" x2="4" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="12"></line>
-                <line x1="12" y1="8" x2="12" y2="3"></line>
-                <line x1="20" y1="21" x2="20" y2="16"></line>
-                <line x1="20" y1="12" x2="20" y2="3"></line>
-                <line x1="1" y1="14" x2="7" y2="14"></line>
-                <line x1="9" y1="8" x2="15" y2="8"></line>
-                <line x1="17" y1="16" x2="23" y2="16"></line>
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
               </svg>
-              <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Preferências da Conta</h3>
+              <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Preferências Regionais</h3>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
@@ -101,71 +93,53 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
               <div>
                 <label style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.4rem;">Fuso Horário</label>
                 <select id="select-timezone" class="form-control" style="padding: 0.6rem 0.85rem; font-size: 0.88rem;">
-                  <option value="UTC-03:00" ${currentUser.timezone === 'UTC-03:00' || !currentUser.timezone ? 'selected' : ''}>UTC-03:00 (Brasília)</option>
-                  <option value="UTC-04:00" ${currentUser.timezone === 'UTC-04:00' ? 'selected' : ''}>UTC-04:00 (Manaus)</option>
-                  <option value="UTC-05:00" ${currentUser.timezone === 'UTC-05:00' ? 'selected' : ''}>UTC-05:00 (Acre)</option>
+                  <option value="America/Sao_Paulo" ${currentUser.timezone === 'America/Sao_Paulo' || !currentUser.timezone ? 'selected' : ''}>Brasília (UTC-03:00)</option>
+                  <option value="America/Manaus" ${currentUser.timezone === 'America/Manaus' ? 'selected' : ''}>Manaus (UTC-04:00)</option>
+                  <option value="America/Rio_Branco" ${currentUser.timezone === 'America/Rio_Branco' ? 'selected' : ''}>Rio Branco (UTC-05:00)</option>
                 </select>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Right Column: API Integrations -->
-        <div class="main-panel-card" style="padding: 1.75rem; border-radius: var(--radius-lg); height: fit-content;">
-          <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
-            </svg>
-            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Integrações de API</h3>
-          </div>
-          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.4;">
-            Gerencie conexões externas para mensagens, webhooks e fluxo de dados.
-          </p>
+        <!-- Right Column: Password & Account Security -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+          <div class="main-panel-card" style="padding: 1.75rem; border-radius: var(--radius-lg);">
+            <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Segurança da Senha</h3>
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.4;">
+              Redefina sua senha de acesso ao sistema com link seguro enviado para o seu e-mail.
+            </p>
 
-          <!-- WhatsApp Evolution API Card -->
-          <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.1rem; margin-bottom: 1rem; background: #FFFFFF;">
-            <div style="display: flex; align-items: flex-start; gap: 0.85rem;">
-              <div style="width: 38px; height: 38px; border-radius: var(--radius-md); background: #DCFCE7; color: #16A34A; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-                </svg>
-              </div>
-              <div style="flex: 1;">
-                <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main);">Evolution API (WhatsApp)</div>
-                <div id="integration-evolution-status" style="display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: #16A34A; font-weight: 600; margin-top: 0.15rem;">
-                  <span style="width: 7px; height: 7px; border-radius: 50%; background: #16A34A;"></span> Conectado
-                </div>
-              </div>
+            <div style="background: #F8FAFC; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+              <div style="font-size: 0.82rem; color: var(--text-main); font-weight: 600;">E-mail Cadastrado:</div>
+              <div style="font-size: 0.85rem; color: var(--primary-blue); word-break: break-all; margin-top: 0.2rem;">${email}</div>
             </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
-              <span id="integration-evolution-details" style="font-size: 0.72rem; color: var(--text-muted);">Instância Ativa</span>
-              <button id="btn-config-whatsapp" class="btn-outline-white" style="font-size: 0.78rem; padding: 0.35rem 0.85rem; font-weight: 600;">Configurar</button>
-            </div>
+            <button id="btn-reset-password" class="btn-outline-white" style="width: 100%; justify-content: center; padding: 0.65rem 1rem; font-weight: 600; font-size: 0.85rem;">
+              🔑 Enviar Link de Redefinição
+            </button>
           </div>
 
-          <!-- Custom Webhooks Card -->
-          <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.1rem; background: #FFFFFF;">
-            <div style="display: flex; align-items: flex-start; gap: 0.85rem;">
-              <div style="width: 38px; height: 38px; border-radius: var(--radius-md); background: #F1F5F9; color: #64748B; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="18" cy="18" r="3"></circle>
-                  <circle cx="6" cy="6" r="3"></circle>
-                  <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
-                  <line x1="6" y1="9" x2="6" y2="21"></line>
-                </svg>
+          <!-- WhatsApp Evolution API Shortcut -->
+          <div class="main-panel-card" style="padding: 1.5rem; border-radius: var(--radius-lg);">
+            <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;">
+              <div style="width: 32px; height: 32px; border-radius: var(--radius-md); background: #DCFCE7; color: #16A34A; display: flex; align-items: center; justify-content: center;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
               </div>
-              <div style="flex: 1;">
-                <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main);">Webhooks Customizados</div>
-                <div style="display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: var(--text-muted); font-weight: 500; margin-top: 0.15rem;">
-                  <span style="width: 7px; height: 7px; border-radius: 50%; background: #9CA3AF;"></span> Pronto para escuta
-                </div>
-              </div>
+              <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin: 0;">WhatsApp (Evolution API)</h4>
             </div>
-
-            <div style="display: flex; justify-content: flex-end; margin-top: 1rem; border-top: 1px solid var(--border-light); padding-top: 0.75rem;">
-              <button id="btn-setup-webhooks" class="btn-outline-white" style="font-size: 0.78rem; padding: 0.35rem 0.85rem; font-weight: 600;">Configurar</button>
-            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.4;">
+              Configure suas instâncias de disparo e conexão de chips de WhatsApp.
+            </p>
+            <button id="btn-goto-evolution" class="btn-primary-blue" style="width: 100%; justify-content: center; font-size: 0.82rem; padding: 0.5rem 1rem;">
+              Acessar Painel WhatsApp
+            </button>
           </div>
         </div>
 
@@ -175,10 +149,9 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
 
   // Alterar Foto de Perfil
   container.querySelector('#btn-change-avatar')?.addEventListener('click', () => {
-    const newUrl = prompt('Insira a URL da nova imagem de perfil:', currentAvatar);
+    const newUrl = prompt('Insira a URL pública da sua foto de perfil:', currentAvatar);
     if (newUrl && newUrl.trim().startsWith('http')) {
       currentAvatar = newUrl.trim();
-      currentUser.avatar_url = currentAvatar;
       const img = container.querySelector('#settings-avatar-preview');
       if (img) img.src = currentAvatar;
     }
@@ -188,59 +161,67 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
   container.querySelector('#btn-save-profile')?.addEventListener('click', async () => {
     const fName = container.querySelector('#input-first-name').value.trim();
     const lName = container.querySelector('#input-last-name').value.trim();
-    const fullName = `${fName} ${lName}`.trim();
+    const fullName = `${fName} ${lName}`.trim() || 'Usuário';
     const language = container.querySelector('#select-language').value;
     const timezone = container.querySelector('#select-timezone').value;
-
-    currentUser.name = fullName;
-    currentUser.language = language;
-    currentUser.timezone = timezone;
-    currentUser.avatar_url = currentAvatar;
 
     const saveBtn = container.querySelector('#btn-save-profile');
     saveBtn.disabled = true;
     saveBtn.textContent = 'Salvando...';
 
     try {
-      if (currentUser.uid) {
-        await updateDoc(doc(db, 'users', currentUser.uid), { 
-          name: fullName,
-          language,
-          timezone,
-          avatar_url: currentAvatar
-        });
-      }
+      await updateUserProfileSettings({
+        name: fullName,
+        photoURL: currentAvatar,
+        language,
+        timezone
+      });
+
+      currentUser.name = fullName;
+      currentUser.avatar_url = currentAvatar;
+      currentUser.language = language;
+      currentUser.timezone = timezone;
+
+      showToast('Perfil e preferências atualizados com sucesso!', 'success');
       saveBtn.textContent = 'Salvo com Sucesso!';
-    } catch (e) {
-      console.warn('Erro ao atualizar perfil no Firestore:', e);
+    } catch (err) {
+      console.error('Erro ao atualizar perfil no Firestore:', err);
+      showToast(`Erro ao salvar: ${err.message || 'Falha de conexão'}`, 'error');
       saveBtn.textContent = 'Erro ao Salvar';
-    }
-
-    setTimeout(() => {
-      saveBtn.disabled = false;
-      saveBtn.textContent = 'Salvar Alterações';
-    }, 2000);
-  });
-
-  container.querySelector('#btn-config-whatsapp')?.addEventListener('click', () => {
-    onNavigate('evolution');
-  });
-
-  container.querySelector('#btn-setup-webhooks')?.addEventListener('click', () => {
-    onNavigate('evolution');
-  });
-
-  const unsubInt = subscribeToIntegrations((integrations) => {
-    const evo = integrations.find(i => i.provider === 'evolution_api');
-    const statusEl = container.querySelector('#integration-evolution-status');
-    const detailsEl = container.querySelector('#integration-evolution-details');
-    if (statusEl && detailsEl && evo) {
-      statusEl.innerHTML = `<span style="width: 7px; height: 7px; border-radius: 50%; background: #16A34A;"></span> ${evo.instance_name || 'Instância Configurada'}`;
-      detailsEl.textContent = evo.base_url ? `Servidor: ${evo.base_url}` : 'Instância Ativa';
+    } finally {
+      setTimeout(() => {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Salvar Alterações';
+      }, 1500);
     }
   });
 
-  return () => {
-    unsubInt();
-  };
+  // Enviar link de redefinição de senha
+  container.querySelector('#btn-reset-password')?.addEventListener('click', async () => {
+    const btn = container.querySelector('#btn-reset-password');
+    if (!email) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+
+    try {
+      await resetUserPassword(email);
+      showToast(`Link de recuperação enviado para ${email}!`, 'success');
+    } catch (err) {
+      console.error('Erro ao enviar e-mail de recuperação:', err);
+      showToast(`Erro ao enviar link: ${err.message}`, 'error');
+    } finally {
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = '🔑 Enviar Link de Redefinição';
+      }, 2500);
+    }
+  });
+
+  container.querySelector('#btn-goto-evolution')?.addEventListener('click', () => {
+    onNavigate('evolution');
+  });
+
+  return () => {};
 }
+

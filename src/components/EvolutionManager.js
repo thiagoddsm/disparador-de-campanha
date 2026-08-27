@@ -2,55 +2,51 @@ import {
   getEvolutionConnectionState, 
   getEvolutionQrCode, 
   logoutEvolutionInstance, 
+  deleteEvolutionInstance,
+  fetchEvolutionInstances,
+  cleanupDisconnectedInstances,
   sanitizeInstanceSlug,
   generateHierarchicalInstanceName,
   EVOLUTION_CONFIG 
 } from '../firebase/evolutionApi.js';
 import { db } from '../firebase/config.js';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { showToast } from '../utils/feedback.js';
 
 export function renderEvolutionManager(container, currentUser) {
-  const hasAccess = currentUser?.role === 'admin' || currentUser?.role === 'coordinator';
-
-  if (!hasAccess) {
-    container.innerHTML = `
-      <div class="page-content">
-        <div class="main-panel-card" style="padding: 3rem 2rem; text-align: center;">
-          <div style="width: 56px; height: 56px; border-radius: var(--radius-full); background: #FEE2E2; color: #DC2626; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem auto;">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-          </div>
-          <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main);">Acesso Restrito ao Coordenador</h3>
-          <p style="font-size: 0.88rem; color: var(--text-muted); max-width: 480px; margin: 0.5rem auto 1.5rem auto;">
-            A gestão de instâncias da Evolution API e conexão de chips de WhatsApp é exclusiva para Coordenadores e Gestores Gerais da campanha.
-          </p>
-          <span class="pill-btn" style="background: #F1F5F9; color: #475569;">Modo Atual: Disparo Assistido por Membro da Equipe (wa.me)</span>
-        </div>
-      </div>
-    `;
-    return () => {};
-  }
+  const isAdmin = currentUser?.role === 'admin';
+  const isCoordinator = currentUser?.role === 'coordinator';
+  const isMember = !isAdmin && !isCoordinator;
 
   const teamLabel = currentUser?.team_name || currentUser?.team_id?.replace('team_', '') || 'alpha';
-  const roleLabel = currentUser?.role === 'admin' ? 'admin' : 'coordenador';
-  const userFirst = (currentUser?.name || currentUser?.displayName || 'thiago').split(' ')[0];
+  const roleLabel = isAdmin ? 'admin' : (isCoordinator ? 'coordenador' : 'operador');
+  const userFirst = (currentUser?.name || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'operador').split(' ')[0];
   const defaultHierarchicalName = generateHierarchicalInstanceName(teamLabel, roleLabel, userFirst);
 
-  let instanceState = 'close';
   let qrBase64 = null;
   let pollingTimer = null;
   let activeInstanceName = localStorage.getItem('evolution_active_instance') || defaultHierarchicalName;
+  let serverInstances = [];
+
+  const roleTitle = isAdmin 
+    ? 'Instância do Administrador' 
+    : isCoordinator 
+    ? 'Instância da Coordenação' 
+    : 'Minha Instância de WhatsApp (Operador)';
 
   container.innerHTML = `
     <div class="page-content">
       <div style="margin-bottom: 1.75rem;">
-        <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">
-          Conexão WhatsApp & Evolution API
-        </h2>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.72rem;">
+            ${isAdmin ? 'Governança Global' : isCoordinator ? 'Liderança' : 'Operador de Disparos'}
+          </span>
+          <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">
+            Conexão WhatsApp & Evolution API
+          </h2>
+        </div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
-          Gerencie instâncias conectadas e parametrize as proteções Anti-Ban para disparos da equipe.
+          Conecte seu WhatsApp para realizar disparos diretos via API com proteção Anti-Ban e Spintax.
         </p>
       </div>
 
@@ -58,7 +54,7 @@ export function renderEvolutionManager(container, currentUser) {
       <div class="main-panel-card" style="padding: 1.5rem; margin-bottom: 2rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
           <div>
-            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Instância do Coordenador</h3>
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">${roleTitle}</h3>
             <span style="font-size: 0.8rem; color: var(--text-muted);" id="instance-name-display">Instância: <strong>${activeInstanceName}</strong></span>
           </div>
 
@@ -83,15 +79,15 @@ export function renderEvolutionManager(container, currentUser) {
               </div>
             </div>
 
-            <!-- Global API Key Card (FestaPay Master Key) -->
+            <!-- Global API Key Card -->
             <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem 1rem; background: #F8FAFC; margin-bottom: 1.25rem;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                 <label for="input-api-key" style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">
-                  🔑 Token da Instância / Chave Global (apikey)
+                  🔑 Token da Instância / Chave de Acesso (apikey)
                 </label>
               </div>
               <p style="font-size: 0.73rem; color: var(--text-muted); margin-bottom: 0.6rem; line-height: 1.3;">
-                Copie o Token da sua instância no painel Evolution (ou a Global API Key) e cole aqui:
+                Chave de comunicação com o servidor Evolution API:
               </p>
               <input type="password" id="input-api-key" name="api_key" class="topbar-search-input" style="width: 100%; font-size: 0.8rem; background: #FFFFFF; font-family: monospace; margin-bottom: 0.5rem;" value="${localStorage.getItem('evolution_api_key') || EVOLUTION_CONFIG.apiKey}" placeholder="Cole o token da sua instância aqui">
               
@@ -128,13 +124,69 @@ export function renderEvolutionManager(container, currentUser) {
         </div>
       </div>
 
+      ${isAdmin ? `
+        <!-- Admin Section: Server Instances & Auto-Cleanup -->
+        <div class="main-panel-card" style="padding: 1.5rem; margin-bottom: 2rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="pill-btn" style="background: #FEE2E2; color: #DC2626; font-weight: 700; font-size: 0.72rem;">Admin Master</span>
+                <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Instâncias do Servidor & Limpeza Automática</h3>
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+                Monitore instâncias ativas no servidor Evolution API e remova automaticamente chips desconectados após X dias.
+              </p>
+            </div>
+
+            <!-- Auto Cleanup Controls -->
+            <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 0.4rem;">
+                <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-main);">Retenção:</span>
+                <select id="select-cleanup-days" class="form-control" style="width: auto; padding: 0.35rem 0.65rem; font-size: 0.8rem; font-weight: 600;">
+                  <option value="3">3 dias desconectado</option>
+                  <option value="7" selected>7 dias desconectado</option>
+                  <option value="15">15 dias desconectado</option>
+                  <option value="30">30 dias desconectado</option>
+                </select>
+              </div>
+              <button id="btn-run-cleanup" class="btn-outline-white" style="font-size: 0.8rem; padding: 0.45rem 0.85rem; color: #DC2626; border-color: #FECACA; font-weight: 700;">
+                🧹 Limpar Instâncias Inativas
+              </button>
+              <button id="btn-refresh-server-instances" class="btn-outline-white" style="font-size: 0.8rem; padding: 0.45rem 0.75rem;">
+                🔄 Atualizar Lista
+              </button>
+            </div>
+          </div>
+
+          <!-- Server Instances Table -->
+          <div class="table-container desktop-only">
+            <table class="panel-table">
+              <thead>
+                <tr>
+                  <th>NOME DA INSTÂNCIA</th>
+                  <th>TELEFONE VINCULADO</th>
+                  <th>STATUS NO SERVIDOR</th>
+                  <th>ÚLTIMA ATIVIDADE</th>
+                  <th style="text-align: right;">AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody id="server-instances-tbody">
+                <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">Carregando instâncias do servidor...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="team-mobile-card-list mobile-only" id="server-instances-mobile"></div>
+        </div>
+      ` : ''}
+
       <!-- Anti-Ban Rules Card (Padrão Oiko / FestaPay) -->
       <div class="main-panel-card" style="padding: 1.5rem;">
         <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
           </svg>
-          <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Regras Anti-Ban & Proteção de Chip</h3>
+          <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Regras Anti-Ban & Proteção de Chip (Padrão Oiko)</h3>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem;">
@@ -152,7 +204,7 @@ export function renderEvolutionManager(container, currentUser) {
               ✍️ Presença "Digitando..."
             </strong>
             <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-              Simula digitação real no WhatsApp Web durante 2.5s antes de despachar a mensagem.
+              Simula digitação real no WhatsApp durante 2.5s antes de despachar a mensagem.
             </p>
           </div>
 
@@ -195,7 +247,7 @@ export function renderEvolutionManager(container, currentUser) {
         </div>
       `;
 
-      // Persiste no Firestore uma única vez por mudança de estado
+      // Persiste no Firestore
       const stateKey = `${activeInstanceName}_open_${res.phoneNumber || ''}`;
       if (lastSavedState !== stateKey) {
         lastSavedState = stateKey;
@@ -235,7 +287,114 @@ export function renderEvolutionManager(container, currentUser) {
     }
   }
 
+  function startPolling() {
+    if (pollingTimer) clearInterval(pollingTimer);
+    let attempts = 0;
+    pollingTimer = setInterval(async () => {
+      attempts++;
+      if (attempts > 30) {
+        clearInterval(pollingTimer);
+        return;
+      }
+      const st = await getEvolutionConnectionState(activeInstanceName);
+      if (st.state === 'open') {
+        clearInterval(pollingTimer);
+        checkStatus();
+        showToast('WhatsApp conectado com sucesso!', 'success');
+      }
+    }, 4000);
+  }
+
+  // Se for admin, carrega lista de instâncias do servidor
+  async function loadServerInstances() {
+    if (!isAdmin) return;
+    const tbody = container.querySelector('#server-instances-tbody');
+    const mobileContainer = container.querySelector('#server-instances-mobile');
+    if (!tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Buscando instâncias no servidor...</td></tr>`;
+
+    const res = await fetchEvolutionInstances();
+    if (!res.success) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #DC2626; padding: 1.5rem;">${res.error || 'Erro ao consultar instâncias do servidor.'}</td></tr>`;
+      return;
+    }
+
+    serverInstances = res.instances;
+    if (serverInstances.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhuma instância encontrada no servidor.</td></tr>`;
+      if (mobileContainer) mobileContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhuma instância no servidor.</div>`;
+      return;
+    }
+
+    tbody.innerHTML = serverInstances.map(inst => {
+      const isOpen = inst.state === 'open';
+      const formattedDate = inst.updatedAt ? new Date(inst.updatedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Recente';
+
+      return `
+        <tr>
+          <td>
+            <strong>${inst.name}</strong>
+          </td>
+          <td>${inst.owner || '<span style="color: var(--text-muted);">Não pareado</span>'}</td>
+          <td>
+            <span class="status-pill ${isOpen ? 'ativo' : 'inativo'}">
+              ${isOpen ? '● CONECTADO' : 'DESCONECTADO'}
+            </span>
+          </td>
+          <td style="font-size: 0.8rem; color: var(--text-muted);">${formattedDate}</td>
+          <td style="text-align: right;">
+            <button class="btn-delete-server-inst btn-outline-white" data-name="${inst.name}" style="color: #DC2626; border-color: #FECACA; font-size: 0.75rem; padding: 0.3rem 0.6rem;">
+              🗑️ Excluir
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    if (mobileContainer) {
+      mobileContainer.innerHTML = serverInstances.map(inst => {
+        const isOpen = inst.state === 'open';
+        return `
+          <div class="team-mobile-card">
+            <div class="team-mobile-card-header">
+              <div>
+                <strong>${inst.name}</strong>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">${inst.owner || 'Sem número'}</div>
+              </div>
+              <span class="status-pill ${isOpen ? 'ativo' : 'inativo'}">${isOpen ? 'CONECTADO' : 'OFFLINE'}</span>
+            </div>
+            <div class="team-mobile-card-footer">
+              <button class="btn-delete-server-inst btn-outline-white" data-name="${inst.name}" style="width: 100%; color: #DC2626; border-color: #FECACA; font-size: 0.8rem; padding: 0.4rem; justify-content: center;">
+                🗑️ Excluir do Servidor
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    container.querySelectorAll('.btn-delete-server-inst').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const name = btn.getAttribute('data-name');
+        if (confirm(`Deseja excluir a instância "${name}" permanentemente do servidor Evolution API?`)) {
+          btn.disabled = true;
+          btn.textContent = 'Excluindo...';
+          const delRes = await deleteEvolutionInstance(name);
+          if (delRes.success) {
+            showToast(`Instância ${name} excluída!`, 'success');
+            loadServerInstances();
+          } else {
+            alert('Erro ao excluir: ' + delRes.error);
+            btn.disabled = false;
+          }
+        }
+      });
+    });
+  }
+
   checkStatus();
+  if (isAdmin) loadServerInstances();
 
   slugInput?.addEventListener('change', () => {
     activeInstanceName = sanitizeInstanceSlug(slugInput.value);
@@ -249,8 +408,9 @@ export function renderEvolutionManager(container, currentUser) {
     const key = container.querySelector('#input-api-key')?.value.trim();
     if (url) localStorage.setItem('evolution_api_url', url);
     if (key) localStorage.setItem('evolution_api_key', key);
-    alert('Token e URL da Evolution API salvos com sucesso!');
+    showToast('Token e URL da Evolution API salvos com sucesso!', 'success');
     checkStatus();
+    if (isAdmin) loadServerInstances();
   });
 
   container.querySelector('#btn-use-standard-slug')?.addEventListener('click', () => {
@@ -310,9 +470,36 @@ export function renderEvolutionManager(container, currentUser) {
       await logoutEvolutionInstance(activeInstanceName);
       checkStatus();
       qrMount.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; padding: 2rem 0;">Instância desconectada com sucesso.</div>`;
+      showToast('Instância desconectada.', 'info');
     } finally {
       disBtn.disabled = false;
     }
+  });
+
+  // Admin Cleanup Handler
+  container.querySelector('#btn-run-cleanup')?.addEventListener('click', async () => {
+    const days = parseInt(container.querySelector('#select-cleanup-days').value, 10) || 7;
+    if (confirm(`Executar varredura agora para excluir todas as instâncias desconectadas há mais de ${days} dias?`)) {
+      const cleanBtn = container.querySelector('#btn-run-cleanup');
+      cleanBtn.disabled = true;
+      cleanBtn.textContent = 'Varrendo...';
+      try {
+        const result = await cleanupDisconnectedInstances({ maxDisconnectedDays: days });
+        if (result.success) {
+          showToast(`Limpeza concluída! ${result.deletedCount} instâncias inativas removidas de ${result.totalScanned} analisadas.`, 'success');
+          loadServerInstances();
+        } else {
+          alert('Erro na limpeza: ' + result.error);
+        }
+      } finally {
+        cleanBtn.disabled = false;
+        cleanBtn.textContent = '🧹 Limpar Instâncias Inativas';
+      }
+    }
+  });
+
+  container.querySelector('#btn-refresh-server-instances')?.addEventListener('click', () => {
+    loadServerInstances();
   });
 
   return () => {

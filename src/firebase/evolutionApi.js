@@ -291,3 +291,114 @@ export async function sendEvolutionTextMessage({
     };
   }
 }
+
+/**
+ * Exclui permanentemente uma instância da Evolution API.
+ */
+export async function deleteEvolutionInstance(instanceName, customApiKey) {
+  if (!instanceName) return { success: false, error: 'Nome de instância inválido.' };
+  const { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
+
+  try {
+    const res = await fetch(`${baseUrl}/instance/delete/${instanceName}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': apiKey,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok && res.status !== 404) {
+      return { success: false, error: data.message || `Erro HTTP ${res.status} ao excluir instância.` };
+    }
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message || 'Erro ao comunicar com Evolution API.' };
+  }
+}
+
+/**
+ * Busca todas as instâncias cadastradas no servidor Evolution API.
+ */
+export async function fetchEvolutionInstances(customApiKey) {
+  const { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
+
+  try {
+    const res = await fetch(`${baseUrl}/instance/fetchInstances`, {
+      method: 'GET',
+      headers: {
+        'apikey': apiKey,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!res.ok) {
+      return { success: false, instances: [], error: `Erro HTTP ${res.status} ao buscar instâncias.` };
+    }
+
+    const data = await res.json();
+    const instances = Array.isArray(data) ? data : (data.instances || []);
+    return {
+      success: true,
+      instances: instances.map(inst => ({
+        name: inst.instance?.instanceName || inst.name || inst.instanceName,
+        state: inst.instance?.state || inst.connectionStatus || inst.state || 'close',
+        owner: inst.instance?.owner || inst.owner || null,
+        updatedAt: inst.instance?.updatedAt || inst.updatedAt || new Date().toISOString()
+      }))
+    };
+  } catch (error) {
+    return { success: false, instances: [], error: error.message || 'Erro de rede ao buscar instâncias.' };
+  }
+}
+
+/**
+ * Varre e exclui instâncias desconectadas há mais de X dias da Evolution API.
+ */
+export async function cleanupDisconnectedInstances({ maxDisconnectedDays = 7, customApiKey } = {}) {
+  const { apiKey } = getEvolutionConfig(customApiKey);
+  const result = await fetchEvolutionInstances(apiKey);
+
+  if (!result.success) {
+    return { success: false, count: 0, error: result.error };
+  }
+
+  const nowMs = Date.now();
+  const maxInactiveMs = maxDisconnectedDays * 24 * 60 * 60 * 1000;
+  const toDelete = [];
+
+  for (const inst of result.instances) {
+    // Não remove a instância padrão global se estiver em uso
+    if (inst.name === EVOLUTION_CONFIG.defaultInstance) continue;
+
+    // Se estiver desconectada (não 'open')
+    if (inst.state !== 'open') {
+      const lastUpdateMs = inst.updatedAt ? new Date(inst.updatedAt).getTime() : 0;
+      const inactiveDuration = nowMs - lastUpdateMs;
+
+      if (inactiveDuration >= maxInactiveMs || !inst.updatedAt) {
+        toDelete.push(inst.name);
+      }
+    }
+  }
+
+  let deletedCount = 0;
+  const errors = [];
+
+  for (const instName of toDelete) {
+    const delRes = await deleteEvolutionInstance(instName, apiKey);
+    if (delRes.success) {
+      deletedCount++;
+    } else {
+      errors.push(`${instName}: ${delRes.error}`);
+    }
+  }
+
+  return {
+    success: true,
+    deletedCount,
+    totalScanned: result.instances.length,
+    errors
+  };
+}
