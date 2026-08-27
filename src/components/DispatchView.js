@@ -36,20 +36,23 @@ export function renderDispatchView(container, currentUser) {
         <div>
           <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
             <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">Envio & Histórico de Disparos</h2>
+            <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem;">
+              👤 Minha Fila Individual: <span id="queue-header-count">0</span> contatos
+            </span>
             ${teamLabel ? `
-              <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem;">
+              <span class="pill-btn" style="background: #F8FAFC; color: var(--text-muted); font-weight: 600; font-size: 0.75rem; border: 1px solid var(--border-color);">
                 👥 Equipe: ${teamLabel}
               </span>
             ` : ''}
           </div>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
-            Dispare mensagens personalizadas com cadência segura (~1 min por mensagem) e proteção Anti-Ban (Spintax, Jitter e Digitação).
+            Cada líder visualiza e dispara exclusivamente a sua própria lista de contatos atribuídos.
           </p>
         </div>
 
         <div style="display: flex; gap: 0.5rem; align-items: center;">
           <button id="tab-btn-queue" class="pill-btn" style="cursor: pointer; padding: 0.5rem 1rem; font-weight: 700; font-size: 0.82rem; background: #1D4ED8; color: #FFFFFF; border: none; transition: all 0.2s;">
-            🎯 Fila de Disparos
+            🎯 Minha Fila de Disparos
           </button>
           <button id="tab-btn-history" class="pill-btn" style="cursor: pointer; padding: 0.5rem 1rem; font-weight: 700; font-size: 0.82rem; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color); transition: all 0.2s;">
             📜 Histórico de Disparos (<span id="history-badge-count">0</span>)
@@ -797,24 +800,13 @@ export function renderDispatchView(container, currentUser) {
   }
   checkApiConnection();
 
-  // Subscriptions em tempo real
-  let unsubContacts = null;
-  if (currentUser?.role === 'admin') {
-    unsubContacts = subscribeToAllContacts((list) => {
-      contacts = list;
-      if (activeTab === 'queue') renderQueueTable();
-    });
-  } else if (currentUser?.role === 'coordinator') {
-    unsubContacts = subscribeToTeamContacts(currentUser?.team_id || 'team_alpha', (list) => {
-      contacts = list;
-      if (activeTab === 'queue') renderQueueTable();
-    });
-  } else {
-    unsubContacts = subscribeToOperatorContacts(currentUser?.uid, (list) => {
-      contacts = list;
-      if (activeTab === 'queue') renderQueueTable();
-    });
-  }
+  // Subscriptions em tempo real: Cada líder vê estritamente apenas a sua lista atribuída
+  const unsubContacts = subscribeToOperatorContacts(currentUser?.uid, (list) => {
+    contacts = list;
+    const headerCount = container.querySelector('#queue-header-count');
+    if (headerCount) headerCount.textContent = contacts.length;
+    if (activeTab === 'queue') renderQueueTable();
+  });
 
   // Subscribe ao Histórico de Mensagens (/messages)
   const unsubHistory = subscribeToMessagesHistory(currentUser?.role === 'admin' ? null : currentUser?.team_id, (msgs) => {
@@ -832,3 +824,4 @@ export function renderDispatchView(container, currentUser) {
     if (unsubHistory) unsubHistory();
   };
 }
+

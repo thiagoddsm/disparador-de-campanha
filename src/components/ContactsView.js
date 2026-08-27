@@ -2,15 +2,27 @@ import {
   subscribeToOperatorContacts, 
   subscribeToTeamContacts, 
   subscribeToAllContacts, 
+  subscribeToTenantTeams,
+  subscribeToAllUsers,
+  subscribeToTeamMembers,
   saveContactsBatch, 
   reassignContactInFirestore,
-  subscribeToTeamMembers
+  DEFAULT_TENANT_ID
 } from '../firebase/realtime.js';
 import { showToast } from '../utils/feedback.js';
 
 export function renderContactsView(container, currentUser, onNavigate) {
-  let contacts = [];
+  let allContacts = [];
+  let allTeams = [];
+  let allUsers = [];
   let teamMembers = [];
+  
+  // Filtros ativos
+  let selectedCoordUid = 'all'; // 'all' | coordinatorUid (para Admin)
+  let selectedMemberUid = 'all'; // 'all' | memberUid (para Admin e Coordinator)
+  let statusFilter = 'all'; // 'all' | 'pending' | 'opened' | 'confirmed'
+  let searchQuery = '';
+
   const isMember = currentUser?.role === 'member';
   const isCoordinator = currentUser?.role === 'coordinator';
   const isAdmin = currentUser?.role === 'admin';
@@ -19,24 +31,28 @@ export function renderContactsView(container, currentUser, onNavigate) {
   container.innerHTML = `
     <div class="page-content">
       <!-- Title & Actions Row -->
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
         <div>
           <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
             <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">
-              ${isMember ? 'Meus Contatos' : isCoordinator ? 'Contatos da Equipe' : 'Base Global de Contatos'}
+              ${isMember ? 'Meus Contatos' : isCoordinator ? 'Banco de Contatos da Equipe' : 'Banco Global de Contatos'}
             </h2>
-            ${isMember && teamLabel ? `
+            ${teamLabel ? `
               <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem;">
                 👥 Equipe: ${teamLabel}
               </span>
             ` : ''}
           </div>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
-            ${isMember ? `Gerencie sua lista individual e acompanhe seus envios${teamLabel ? ` pela equipe <strong>${teamLabel}</strong>` : ''}.` : 'Gerencie e distribua contatos para sua equipe.'}
+            ${isMember 
+              ? 'Visualize sua lista individual de contatos para envio e acompanhe o status de cada um.' 
+              : isCoordinator 
+              ? 'Acompanhe a base de contatos dividida por cada Líder/Membro da sua equipe em abas dedicadas.' 
+              : 'Supervisão hierárquica: navegue entre Coordenadores e acompanhe a distribuição por Líder.'}
           </p>
         </div>
 
-        <div style="display: flex; gap: 0.75rem;">
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
           ${!isMember ? `
             <button id="btn-goto-import" class="btn-outline-white">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -53,22 +69,61 @@ export function renderContactsView(container, currentUser, onNavigate) {
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
-            Adicionar Contato
+            + Adicionar Contato
           </button>
         </div>
       </div>
 
-      <!-- 3 Real KPI Cards -->
-      <div class="metrics-row" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+      <!-- Quick Switcher: Minha Base Pessoal vs Visão Geral -->
+      ${!isMember ? `
+        <div style="display: flex; gap: 0.6rem; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap;">
+          <button id="btn-quick-my-contacts" class="pill-btn" style="cursor: pointer; padding: 0.55rem 1.15rem; font-size: 0.85rem; font-weight: 700; border-radius: var(--radius-md); transition: all 0.2s; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.5rem;">
+            <span>⭐ Minha Base Pessoal</span>
+            <span id="quick-my-contacts-count" style="background: #E5E7EB; color: var(--text-main); padding: 2px 7px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">0</span>
+          </button>
+          
+          <button id="btn-quick-all-contacts" class="pill-btn" style="cursor: pointer; padding: 0.55rem 1.15rem; font-size: 0.85rem; font-weight: 700; border-radius: var(--radius-md); transition: all 0.2s; background: #1D4ED8; color: #FFFFFF; border: 1.5px solid #1D4ED8; display: flex; align-items: center; gap: 0.5rem;">
+            <span>🌐 ${isAdmin ? 'Visão Geral da Campanha' : 'Visão Geral da Equipe'}</span>
+            <span id="quick-all-contacts-count" style="background: rgba(255,255,255,0.25); color: #FFFFFF; padding: 2px 7px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">0</span>
+          </button>
+        </div>
+      ` : ''}
+
+      <!-- Level 1 Tabs (Admin: Coordenadores) -->
+      ${isAdmin ? `
+        <div id="admin-coord-section" style="margin-bottom: 1rem;">
+          <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
+            👔 Coordenadores / Equipes:
+          </div>
+          <div id="admin-coord-tabs" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.4rem; scrollbar-width: thin;">
+            <!-- Renderizado dinamicamente -->
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Level 2 Tabs (Admin & Coordinator: Líderes / Membros da Equipe) -->
+      ${!isMember ? `
+        <div id="admin-leader-section" style="margin-bottom: 1.25rem;">
+          <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
+            👤 Acompanhar por Líder / Membro:
+          </div>
+          <div id="leader-tabs-mount" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.4rem; scrollbar-width: thin;">
+            <!-- Renderizado dinamicamente -->
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- 3 Dynamic KPI Cards -->
+      <div class="metrics-row" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 1.5rem;">
         <div class="metric-box">
           <div class="metric-info">
             <div style="display: flex; align-items: center; gap: 0.4rem; color: var(--primary-blue); font-size: 0.8rem; font-weight: 700; margin-bottom: 0.4rem;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="4" width="20" height="16" rx="2"></rect></svg>
-              <span>Total de Contatos</span>
+              <span>Total na Seleção</span>
             </div>
             <span class="metric-big-num" id="kpi-contacts-total">0</span>
-            <span style="font-size: 0.78rem; color: var(--whatsapp-green); font-weight: 600; margin-top: 0.4rem;">
-              Base Conectada
+            <span style="font-size: 0.78rem; color: var(--whatsapp-green); font-weight: 600; margin-top: 0.4rem;" id="kpi-contacts-sublabel">
+              Contatos mapeados
             </span>
           </div>
           <div class="metric-icon-bubble">
@@ -84,7 +139,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
             </div>
             <span class="metric-big-num" id="kpi-contacts-sent">0</span>
             <span style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem;">
-              user_confirmed
+              Envios confirmados
             </span>
           </div>
           <div class="metric-icon-bubble" style="background: #F0FDF4; color: var(--whatsapp-green);">
@@ -95,7 +150,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
         <div class="metric-box">
           <div class="metric-info" style="width: 100%;">
             <div style="display: flex; align-items: center; gap: 0.4rem; color: #B45309; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.4rem;">
-              <circle cx="12" cy="12" r="3"></circle>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
               <span>Taxa de Conclusão</span>
             </div>
             <span class="metric-big-num" id="kpi-contacts-rate">0%</span>
@@ -117,11 +172,11 @@ export function renderContactsView(container, currentUser, onNavigate) {
             <input type="text" id="contacts-search" class="topbar-search-input" placeholder="Buscar por nome ou telefone..." style="width: 100%; border-radius: var(--radius-md); padding-left: 2.3rem; background: #FFFFFF; font-size: 0.82rem;">
           </div>
 
-          <div style="display: flex; gap: 0.6rem;">
-            <button id="btn-filter-all" class="btn-outline-white" style="font-size: 0.8rem; padding: 0.45rem 0.85rem;">Todos</button>
-            <button id="btn-filter-pending" class="btn-outline-white" style="font-size: 0.8rem; padding: 0.45rem 0.85rem;">Pendentes</button>
-            <button id="btn-filter-opened" class="btn-outline-white" style="font-size: 0.8rem; padding: 0.45rem 0.85rem;">Abertos</button>
-            <button id="btn-filter-confirmed" class="btn-outline-white" style="font-size: 0.8rem; padding: 0.45rem 0.85rem;">Confirmados</button>
+          <div style="display: flex; gap: 0.5rem;" id="status-filter-buttons">
+            <button class="status-btn pill-btn" data-status="all" style="cursor: pointer; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 700; background: #1D4ED8; color: #FFFFFF; border: none;">Todos</button>
+            <button class="status-btn pill-btn" data-status="pending" style="cursor: pointer; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color);">Pendentes</button>
+            <button class="status-btn pill-btn" data-status="opened" style="cursor: pointer; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color);">Abertos</button>
+            <button class="status-btn pill-btn" data-status="confirmed" style="cursor: pointer; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color);">Confirmados</button>
           </div>
         </div>
 
@@ -131,10 +186,10 @@ export function renderContactsView(container, currentUser, onNavigate) {
               <tr>
                 <th>NOME</th>
                 <th>TELEFONE</th>
-                <th>EMPRESA / REGIÃO</th>
-                ${!isMember ? '<th>ATRIBUÍDO A</th>' : ''}
+                <th>CIDADE / REGIÃO</th>
+                ${!isMember ? '<th>LÍDER ATRIBUÍDO</th>' : ''}
                 <th>STATUS</th>
-                ${isCoordinator ? '<th style="text-align: right;">REATRIBUIR</th>' : ''}
+                ${!isMember ? '<th style="text-align: right;">AÇÕES</th>' : ''}
               </tr>
             </thead>
             <tbody id="contacts-tbody">
@@ -166,12 +221,12 @@ export function renderContactsView(container, currentUser, onNavigate) {
             <input type="text" id="input-contact-phone" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; padding: 0.5rem 0.75rem;" placeholder="(11) 98765-4321" required>
           </div>
           <div style="margin-bottom: 1rem;">
-            <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.3rem;">Empresa / Região</label>
+            <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.3rem;">Cidade / Região</label>
             <input type="text" id="input-contact-company" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; padding: 0.5rem 0.75rem;" placeholder="Ex: Bairro Centro">
           </div>
           ${!isMember ? `
             <div style="margin-bottom: 1.5rem;">
-              <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.3rem;">Atribuir para Membro da Equipe</label>
+              <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.3rem;">Atribuir para Líder / Membro</label>
               <select id="select-contact-assignee" class="form-control"></select>
             </div>
           ` : ''}
@@ -183,7 +238,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
       </div>
     </div>
 
-    <!-- Modal Reatribuir Contato (Coordenador) -->
+    <!-- Modal Reatribuir Contato -->
     <div id="modal-reassign" class="modal-overlay" style="display: none;">
       <div class="modal-content" style="max-width: 400px;">
         <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
@@ -193,7 +248,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
         <form id="form-reassign" style="padding: 1.5rem;">
           <input type="hidden" id="reassign-contact-id">
           <div style="margin-bottom: 1.5rem;">
-            <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.35rem;">Transferir para o Membro da Equipe:</label>
+            <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.35rem;">Transferir para o Líder / Membro:</label>
             <select id="select-reassign-member" class="form-control" required></select>
           </div>
           <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
@@ -205,16 +260,236 @@ export function renderContactsView(container, currentUser, onNavigate) {
     </div>
   `;
 
+  // Renderiza as abas de Coordenador (Nível 1 para Admin)
+  function renderAdminCoordinatorTabs() {
+    const mount = container.querySelector('#admin-coord-tabs');
+    if (!mount) return;
+
+    const coords = allUsers.filter(u => u.role === 'coordinator' || u.role === 'admin');
+    
+    // Contagem de contatos por coordenador
+    const totalAll = allContacts.length;
+    const myPersonalCount = allContacts.filter(c => c.assigned_to === currentUser.uid).length;
+
+    let html = `
+      <button class="pill-btn admin-coord-pill" data-coord-uid="mine" style="cursor: pointer; padding: 0.45rem 1rem; font-size: 0.82rem; font-weight: 700; border-radius: var(--radius-full); transition: all 0.2s; white-space: nowrap; ${selectedMemberUid === currentUser.uid ? 'background: #059669; color: #FFFFFF; border: none;' : 'background: #ECFDF5; color: #059669; border: 1.5px solid #10B981;'}">
+        ⭐ Minha Base Pessoal (${myPersonalCount})
+      </button>
+      <button class="pill-btn admin-coord-pill" data-coord-uid="all" style="cursor: pointer; padding: 0.45rem 1rem; font-size: 0.82rem; font-weight: 700; border-radius: var(--radius-full); transition: all 0.2s; white-space: nowrap; ${(selectedCoordUid === 'all' && selectedMemberUid !== currentUser.uid) ? 'background: #1D4ED8; color: #FFFFFF; border: none;' : 'background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color);'}">
+        🌐 Todos os Coordenadores (${totalAll})
+      </button>
+    `;
+
+    coords.forEach(coord => {
+      const coordTeam = allTeams.find(t => t.id === coord.team_id || t.coordinator_uid === coord.uid);
+      const coordTeamId = coordTeam ? coordTeam.id : coord.team_id;
+      const count = allContacts.filter(c => c.team_id === coordTeamId || c.assigned_to === coord.uid).length;
+      const isActive = selectedCoordUid === coord.uid && selectedMemberUid !== currentUser.uid;
+
+      html += `
+        <button class="pill-btn admin-coord-pill" data-coord-uid="${coord.uid}" data-team-id="${coordTeamId || ''}" style="cursor: pointer; padding: 0.45rem 1rem; font-size: 0.82rem; font-weight: 700; border-radius: var(--radius-full); transition: all 0.2s; white-space: nowrap; ${isActive ? 'background: #1D4ED8; color: #FFFFFF; border: none;' : 'background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color);'}">
+          👔 ${coord.name || coord.email} ${coordTeam ? `(${coordTeam.name})` : ''} (${count})
+        </button>
+      `;
+    });
+
+    mount.innerHTML = html;
+
+    mount.querySelectorAll('.admin-coord-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const uidVal = btn.getAttribute('data-coord-uid');
+        if (uidVal === 'mine') {
+          selectedCoordUid = 'all';
+          selectedMemberUid = currentUser.uid;
+        } else {
+          selectedCoordUid = uidVal;
+          selectedMemberUid = 'all'; // Reseta seleção de líder ao mudar coordenador
+        }
+        updateQuickSwitcherUI();
+        renderAdminCoordinatorTabs();
+        renderLeaderTabs();
+        applyFiltersAndRender();
+      });
+    });
+  }
+
+  // Renderiza as abas de Líderes/Membros da Equipe
+  function renderLeaderTabs() {
+    const mount = container.querySelector('#leader-tabs-mount');
+    if (!mount) return;
+
+    let relevantContacts = allContacts;
+    let relevantMembers = [];
+
+    if (isAdmin) {
+      if (selectedCoordUid !== 'all') {
+        const coord = allUsers.find(u => u.uid === selectedCoordUid);
+        const coordTeam = allTeams.find(t => t.id === coord?.team_id || t.coordinator_uid === selectedCoordUid);
+        const coordTeamId = coordTeam ? coordTeam.id : coord?.team_id;
+        
+        relevantContacts = allContacts.filter(c => c.team_id === coordTeamId || c.assigned_to === selectedCoordUid);
+        relevantMembers = allUsers.filter(u => (u.team_id && u.team_id === coordTeamId) || u.coordinator_id === selectedCoordUid || u.uid === selectedCoordUid);
+      } else {
+        relevantMembers = allUsers.filter(u => u.role === 'member');
+      }
+    } else if (isCoordinator) {
+      relevantContacts = allContacts;
+      relevantMembers = teamMembers.length > 0 ? teamMembers : allUsers.filter(u => u.team_id === currentUser.team_id || u.coordinator_id === currentUser.uid);
+    }
+
+    const totalCount = relevantContacts.length;
+    const myCount = allContacts.filter(c => c.assigned_to === currentUser.uid).length;
+    const isMyActive = selectedMemberUid === currentUser.uid;
+
+    let html = `
+      <button class="pill-btn leader-pill" data-member-uid="all" style="cursor: pointer; padding: 0.45rem 1rem; font-size: 0.82rem; font-weight: 700; border-radius: var(--radius-full); transition: all 0.2s; white-space: nowrap; ${(selectedMemberUid === 'all') ? 'background: #059669; color: #FFFFFF; border: none;' : 'background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color);'}">
+        👥 Todos os Líderes (${totalCount})
+      </button>
+      <button class="pill-btn leader-pill" data-member-uid="${currentUser.uid}" style="cursor: pointer; padding: 0.45rem 1rem; font-size: 0.82rem; font-weight: 700; border-radius: var(--radius-full); transition: all 0.2s; white-space: nowrap; ${isMyActive ? 'background: #059669; color: #FFFFFF; border: none;' : 'background: #ECFDF5; color: #059669; border: 1.5px solid #10B981;'}">
+        ⭐ Atribuídos a Mim (${myCount})
+      </button>
+    `;
+
+    relevantMembers.filter(m => m.uid !== currentUser.uid).forEach(m => {
+      const memberContacts = relevantContacts.filter(c => c.assigned_to === m.uid);
+      const isActive = selectedMemberUid === m.uid;
+
+      html += `
+        <button class="pill-btn leader-pill" data-member-uid="${m.uid}" style="cursor: pointer; padding: 0.45rem 1rem; font-size: 0.82rem; font-weight: 700; border-radius: var(--radius-full); transition: all 0.2s; white-space: nowrap; ${isActive ? 'background: #059669; color: #FFFFFF; border: none;' : 'background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color);'}">
+          👤 ${m.name || m.email} (${memberContacts.length})
+        </button>
+      `;
+    });
+
+    mount.innerHTML = html;
+
+    mount.querySelectorAll('.leader-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedMemberUid = btn.getAttribute('data-member-uid');
+        updateQuickSwitcherUI();
+        renderLeaderTabs();
+        if (isAdmin) renderAdminCoordinatorTabs();
+        applyFiltersAndRender();
+      });
+    });
+  }
+
+  // Atualiza botões superiores Minha Base vs Base Geral
+  function updateQuickSwitcherUI() {
+    const btnMy = container.querySelector('#btn-quick-my-contacts');
+    const btnAll = container.querySelector('#btn-quick-all-contacts');
+    const myBadge = container.querySelector('#quick-my-contacts-count');
+    const allBadge = container.querySelector('#quick-all-contacts-count');
+
+    const myCount = allContacts.filter(c => c.assigned_to === currentUser.uid).length;
+    const allCount = allContacts.length;
+
+    if (myBadge) myBadge.textContent = myCount;
+    if (allBadge) allBadge.textContent = allCount;
+
+    if (selectedMemberUid === currentUser.uid) {
+      if (btnMy) {
+        btnMy.style.background = '#1D4ED8';
+        btnMy.style.color = '#FFFFFF';
+        btnMy.style.borderColor = '#1D4ED8';
+        if (myBadge) { myBadge.style.background = 'rgba(255,255,255,0.3)'; myBadge.style.color = '#FFFFFF'; }
+      }
+      if (btnAll) {
+        btnAll.style.background = '#FFFFFF';
+        btnAll.style.color = 'var(--text-main)';
+        btnAll.style.borderColor = 'var(--border-color)';
+        if (allBadge) { allBadge.style.background = '#E5E7EB'; allBadge.style.color = 'var(--text-main)'; }
+      }
+    } else {
+      if (btnAll) {
+        btnAll.style.background = '#1D4ED8';
+        btnAll.style.color = '#FFFFFF';
+        btnAll.style.borderColor = '#1D4ED8';
+        if (allBadge) { allBadge.style.background = 'rgba(255,255,255,0.3)'; allBadge.style.color = '#FFFFFF'; }
+      }
+      if (btnMy) {
+        btnMy.style.background = '#FFFFFF';
+        btnMy.style.color = 'var(--text-main)';
+        btnMy.style.borderColor = 'var(--border-color)';
+        if (myBadge) { myBadge.style.background = '#E5E7EB'; myBadge.style.color = 'var(--text-main)'; }
+      }
+    }
+  }
+
+  // Listeners dos botões superiores rápidos
+  container.querySelector('#btn-quick-my-contacts')?.addEventListener('click', () => {
+    selectedCoordUid = 'all';
+    selectedMemberUid = currentUser.uid;
+    updateQuickSwitcherUI();
+    if (isAdmin) renderAdminCoordinatorTabs();
+    renderLeaderTabs();
+    applyFiltersAndRender();
+  });
+
+  container.querySelector('#btn-quick-all-contacts')?.addEventListener('click', () => {
+    selectedCoordUid = 'all';
+    selectedMemberUid = 'all';
+    updateQuickSwitcherUI();
+    if (isAdmin) renderAdminCoordinatorTabs();
+    renderLeaderTabs();
+    applyFiltersAndRender();
+  });
+
+  // Atualiza selects de atribuição nos modais
   function updateAssigneesSelect() {
     const assignSel = container.querySelector('#select-contact-assignee');
     const reassignSel = container.querySelector('#select-reassign-member');
+    const available = teamMembers.length > 0 ? teamMembers : allUsers.filter(u => u.role === 'member' || u.role === 'coordinator');
+
     const options = [
-      `<option value="${currentUser.uid}">${currentUser.name} (Eu)</option>`,
-      ...teamMembers.map(m => `<option value="${m.uid}">${m.name} (${m.email})</option>`)
+      `<option value="${currentUser.uid}" selected>⭐ Atribuir a Mim Mesmo (${currentUser.name || currentUser.email})</option>`,
+      ...available.filter(m => m.uid !== currentUser.uid).map(m => `<option value="${m.uid}">👤 ${m.name || m.email} (${m.email || ''})</option>`)
     ].join('');
 
     if (assignSel) assignSel.innerHTML = options;
     if (reassignSel) reassignSel.innerHTML = options;
+  }
+
+  // Aplica filtros e renderiza tabela e KPIs
+  function applyFiltersAndRender() {
+    updateQuickSwitcherUI();
+    updateAssigneesSelect();
+    let filtered = [...allContacts];
+
+    // Filtro por Coordenador / Equipe (Admin)
+    if (isAdmin && selectedCoordUid !== 'all') {
+      const coord = allUsers.find(u => u.uid === selectedCoordUid);
+      const coordTeam = allTeams.find(t => t.id === coord?.team_id || t.coordinator_uid === selectedCoordUid);
+      const coordTeamId = coordTeam ? coordTeam.id : coord?.team_id;
+      filtered = filtered.filter(c => c.team_id === coordTeamId || c.assigned_to === selectedCoordUid);
+    }
+
+    // Filtro por Líder / Membro
+    if (selectedMemberUid !== 'all') {
+      filtered = filtered.filter(c => c.assigned_to === selectedMemberUid);
+    }
+
+    // Filtro de Busca por texto
+    if (searchQuery.trim().length > 0) {
+      const q = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(c => 
+        (c.name && c.name.toLowerCase().includes(q)) || 
+        (c.phone && c.phone.includes(q)) ||
+        (c.city && c.city.toLowerCase().includes(q)) ||
+        (c.assigned_to_name && c.assigned_to_name.toLowerCase().includes(q))
+      );
+    }
+
+    // Filtro por Status
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'confirmed') {
+        filtered = filtered.filter(c => c.status === 'user_confirmed' || c.status === 'confirmed');
+      } else {
+        filtered = filtered.filter(c => c.status === statusFilter);
+      }
+    }
+
+    renderTable(filtered);
   }
 
   function renderTable(list) {
@@ -236,13 +511,13 @@ export function renderContactsView(container, currentUser, onNavigate) {
     if (sentEl) sentEl.textContent = confirmedCount;
     if (rateEl) rateEl.textContent = `${rate}%`;
     if (progBar) progBar.style.width = `${rate}%`;
-    if (countLabel) countLabel.textContent = `Mostrando ${list.length} contato(s)`;
+    if (countLabel) countLabel.textContent = `Mostrando ${list.length} contato(s) nesta seleção`;
 
     if (list.length === 0) {
       tbody.innerHTML = `
         <tr>
           <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem;">
-            Nenhum contato encontrado. Clique em <strong>Adicionar Contato</strong> para começar.
+            Nenhum contato encontrado nesta aba ou filtro. Clique em <strong>Adicionar Contato</strong> ou selecione outra aba.
           </td>
         </tr>
       `;
@@ -269,14 +544,14 @@ export function renderContactsView(container, currentUser, onNavigate) {
             </div>
           </td>
           <td style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem;">${c.phone}</td>
-          <td style="color: var(--text-muted); font-size: 0.85rem;">${c.company || '—'}</td>
+          <td style="color: var(--text-muted); font-size: 0.85rem;">${c.city || c.company || '—'}</td>
           ${!isMember ? `
-            <td style="font-size: 0.82rem; color: var(--text-main); font-weight: 500;">
-              ${c.assigned_to_name || (c.assigned_to === currentUser.uid ? 'Você' : 'Atribuído')}
+            <td style="font-size: 0.82rem; color: var(--text-main); font-weight: 600;">
+              👤 ${c.assigned_to_name || (c.assigned_to === currentUser.uid ? 'Você' : 'Não Atribuído')}
             </td>
           ` : ''}
           <td>${statusBadge}</td>
-          ${isCoordinator ? `
+          ${!isMember ? `
             <td style="text-align: right;">
               <button class="btn-reassign-action btn-outline-white" data-id="${c.id}" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
                 Reatribuir
@@ -297,46 +572,31 @@ export function renderContactsView(container, currentUser, onNavigate) {
     });
   }
 
-  // Subscribe de acordo com o papel
-  let unsubscribe = null;
-  if (isAdmin) {
-    unsubscribe = subscribeToAllContacts((realContacts) => {
-      contacts = realContacts;
-      renderTable(contacts);
+  // Listeners de filtro de status
+  container.querySelectorAll('#status-filter-buttons .status-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      statusFilter = btn.getAttribute('data-status');
+      container.querySelectorAll('#status-filter-buttons .status-btn').forEach(b => {
+        if (b === btn) {
+          b.style.background = '#1D4ED8';
+          b.style.color = '#FFFFFF';
+          b.style.border = 'none';
+          b.style.fontWeight = '700';
+        } else {
+          b.style.background = '#FFFFFF';
+          b.style.color = 'var(--text-main)';
+          b.style.border = '1px solid var(--border-color)';
+          b.style.fontWeight = '600';
+        }
+      });
+      applyFiltersAndRender();
     });
-  } else if (isCoordinator) {
-    unsubscribe = subscribeToTeamContacts(currentUser?.team_id || null, (realContacts) => {
-      contacts = realContacts;
-      renderTable(contacts);
-    });
-  } else {
-    unsubscribe = subscribeToOperatorContacts(currentUser?.uid, (realContacts) => {
-      contacts = realContacts;
-      renderTable(contacts);
-    });
-  }
-
-  // Carrega membros da equipe para o dropdown de atribuição
-  const unsubMembers = subscribeToTeamMembers(currentUser?.team_id, isCoordinator ? currentUser.uid : null, (members) => {
-    teamMembers = members;
-    updateAssigneesSelect();
   });
 
-  // Busca e Filtros
+  // Busca por texto
   container.querySelector('#contacts-search')?.addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase();
-    renderTable(contacts.filter(c => c.name.toLowerCase().includes(q) || c.phone.includes(q)));
-  });
-
-  container.querySelector('#btn-filter-all')?.addEventListener('click', () => renderTable(contacts));
-  container.querySelector('#btn-filter-pending')?.addEventListener('click', () => {
-    renderTable(contacts.filter(c => c.status === 'pending'));
-  });
-  container.querySelector('#btn-filter-opened')?.addEventListener('click', () => {
-    renderTable(contacts.filter(c => c.status === 'opened'));
-  });
-  container.querySelector('#btn-filter-confirmed')?.addEventListener('click', () => {
-    renderTable(contacts.filter(c => c.status === 'user_confirmed' || c.status === 'confirmed'));
+    searchQuery = e.target.value;
+    applyFiltersAndRender();
   });
 
   container.querySelector('#btn-goto-import')?.addEventListener('click', () => onNavigate('import'));
@@ -354,7 +614,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
     const company = container.querySelector('#input-contact-company').value.trim();
     const assignSel = container.querySelector('#select-contact-assignee');
     const assignedUid = assignSel ? assignSel.value : currentUser.uid;
-    const assignedName = assignSel ? assignSel.options[assignSel.selectedIndex]?.text : currentUser.name;
+    const assignedName = assignSel ? assignSel.options[assignSel.selectedIndex]?.text.replace(/ \(.*\)/, '') : currentUser.name;
 
     const saveBtn = container.querySelector('#btn-save-contact-submit');
     if (saveBtn) {
@@ -366,7 +626,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
       await saveContactsBatch([{
         name,
         phone,
-        company,
+        city: company,
         tenant_id: currentUser.tenant_id || 'tenant_main',
         team_id: currentUser.team_id || null,
         assigned_to: assignedUid,
@@ -397,7 +657,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
     const contactId = container.querySelector('#reassign-contact-id').value;
     const reassignSel = container.querySelector('#select-reassign-member');
     const newUid = reassignSel.value;
-    const newName = reassignSel.options[reassignSel.selectedIndex]?.text;
+    const newName = reassignSel.options[reassignSel.selectedIndex]?.text.replace(/ \(.*\)/, '');
 
     try {
       await reassignContactInFirestore(contactId, newUid, newName);
@@ -409,8 +669,55 @@ export function renderContactsView(container, currentUser, onNavigate) {
     }
   });
 
+  // Subscriptions em tempo real
+  let unsubContacts = null;
+  let unsubTeams = null;
+  let unsubUsers = null;
+  let unsubMembers = null;
+
+  if (isAdmin) {
+    unsubContacts = subscribeToAllContacts((realContacts) => {
+      allContacts = realContacts;
+      renderAdminCoordinatorTabs();
+      renderLeaderTabs();
+      applyFiltersAndRender();
+    });
+
+    unsubTeams = subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
+      allTeams = teams;
+      renderAdminCoordinatorTabs();
+    });
+
+    unsubUsers = subscribeToAllUsers((users) => {
+      allUsers = users;
+      renderAdminCoordinatorTabs();
+      renderLeaderTabs();
+      updateAssigneesSelect();
+    });
+  } else if (isCoordinator) {
+    unsubContacts = subscribeToTeamContacts(currentUser?.team_id || null, (realContacts) => {
+      allContacts = realContacts;
+      renderLeaderTabs();
+      applyFiltersAndRender();
+    });
+
+    unsubMembers = subscribeToTeamMembers(currentUser?.team_id, currentUser?.uid, (members) => {
+      teamMembers = members;
+      renderLeaderTabs();
+      updateAssigneesSelect();
+    });
+  } else {
+    unsubContacts = subscribeToOperatorContacts(currentUser?.uid, (realContacts) => {
+      allContacts = realContacts;
+      applyFiltersAndRender();
+    });
+  }
+
   return () => {
-    if (unsubscribe) unsubscribe();
+    if (unsubContacts) unsubContacts();
+    if (unsubTeams) unsubTeams();
+    if (unsubUsers) unsubUsers();
     if (unsubMembers) unsubMembers();
   };
 }
+
