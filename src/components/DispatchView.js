@@ -265,14 +265,30 @@ export function renderDispatchView(container, currentUser) {
     const mainContent = container.querySelector('#dispatch-view-main-content');
     if (!mainContent) return;
 
+    const isMember = currentUser?.role === 'member';
+    const isCoordinator = currentUser?.role === 'coordinator';
+    const isAdmin = currentUser?.role === 'admin';
+
+    const historyTitle = isAdmin 
+      ? 'Histórico Geral de Mensagens Enviadas (Toda a Organização)'
+      : isCoordinator
+      ? `Histórico de Mensagens da Equipe (${currentUser?.team_name || 'Minha Equipe'})`
+      : 'Meu Histórico Individual de Mensagens Enviadas';
+
+    const historySubtitle = isAdmin
+      ? 'Acompanhe todos os disparos executados por todos os coordenadores e líderes da campanha.'
+      : isCoordinator
+      ? 'Acompanhe todos os disparos executados por você e pelos líderes da sua equipe.'
+      : 'Acompanhe o registro cronológico de todos os disparos efetuados pelo seu usuário.';
+
     mainContent.innerHTML = `
       <div class="main-panel-card" style="border-radius: var(--radius-lg); background: #FFFFFF;">
         <!-- Header Histórico -->
         <div style="padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 1rem;">
           <div>
-            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Histórico Geral de Mensagens Enviadas</h3>
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">${historyTitle}</h3>
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
-              Registro cronológico de todos os disparos executados e confirmados via WhatsApp.
+              ${historySubtitle}
             </p>
           </div>
 
@@ -809,8 +825,12 @@ export function renderDispatchView(container, currentUser) {
     if (activeTab === 'queue') renderQueueTable();
   });
 
-  // Subscribe ao Histórico de Mensagens (/messages)
-  const unsubHistory = subscribeToMessagesHistory(currentUser?.role === 'admin' ? null : currentUser?.team_id, (msgs) => {
+  // Subscribe ao Histórico de Mensagens (/messages) respeitando a hierarquia
+  const unsubHistory = subscribeToMessagesHistory({
+    role: currentUser?.role,
+    teamId: currentUser?.team_id,
+    userUid: currentUser?.uid
+  }, (msgs) => {
     historyMessages = msgs;
     const badge = container.querySelector('#history-badge-count');
     if (badge) badge.textContent = historyMessages.length;

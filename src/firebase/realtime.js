@@ -495,17 +495,39 @@ export function subscribeToTemplates(callback) {
 }
 
 /**
- * Escuta o histórico de mensagens enviadas (/messages).
+ * Escuta o histórico de mensagens enviadas (/messages) respeitando estritamente a hierarquia:
+ * - Admin: Vê o histórico geral (todas as mensagens).
+ * - Coordenador: Vê as mensagens da sua equipe (suas e dos membros da equipe).
+ * - Líder / Membro da Equipe: Vê estritamente apenas o seu próprio histórico de envios (user_uid).
+ *
+ * @param {Object|string|null} filter - Objeto { role, teamId, userUid }, string teamId, ou null
+ * @param {Function} callback
  */
-export function subscribeToMessagesHistory(teamId, callback) {
+export function subscribeToMessagesHistory(filter, callback) {
   try {
     const q = query(collection(db, 'messages'), limit(300));
 
     const unsub = onSnapshot(q, (snapshot) => {
       let msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (teamId) {
-        msgs = msgs.filter(m => m.team_id === teamId || !m.team_id || m.team_id === 'team_global');
+
+      if (typeof filter === 'object' && filter !== null) {
+        const { role, teamId, userUid } = filter;
+        if (role === 'member' && userUid) {
+          // Líder / Membro: Vê apenas os seus próprios envios
+          msgs = msgs.filter(m => m.user_uid === userUid);
+        } else if (role === 'coordinator') {
+          // Coordenador: Vê envios da sua equipe ou disparados por ele próprio
+          msgs = msgs.filter(m => (teamId && m.team_id === teamId) || m.user_uid === userUid);
+        } else if (role === 'admin') {
+          // Admin: Vê geral (ou filtra por equipe se especificado)
+          if (teamId) {
+            msgs = msgs.filter(m => m.team_id === teamId);
+          }
+        }
+      } else if (typeof filter === 'string' && filter.trim().length > 0) {
+        msgs = msgs.filter(m => m.team_id === filter || !m.team_id || m.team_id === 'team_global');
       }
+
       // Ordena por data decrescente (sent_at || confirmed_at || created_at || opened_at)
       msgs.sort((a, b) => {
         const getTime = (obj) => {
