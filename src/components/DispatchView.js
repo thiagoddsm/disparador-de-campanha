@@ -4,6 +4,7 @@ import {
   subscribeToTeamContacts, 
   subscribeToAllContacts, 
   subscribeToMessagesHistory, 
+  subscribeToTemplates,
   resetContactStatus, 
   resetTeamContactsStatus 
 } from '../firebase/realtime.js';
@@ -12,7 +13,8 @@ import { getEvolutionConnectionState, resolveSpintax, sanitizeInstanceSlug } fro
 export function renderDispatchView(container, currentUser) {
   let contacts = [];
   let historyMessages = [];
-  let templateText = 'Olá {nome}, temos uma novidade especial para {empresa}!';
+  let availableTemplates = [];
+  let templateText = localStorage.getItem('dispatch_active_template') || 'Olá {nome}, temos uma novidade especial para {empresa}!';
   let activeTab = 'queue'; // 'queue' | 'history'
   
   const isMember = currentUser?.role === 'member';
@@ -114,6 +116,16 @@ export function renderDispatchView(container, currentUser) {
               <button id="btn-preview-spintax" class="btn-outline-white" style="font-size: 0.72rem; padding: 0.25rem 0.55rem; font-weight: 600;">
                 🎲 Gerar Variação
               </button>
+            </div>
+
+            <!-- Seletor Rápido de Template -->
+            <div style="margin-bottom: 0.85rem; background: #F8FAFC; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.65rem 0.85rem;">
+              <label for="select-quick-template" style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
+                📄 Escolher Modelo de Mensagem (Template):
+              </label>
+              <select id="select-quick-template" class="form-control" style="font-size: 0.82rem; background: #FFFFFF; cursor: pointer; width: 100%;">
+                <option value="">-- Carregando Templates... --</option>
+              </select>
             </div>
 
             <div class="note-box-blue" style="margin-bottom: 0.75rem;">
@@ -606,9 +618,30 @@ export function renderDispatchView(container, currentUser) {
     const templateInput = container.querySelector('#dispatch-template-input');
     templateInput?.addEventListener('input', (e) => {
       templateText = e.target.value;
+      localStorage.setItem('dispatch_active_template', templateText);
       const counter = container.querySelector('#char-counter');
       if (counter) counter.textContent = `${templateText.length}/1024 char`;
     });
+
+    // Seletor Rápido de Template
+    const templateSelect = container.querySelector('#select-quick-template');
+    if (templateSelect) {
+      const filtered = availableTemplates.filter(t => t.is_global || t.scope === 'global' || t.team_id === currentUser?.team_id || !t.team_id);
+      templateSelect.innerHTML = `
+        <option value="">-- Selecione um Modelo de Mensagem --</option>
+        ${filtered.map(t => `<option value="${t.id}">📄 ${t.title} (${t.is_global || t.scope === 'global' ? 'Global' : 'Equipe'})</option>`).join('')}
+      `;
+      templateSelect.addEventListener('change', (e) => {
+        const chosen = availableTemplates.find(t => t.id === e.target.value);
+        if (chosen) {
+          templateText = chosen.body;
+          if (templateInput) templateInput.value = chosen.body;
+          localStorage.setItem('dispatch_active_template', chosen.body);
+          const counter = container.querySelector('#char-counter');
+          if (counter) counter.textContent = `${templateText.length}/1024 char`;
+        }
+      });
+    }
 
     // Preview Spintax
     container.querySelector('#btn-preview-spintax')?.addEventListener('click', () => {
@@ -889,12 +922,26 @@ export function renderDispatchView(container, currentUser) {
     if (activeTab === 'history') renderHistoryTab();
   });
 
+  // Subscribe aos Templates de Mensagem em tempo real
+  const unsubTemplates = subscribeToTemplates((list) => {
+    availableTemplates = list;
+    const templateSelect = container.querySelector('#select-quick-template');
+    if (templateSelect) {
+      const filtered = availableTemplates.filter(t => t.is_global || t.scope === 'global' || t.team_id === currentUser?.team_id || !t.team_id);
+      templateSelect.innerHTML = `
+        <option value="">-- Selecione um Modelo de Mensagem --</option>
+        ${filtered.map(t => `<option value="${t.id}">📄 ${t.title} (${t.is_global || t.scope === 'global' ? 'Global' : 'Equipe'})</option>`).join('')}
+      `;
+    }
+  });
+
   // Render inicial
   renderQueueTab();
 
   return () => {
     if (unsubContacts) unsubContacts();
     if (unsubHistory) unsubHistory();
+    if (unsubTemplates) unsubTemplates();
   };
 }
 

@@ -474,6 +474,15 @@ export async function saveTemplateInFirestore(templateId, templateData) {
 }
 
 /**
+ * Exclui um template de mensagem no Firestore.
+ */
+export async function deleteTemplateFromFirestore(templateId) {
+  if (!templateId) return;
+  const docRef = doc(db, 'templates', templateId);
+  await deleteDoc(docRef);
+}
+
+/**
  * Escuta os templates cadastrados no tenant.
  */
 export function subscribeToTemplates(callback) {

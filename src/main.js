@@ -10,6 +10,7 @@ import { renderContactsView } from './components/ContactsView.js';
 import { renderDispatchView } from './components/DispatchView.js';
 import { renderCsvImportWizard } from './components/CsvImportWizard.js';
 import { renderEvolutionManager } from './components/EvolutionManager.js';
+import { renderTemplatesManager } from './components/TemplatesManager.js';
 import { renderSettingsGeneral } from './components/SettingsGeneral.js';
 import { renderRolesManagement } from './components/RolesManagement.js';
 import { renderSecuritySettings } from './components/SecuritySettings.js';
@@ -276,6 +277,11 @@ function renderProtectedApp(currentUser) {
     });
   } else if (currentView === 'evolution') {
     activeCleanup = renderEvolutionManager(mainMount, currentUserState);
+  } else if (currentView === 'templates') {
+    activeCleanup = renderTemplatesManager(mainMount, currentUserState, (newView) => {
+      currentView = newView;
+      renderProtectedApp(currentUserState);
+    });
   } else if (currentView === 'settings') {
     activeCleanup = renderSettingsGeneral(mainMount, currentUserState, (newView) => {
       currentView = newView;
