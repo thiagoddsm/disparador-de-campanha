@@ -23,10 +23,10 @@ export function renderDispatchView(container, currentUser) {
   let isApiConnected = false;
   let connectedPhone = null;
 
-  // Anti-Ban state
+  // Anti-Ban state (Padrão: 1 mensagem a cada 1 minuto com Jitter humano de 50s a 70s)
   let isBatchRunning = false;
-  let batchMinDelay = 6;  // segundos
-  let batchMaxDelay = 15; // segundos
+  let batchMinDelay = 50; // segundos
+  let batchMaxDelay = 70; // segundos
   let enableComposing = true;
 
   container.innerHTML = `
@@ -43,7 +43,7 @@ export function renderDispatchView(container, currentUser) {
             ` : ''}
           </div>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
-            Dispare mensagens personalizadas com regras Anti-Ban (Spintax, Jitter e Digitação) e acompanhe o histórico completo.
+            Dispare mensagens personalizadas com cadência segura (~1 min por mensagem) e proteção Anti-Ban (Spintax, Jitter e Digitação).
           </p>
         </div>
 
@@ -134,27 +134,44 @@ export function renderDispatchView(container, currentUser) {
 
           <!-- Anti-Ban Controls Card -->
           <div class="main-panel-card" style="padding: 1.25rem; border-radius: var(--radius-lg); background: #FFFFFF;">
-            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              </svg>
-              <strong style="font-size: 0.9rem; color: var(--text-main);">Configurações Anti-Ban (Oiko Pattern)</strong>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                <strong style="font-size: 0.9rem; color: var(--text-main);">Cadência Anti-Ban</strong>
+              </div>
+              <span class="pill-btn" style="background: #DCFCE7; color: #15803D; font-size: 0.7rem; font-weight: 700;">Seguro</span>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 0.85rem; font-size: 0.82rem;">
               <div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
-                  <span style="color: var(--text-main); font-weight: 600;">Jitter / Delay Aleatório:</span>
-                  <span id="delay-label" style="font-weight: 700; color: var(--primary-blue);">${batchMinDelay}s - ${batchMaxDelay}s</span>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.35rem;">
+                  <span style="color: var(--text-main); font-weight: 600;">Intervalo entre Mensagens:</span>
+                  <span id="delay-label" style="font-weight: 700; color: var(--primary-blue);">${batchMinDelay}s - ${batchMaxDelay}s (~1 min)</span>
                 </div>
-                <input type="range" id="slider-jitter-delay" min="3" max="30" value="${batchMaxDelay}" style="width: 100%; accent-color: var(--primary-blue); cursor: pointer;">
-                <span style="font-size: 0.72rem; color: var(--text-muted);">Intervalo dinâmico entre cada envio para proteger o chip de bloqueios.</span>
+                
+                <!-- Cadence Presets -->
+                <div style="display: flex; gap: 0.4rem; margin-bottom: 0.6rem; flex-wrap: wrap;">
+                  <button type="button" class="btn-cadence-preset pill-btn" data-sec="60" style="background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; font-size: 0.72rem; font-weight: 700; padding: 3px 8px; cursor: pointer;">
+                    ☕ 1 min / msg (Padrão)
+                  </button>
+                  <button type="button" class="btn-cadence-preset pill-btn" data-sec="30" style="background: #F8FAFC; color: var(--text-main); border: 1px solid var(--border-color); font-size: 0.72rem; font-weight: 600; padding: 3px 8px; cursor: pointer;">
+                    ⏱️ 30s / msg
+                  </button>
+                  <button type="button" class="btn-cadence-preset pill-btn" data-sec="120" style="background: #F8FAFC; color: var(--text-main); border: 1px solid var(--border-color); font-size: 0.72rem; font-weight: 600; padding: 3px 8px; cursor: pointer;">
+                    🛡️ 2 min / msg
+                  </button>
+                </div>
+
+                <input type="range" id="slider-jitter-delay" min="15" max="180" step="5" value="60" style="width: 100%; accent-color: var(--primary-blue); cursor: pointer;">
+                <span style="font-size: 0.72rem; color: var(--text-muted);">Disparo suave e pausado para proteger o chip de qualquer restrição.</span>
               </div>
 
               <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-light); padding-top: 0.6rem;">
                 <div>
                   <div style="font-weight: 600; color: var(--text-main);">Simular Digitação (Composing)</div>
-                  <div style="font-size: 0.72rem; color: var(--text-muted);">Mostra "digitando..." por 2.5s antes de enviar</div>
+                  <div style="font-size: 0.72rem; color: var(--text-muted);">Mostra "digitando..." por 2.5s antes de cada envio</div>
                 </div>
                 <input type="checkbox" id="check-composing" ${enableComposing ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: var(--primary-blue); cursor: pointer;">
               </div>
@@ -533,13 +550,36 @@ export function renderDispatchView(container, currentUser) {
       }
     });
 
-    // Jitter Slider
+    // Jitter Slider & Cadence Presets
     const jitterSlider = container.querySelector('#slider-jitter-delay');
     const delayLabel = container.querySelector('#delay-label');
+
+    function applyCadence(targetSec) {
+      batchMinDelay = Math.max(10, Math.floor(targetSec * 0.85));
+      batchMaxDelay = Math.max(batchMinDelay + 5, Math.floor(targetSec * 1.15));
+      const minText = targetSec >= 60 ? `~${Math.round(targetSec / 60)} min` : `${targetSec}s`;
+      if (delayLabel) delayLabel.textContent = `${batchMinDelay}s - ${batchMaxDelay}s (${minText} / msg)`;
+      if (jitterSlider) jitterSlider.value = targetSec;
+    }
+
     jitterSlider?.addEventListener('input', (e) => {
-      batchMaxDelay = parseInt(e.target.value, 10);
-      batchMinDelay = Math.max(3, Math.floor(batchMaxDelay * 0.4));
-      if (delayLabel) delayLabel.textContent = `${batchMinDelay}s - ${batchMaxDelay}s`;
+      const targetSec = parseInt(e.target.value, 10);
+      applyCadence(targetSec);
+    });
+
+    container.querySelectorAll('.btn-cadence-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const sec = parseInt(btn.getAttribute('data-sec'), 10);
+        applyCadence(sec);
+        container.querySelectorAll('.btn-cadence-preset').forEach(b => {
+          b.style.background = '#F8FAFC';
+          b.style.color = 'var(--text-main)';
+          b.style.borderColor = 'var(--border-color)';
+        });
+        btn.style.background = '#EFF6FF';
+        btn.style.color = '#1D4ED8';
+        btn.style.borderColor = '#BFDBFE';
+      });
     });
 
     // Search Input

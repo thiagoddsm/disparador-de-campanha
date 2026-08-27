@@ -8,11 +8,11 @@ export const EVOLUTION_CONFIG = {
   apiKey: import.meta.env.VITE_EVOLUTION_API_KEY || '554C767EA3D2-4221-AB6A-C126C68A657E',
   defaultInstance: import.meta.env.VITE_EVOLUTION_DEFAULT_INSTANCE || 'IBM',
   antiBan: {
-    minDelayMs: 4000,       // Delay mínimo entre disparos (4s)
-    maxDelayMs: 12000,      // Delay máximo aleatório / Jitter (12s)
+    minDelayMs: 50000,      // Delay mínimo entre disparos (~50s)
+    maxDelayMs: 70000,      // Delay máximo aleatório / Jitter (~70s -> média de 1 minuto por mensagem)
     typingSimulationMs: 2500, // Simulação de "Digitando..." antes de enviar
-    batchCoolingEvery: 25,  // Pausa de resfriamento a cada 25 mensagens
-    batchCoolingMs: 180000, // Pausa de 3 minutos
+    batchCoolingEvery: 20,  // Pausa de resfriamento a cada 20 mensagens
+    batchCoolingMs: 120000, // Pausa de 2 minutos
     enableSpintax: true     // Variação de sinônimos dinâmica
   }
 };
