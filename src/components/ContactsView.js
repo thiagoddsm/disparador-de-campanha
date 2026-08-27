@@ -180,7 +180,8 @@ export function renderContactsView(container, currentUser, onNavigate) {
           </div>
         </div>
 
-        <div class="table-container">
+        <!-- Tabela Desktop -->
+        <div class="table-container desktop-only">
           <table class="panel-table">
             <thead>
               <tr>
@@ -196,6 +197,11 @@ export function renderContactsView(container, currentUser, onNavigate) {
               <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem;">Carregando contatos...</td></tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Lista Mobile Estilo WhatsApp -->
+        <div class="mobile-only" id="contacts-mobile-list" style="display: flex; flex-direction: column; gap: 0.75rem; padding: 0.75rem;">
+          <div style="text-align: center; color: var(--text-muted); padding: 2rem;">Carregando contatos...</div>
         </div>
 
         <div style="padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); font-size: 0.82rem; color: var(--text-muted);">
@@ -513,6 +519,8 @@ export function renderContactsView(container, currentUser, onNavigate) {
     if (progBar) progBar.style.width = `${rate}%`;
     if (countLabel) countLabel.textContent = `Mostrando ${list.length} contato(s) nesta seleção`;
 
+    const mobileList = container.querySelector('#contacts-mobile-list');
+
     if (list.length === 0) {
       tbody.innerHTML = `
         <tr>
@@ -521,6 +529,15 @@ export function renderContactsView(container, currentUser, onNavigate) {
           </td>
         </tr>
       `;
+      if (mobileList) {
+        mobileList.innerHTML = `
+          <div style="text-align: center; background: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 12px; padding: 2rem 1rem; color: var(--text-muted);">
+            <div style="font-size: 2rem; margin-bottom: 0.4rem;">👥</div>
+            <strong>Nenhum contato encontrado.</strong>
+            <p style="font-size: 0.8rem; margin-top: 0.25rem;">Toque no botão verde acima para adicionar uma pessoa.</p>
+          </div>
+        `;
+      }
       return;
     }
 
@@ -561,6 +578,40 @@ export function renderContactsView(container, currentUser, onNavigate) {
         </tr>
       `;
     }).join('');
+
+    if (mobileList) {
+      mobileList.innerHTML = list.map(c => {
+        const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
+        const isOpened = c.status === 'opened';
+        const initials = (c.name || 'C').substring(0, 2).toUpperCase();
+
+        return `
+          <div class="wa-contact-card" style="background: #FFFFFF; padding: 1rem; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0;">
+              <div class="wa-avatar" style="width: 44px; height: 44px; border-radius: 50%; background: #008069; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem;">${initials}</div>
+              <div style="min-width: 0;">
+                <div style="font-weight: 800; font-size: 1.02rem; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${c.name}</div>
+                <div style="font-family: monospace; font-size: 0.88rem; color: #475569;">${c.phone}</div>
+                ${c.city || c.company ? `<div style="font-size: 0.75rem; color: #94A3B8;">📍 ${c.city || c.company}</div>` : ''}
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+              ${isConfirmed 
+                ? '<span class="pill-btn" style="background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 0.75rem; padding: 2px 8px; border-radius: 99px;">✓ Enviado</span>'
+                : isOpened
+                ? '<span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-weight: 700; font-size: 0.72rem; padding: 2px 8px; border-radius: 99px;">Aberto</span>'
+                : '<span class="pill-btn" style="background: #F1F5F9; color: #64748B; font-weight: 600; font-size: 0.72rem; padding: 2px 8px; border-radius: 99px;">Pendente</span>'
+              }
+              ${!isMember ? `
+                <button class="btn-reassign-action btn-outline-white" data-id="${c.id}" style="font-size: 0.7rem; padding: 2px 8px;">
+                  Transferir
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
 
     // Listeners de Reatribuição
     container.querySelectorAll('.btn-reassign-action').forEach(btn => {

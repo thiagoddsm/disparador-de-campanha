@@ -38,86 +38,82 @@ export function renderEvolutionManager(container, currentUser) {
     <div class="page-content">
       <div style="margin-bottom: 1.75rem;">
         <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.72rem;">
-            ${isAdmin ? 'Governança Global' : isCoordinator ? 'Liderança' : 'Operador de Disparos'}
+          <span class="pill-btn" style="background: #E7FFDB; color: #128C7E; font-weight: 700; font-size: 0.75rem;">
+            ${isAdmin ? 'Governança Global' : isCoordinator ? 'Liderança' : 'Operador'}
           </span>
-          <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">
-            Conexão WhatsApp & Evolution API
+          <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">
+            Conexão WhatsApp
           </h2>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
-          Conecte seu WhatsApp para realizar disparos diretos via API com proteção Anti-Ban e Spintax.
+          Conecte seu WhatsApp em 3 passos simples para enviar mensagens direto pelo aplicativo.
         </p>
       </div>
 
+      <!-- Simple 3-Step Guide for Seniors -->
+      <div style="background: #E7FFDB; border: 1.5px solid #25D366; border-radius: var(--radius-lg); padding: 1.15rem; margin-bottom: 1.5rem;">
+        <div style="font-weight: 800; color: #075E54; font-size: 0.95rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+          Como Conectar em 3 Passos Fáceis:
+        </div>
+        <ol style="margin-left: 1.25rem; font-size: 0.88rem; color: #0F5132; line-height: 1.6; font-weight: 500;">
+          <li>Toque no botão verde grande <strong>"Gerar QR Code de Conexão"</strong>.</li>
+          <li>No seu celular, abra o <strong>WhatsApp</strong> &gt; Menu (3 pontinhos ou Configurações) &gt; <strong>Aparelhos Conectados</strong>.</li>
+          <li>Toque em <strong>Conectar um aparelho</strong> e aponte a câmera para o QR Code abaixo!</li>
+        </ol>
+      </div>
+
       <!-- Main Instance Connection Card -->
-      <div class="main-panel-card" style="padding: 1.5rem; margin-bottom: 2rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+      <div class="main-panel-card" style="padding: 1.25rem; margin-bottom: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
           <div>
-            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">${roleTitle}</h3>
+            <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-main);">${roleTitle}</h3>
             <span style="font-size: 0.8rem; color: var(--text-muted);" id="instance-name-display">Instância: <strong>${activeInstanceName}</strong></span>
           </div>
 
           <div id="connection-status-badge">
-            <span class="pill-btn" style="background: #FEF3C7; color: #B45309;">Verificando Status...</span>
+            <span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-size: 0.82rem; font-weight: 700; padding: 0.35rem 0.85rem;">Verificando Status...</span>
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; align-items: start;">
-          <!-- Left: Instance Form & Actions -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; align-items: start;">
+          <!-- Left: Actions & Optional Settings -->
           <div>
-            <div style="margin-bottom: 1.25rem;">
-              <label for="input-instance-slug" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.35rem;">
-                Identificador da Instância (Slug)
-              </label>
-              <input type="text" id="input-instance-slug" name="instance_slug" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-family: monospace;" value="${activeInstanceName}" placeholder="ex: ${defaultHierarchicalName}">
-              <div style="display: flex; gap: 0.4rem; align-items: center; margin-top: 0.45rem; flex-wrap: wrap;">
-                <span style="font-size: 0.72rem; color: var(--text-muted);">Padrão Sugerido:</span>
-                <button type="button" id="btn-use-standard-slug" class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; cursor: pointer; font-size: 0.72rem; padding: 2px 8px; font-weight: 600;">
-                  ⚡ ${defaultHierarchicalName}
-                </button>
-              </div>
-            </div>
+            <button id="btn-generate-qr" class="btn-wa-action" style="margin-bottom: 0.75rem; font-size: 1rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+              </svg>
+              Gerar QR Code de Conexão
+            </button>
 
-            <!-- Global API Key Card -->
-            <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem 1rem; background: #F8FAFC; margin-bottom: 1.25rem;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <label for="input-api-key" style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">
-                  🔑 Token da Instância / Chave de Acesso (apikey)
-                </label>
-              </div>
-              <p style="font-size: 0.73rem; color: var(--text-muted); margin-bottom: 0.6rem; line-height: 1.3;">
-                Chave de comunicação com o servidor Evolution API:
-              </p>
-              <input type="password" id="input-api-key" name="api_key" class="topbar-search-input" style="width: 100%; font-size: 0.8rem; background: #FFFFFF; font-family: monospace; margin-bottom: 0.5rem;" value="${localStorage.getItem('evolution_api_key') || EVOLUTION_CONFIG.apiKey}" placeholder="Cole o token da sua instância aqui">
-              
-              <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-                <input type="text" id="input-api-url" name="api_url" class="topbar-search-input" style="flex: 1; font-size: 0.75rem; background: #FFFFFF;" value="${localStorage.getItem('evolution_api_url') || EVOLUTION_CONFIG.baseUrl}" placeholder="URL da Evolution API">
-                <button id="btn-save-api-config" class="btn-outline-white" style="font-size: 0.75rem; padding: 0.4rem 0.8rem; font-weight: 700;">
-                  Salvar Token
-                </button>
-              </div>
-            </div>
+            <button id="btn-disconnect-instance" class="btn-outline-white" style="width: 100%; color: #DC2626; border-color: #FECACA; font-weight: 600; padding: 0.65rem; margin-bottom: 1.25rem; font-size: 0.85rem;">
+              Desconectar meu WhatsApp
+            </button>
 
-            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-              <button id="btn-generate-qr" class="btn-green-action" style="font-weight: 700;">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-                </svg>
-                Criar Instância & Gerar QR Code
-              </button>
-
-              <button id="btn-disconnect-instance" class="btn-outline-white" style="color: #DC2626; border-color: #FECACA;">
-                Desconectar
-              </button>
-            </div>
+            <!-- Advanced Config (Collapsible) -->
+            <details style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.65rem 0.85rem; background: #F8FAFC; font-size: 0.8rem;">
+              <summary style="cursor: pointer; font-weight: 700; color: var(--text-muted);">
+                ⚙️ Configurações Avançadas de Servidor
+              </summary>
+              <div style="margin-top: 0.85rem;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">Identificador da Instância (Slug)</label>
+                <input type="text" id="input-instance-slug" class="topbar-search-input" style="width: 100%; margin-bottom: 0.65rem; background: white;" value="${activeInstanceName}">
+                
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">Chave da Instância (Token)</label>
+                <input type="password" id="input-api-key" class="topbar-search-input" style="width: 100%; margin-bottom: 0.65rem; background: white;" value="${localStorage.getItem('evolution_api_key') || EVOLUTION_CONFIG.apiKey}">
+                
+                <input type="text" id="input-api-url" class="topbar-search-input" style="width: 100%; margin-bottom: 0.65rem; background: white; font-size: 0.75rem;" value="${localStorage.getItem('evolution_api_url') || EVOLUTION_CONFIG.baseUrl}">
+                <button id="btn-save-api-config" class="btn-outline-white" style="width: 100%; font-size: 0.75rem; padding: 0.4rem; font-weight: 700;">Salvar Configuração</button>
+              </div>
+            </details>
           </div>
 
           <!-- Right: Live QR Code Viewer -->
-          <div style="text-align: center; border: 1px dashed var(--border-color); border-radius: var(--radius-lg); padding: 1.5rem; background: #F8FAFC;" id="qr-container">
+          <div style="text-align: center; border: 2px dashed #CBD5E1; border-radius: var(--radius-lg); padding: 1.5rem; background: #F8FAFC;" id="qr-container">
             <div id="qr-content-mount">
-              <div style="color: var(--text-muted); font-size: 0.85rem; padding: 2rem 0;">
-                Clique em <strong>Criar Instância & Gerar QR Code</strong> para parear seu WhatsApp.
+              <div style="color: var(--text-muted); font-size: 0.9rem; padding: 2rem 0; line-height: 1.5;">
+                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📷</div>
+                Toque no botão verde <strong>"Gerar QR Code de Conexão"</strong> acima para conectar seu WhatsApp.
               </div>
             </div>
           </div>

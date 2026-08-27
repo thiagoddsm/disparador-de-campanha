@@ -226,8 +226,8 @@ export function renderDispatchView(container, currentUser) {
             </div>
           </div>
 
-          <!-- Tabela de Fila -->
-          <div class="table-container" style="flex: 1;">
+          <!-- Tabela de Fila Desktop -->
+          <div class="table-container desktop-only" style="flex: 1;">
             <table class="panel-table">
               <thead>
                 <tr>
@@ -242,13 +242,18 @@ export function renderDispatchView(container, currentUser) {
             </table>
           </div>
 
+          <!-- Lista Mobile Estilo WhatsApp (Contatos com Toque Fácil) -->
+          <div class="mobile-only" id="dispatch-mobile-list" style="display: flex; flex-direction: column; gap: 0.75rem; padding: 0.75rem;">
+            <div style="text-align: center; color: var(--text-muted); padding: 2rem;">Carregando pessoas para envio...</div>
+          </div>
+
           <!-- Footer com Ação em Lote -->
-          <div style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-muted); flex-wrap: wrap; gap: 0.75rem;">
-            <span id="dispatch-count-label">Mostrando 0 contato(s)</span>
+          <div style="padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-muted); flex-wrap: wrap; gap: 0.75rem; background: #FAFAFA;">
+            <span id="dispatch-count-label" style="font-weight: 600;">Mostrando 0 contato(s)</span>
             
-            <button id="btn-start-batch-dispatch" class="btn-green-action" style="font-size: 0.82rem; padding: 0.5rem 1rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-              🚀 Disparar Fila em Lote (Anti-Ban)
+            <button id="btn-start-batch-dispatch" class="btn-wa-action" style="font-size: 0.95rem; padding: 0.75rem 1.25rem; min-height: 48px; width: auto;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              🚀 Disparar para Todos (Automático)
             </button>
           </div>
 
@@ -385,6 +390,7 @@ export function renderDispatchView(container, currentUser) {
 
   function renderQueueTable(filterQuery = '') {
     const tbody = container.querySelector('#dispatch-tbody');
+    const mobileList = container.querySelector('#dispatch-mobile-list');
     const countLabel = container.querySelector('#dispatch-count-label');
     if (!tbody) return;
 
@@ -400,6 +406,15 @@ export function renderDispatchView(container, currentUser) {
           </td>
         </tr>
       `;
+      if (mobileList) {
+        mobileList.innerHTML = `
+          <div style="text-align: center; background: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 12px; padding: 2rem 1rem; color: var(--text-muted);">
+            <div style="font-size: 2rem; margin-bottom: 0.4rem;">🎉</div>
+            <strong>Todos os contatos foram disparados!</strong>
+            <p style="font-size: 0.8rem; margin-top: 0.25rem;">Nenhum contato pendente na sua fila no momento.</p>
+          </div>
+        `;
+      }
       return;
     }
 
@@ -459,6 +474,43 @@ export function renderDispatchView(container, currentUser) {
         </tr>
       `;
     }).join('');
+
+    if (mobileList) {
+      mobileList.innerHTML = filtered.map(c => {
+        const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
+        const isOpened = c.status === 'opened';
+        const initial = (c.name || 'C').charAt(0).toUpperCase();
+
+        return `
+          <div class="wa-contact-card" style="background: #FFFFFF; padding: 1rem; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0;">
+              <div class="wa-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: #EFF6FF; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #1D4ED8;">${initial}</div>
+              <div style="min-width: 0;">
+                <div style="font-weight: 800; font-size: 1rem; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${c.name}</div>
+                <div style="font-family: monospace; font-size: 0.85rem; color: #64748B;">${c.phone}</div>
+                ${c.company ? `<div style="font-size: 0.75rem; color: #94A3B8;">${c.company}</div>` : ''}
+              </div>
+            </div>
+            <div>
+              ${isConfirmed ? `
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                  <span class="pill-btn" style="background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 0.75rem; padding: 2px 8px; border-radius: 99px;">✓ Enviado</span>
+                  <button class="btn-resend-contact btn-outline-white" data-id="${c.id}" style="font-size: 0.72rem; padding: 2px 6px;">🔁</button>
+                </div>
+              ` : isOpened && selectedStrategy === 'wa.me' ? `
+                <button class="btn-confirm-now" data-id="${c.id}" data-msg-id="${c.last_message_id || ''}" style="background: #008069; color: white; border: none; border-radius: 99px; font-size: 0.82rem; padding: 0.6rem 0.9rem; font-weight: 700;">
+                  Confirmar ✓
+                </button>
+              ` : `
+                <button class="btn-send-now" data-id="${c.id}" data-name="${c.name}" data-phone="${c.phone}" data-company="${c.company || ''}" style="background: #25D366; color: white; border: none; border-radius: 99px; font-size: 0.85rem; padding: 0.65rem 1rem; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 5px rgba(37, 211, 102, 0.3);">
+                  🟢 Enviar
+                </button>
+              `}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
 
     // Listener de Disparo Individual
     container.querySelectorAll('.btn-send-now').forEach(btn => {
