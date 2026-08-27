@@ -25,32 +25,11 @@ export async function syncUserProfile(
 ) {
   if (!firebaseUser) return null;
 
-  const isSuperAdmin = (firebaseUser.email || '').toLowerCase() === 'thiagoddsm@gmail.com';
   const userRef = doc(db, 'users', firebaseUser.uid);
-  
-  let snap = null;
-  try {
-    snap = await getDoc(userRef);
-  } catch (e) {
-    console.warn('Erro ao ler perfil no Firestore:', e);
-  }
+  const snap = await getDoc(userRef);
 
-  if (snap && snap.exists()) {
+  if (snap.exists()) {
     const data = snap.data();
-    
-    if (isSuperAdmin) {
-      if (!data.is_active || data.role !== 'admin') {
-        updateDoc(userRef, { is_active: true, role: 'admin' }).catch(() => {});
-      }
-      return { 
-        uid: snap.id, 
-        tenant_id: data.tenant_id || tenantId, 
-        ...data, 
-        role: 'admin', 
-        is_active: true,
-        name: data.name || 'Thiago Moura'
-      };
-    }
 
     if (data.is_active === false) {
       throw new Error('Seu acesso está desativado. Fale com um administrador.');
@@ -75,14 +54,16 @@ export async function syncUserProfile(
   const newProfile = {
     uid: firebaseUser.uid,
     tenant_id: tenantId,
-    name: firebaseUser.displayName || preProfile?.name || (isSuperAdmin ? 'Thiago Moura' : firebaseUser.email.split('@')[0]),
+    name: firebaseUser.displayName || preProfile?.name || firebaseUser.email.split('@')[0],
     email: firebaseUser.email.toLowerCase(),
-    role: isSuperAdmin ? 'admin' : (preProfile?.role || defaultRole),
-    team_id: isSuperAdmin ? null : (preProfile?.team_id || defaultTeam),
+    role: preProfile?.role || defaultRole,
+    team_id: preProfile?.team_id || defaultTeam,
     team_name: preProfile?.team_name || null,
     coordinator_uid: preProfile?.coordinator_uid || (coordinatorData ? coordinatorData.uid : null),
     coordinator_name: preProfile?.coordinator_name || (coordinatorData ? coordinatorData.name : null),
     avatar_url: firebaseUser.photoURL || preProfile?.avatar_url || null,
+    language: preProfile?.language || 'pt-BR',
+    timezone: preProfile?.timezone || 'America/Sao_Paulo',
     daily_goal: preProfile?.daily_goal || 30,
     contacts_opened: 0,
     messages_sent: 0,
@@ -91,13 +72,38 @@ export async function syncUserProfile(
     created_at: serverTimestamp()
   };
 
-  try {
-    await setDoc(userRef, newProfile);
-  } catch (e) {
-    console.warn('Erro ao gravar novo perfil no Firestore:', e);
+  await setDoc(userRef, newProfile);
+  return newProfile;
+}
+
+/**
+ * Atualiza configurações de perfil do usuário atual no Firestore e Auth.
+ */
+export async function updateUserProfileSettings({ name, photoURL, language, timezone }) {
+  const currentUser = auth.currentUser;
+  if (!currentUser) throw new Error('Usuário não autenticado.');
+
+  const updates = {
+    updated_at: serverTimestamp()
+  };
+
+  if (name !== undefined) updates.name = name;
+  if (photoURL !== undefined) updates.avatar_url = photoURL;
+  if (language !== undefined) updates.language = language;
+  if (timezone !== undefined) updates.timezone = timezone;
+
+  // Atualiza Firebase Auth se displayName ou photoURL foram alterados
+  if (name !== undefined || photoURL !== undefined) {
+    await updateProfile(currentUser, {
+      displayName: name || currentUser.displayName,
+      photoURL: photoURL !== undefined ? photoURL : currentUser.photoURL
+    });
   }
 
-  return newProfile;
+  // Atualiza Firestore
+  const userRef = doc(db, 'users', currentUser.uid);
+  await updateDoc(userRef, updates);
+  return true;
 }
 
 /**
@@ -232,13 +238,12 @@ export function useAuth(callback) {
       unsubDoc = onSnapshot(userRef, (snap) => {
         if (snap.exists()) {
           const data = snap.data();
-          const isSuperAdmin = (firebaseUser.email || '').toLowerCase() === 'thiagoddsm@gmail.com';
           const updatedProfile = {
             uid: snap.id,
             tenant_id: data.tenant_id || DEFAULT_TENANT_ID,
             ...data,
-            role: isSuperAdmin ? 'admin' : (data.role || 'member'),
-            is_active: isSuperAdmin ? true : (data.is_active !== false)
+            role: data.role || 'member',
+            is_active: data.is_active !== false
           };
           callback({ user: updatedProfile, loading: false, error: null });
         }

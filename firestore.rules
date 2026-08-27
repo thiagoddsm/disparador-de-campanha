@@ -13,78 +13,114 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
-    // Admin: Token custom claim OU email super admin OU perfil no Firestore com role == 'admin'
-    function admin() { 
+    // Admin: Token custom claim OU perfil no Firestore com role == 'admin'
+    function isAdmin() { 
       return signedIn() && (
         request.auth.token.admin == true || 
-        request.auth.token.email == 'thiagoddsm@gmail.com' ||
         (hasUserDoc() && getUserDoc().role == 'admin')
       ); 
     }
     
-    // Coordenador: perfil no Firestore com role == 'coordinator'
-    function coordinator() { 
+    // Coordenador: Token custom claim OU perfil no Firestore com role == 'coordinator'
+    function isCoordinator() { 
       return signedIn() && (
+        request.auth.token.coordinator == true ||
         (hasUserDoc() && getUserDoc().role == 'coordinator') ||
-        admin()
+        isAdmin()
       ); 
     }
     
-    function sameTeam(teamId) { 
-      return hasUserDoc() && getUserDoc().team_id == teamId; 
+    function isSameTeam(teamId) { 
+      return (hasUserDoc() && getUserDoc().team_id == teamId) ||
+             (request.auth.token.team_id == teamId) ||
+             isAdmin(); 
     }
 
+    // Regras de Usuários
     match /users/{userId} {
       allow read: if signedIn();
-      allow create, update: if signedIn();
-      allow delete: if signedIn() && (admin() || request.auth.uid == userId);
+      
+      // Apenas Admin pode criar perfis arbitrários; usuário pode criar seu próprio perfil inicial
+      allow create: if signedIn() && (
+        isAdmin() || 
+        (request.auth.uid == userId && request.resource.data.role == 'member')
+      );
+      
+      // Auto-edição restrita (não pode alterar cargo ou equipe por conta própria)
+      allow update: if signedIn() && (
+        isAdmin() || 
+        (
+          request.auth.uid == userId && 
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'team_id', 'is_active'])
+        )
+      );
+      
+      allow delete: if isAdmin();
     }
 
+    // Regras de Equipes
     match /teams/{teamId} {
-      allow read, write: if signedIn();
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
     }
 
+    // Regras de Base de Contatos
     match /contacts/{contactId} {
       allow read: if signedIn() && (
-        admin() || 
-        (coordinator() && sameTeam(resource.data.team_id)) || 
+        isAdmin() || 
+        (isCoordinator() && isSameTeam(resource.data.team_id)) || 
         resource.data.assigned_to == request.auth.uid
       );
-      allow create: if admin() || (coordinator() && sameTeam(request.resource.data.team_id));
-      allow update: if admin()
-        || (coordinator() && sameTeam(resource.data.team_id))
-        || (signedIn() && resource.data.assigned_to == request.auth.uid);
-      allow delete: if admin() || (coordinator() && sameTeam(resource.data.team_id));
+      
+      allow create: if isAdmin() || (isCoordinator() && isSameTeam(request.resource.data.team_id));
+      
+      allow update: if isAdmin() || 
+        (isCoordinator() && isSameTeam(resource.data.team_id)) ||
+        (
+          signedIn() && 
+          resource.data.assigned_to == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'last_opened_at', 'confirmed_at', 'updated_at'])
+        );
+        
+      allow delete: if isAdmin() || (isCoordinator() && isSameTeam(resource.data.team_id));
     }
 
+    // Regras de Mensagens e Disparos
     match /messages/{messageId} {
       allow read: if signedIn() && (
-        admin() || 
-        (coordinator() && sameTeam(resource.data.team_id)) || 
+        isAdmin() || 
+        (isCoordinator() && isSameTeam(resource.data.team_id)) || 
         resource.data.user_uid == request.auth.uid
       );
       allow create: if signedIn() && request.resource.data.user_uid == request.auth.uid;
       allow update, delete: if false;
     }
 
+    // Regras de Logs de Auditoria (Append-only)
     match /audit_logs/{logId} {
-      allow read, write: if signedIn();
+      allow read: if isCoordinator() || isAdmin();
+      allow create: if signedIn() && request.resource.data.actor_uid == request.auth.uid;
+      allow update, delete: if false;
     }
 
+    // Regras de Templates de Mensagem
     match /templates/{templateId} {
-      allow read, write: if signedIn();
+      allow read: if signedIn();
+      allow write: if isCoordinator() || isAdmin();
     }
 
+    // Regras de Jobs e Integrações
     match /dispatch_jobs/{jobId} {
-      allow read, write: if signedIn();
+      allow read, write: if isCoordinator() || isAdmin();
     }
 
     match /integrations/{integrationId} {
-      allow read, write: if signedIn();
+      allow read, write: if isAdmin();
     }
 
     match /roles/{roleId} {
-      allow read, write: if signedIn();
+      allow read: if signedIn();
+      allow write: if isAdmin();
     }
   }
 }

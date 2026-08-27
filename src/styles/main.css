@@ -743,7 +743,14 @@ table.panel-table tr:hover td {
   border: 2px solid #FFFFFF;
 }
 
-/* Responsive */
+/* Responsive Mobile & Smartphone Architecture */
+.desktop-only {
+  display: block;
+}
+.mobile-only {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .sidebar {
     display: none;
@@ -753,13 +760,153 @@ table.panel-table tr:hover td {
   }
   .page-content {
     padding: 1.25rem;
-    padding-bottom: 5rem;
+    padding-bottom: 6rem;
   }
   .topbar {
     padding: 0.85rem 1.25rem;
   }
   .dispatch-split-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-only {
+    display: block !important;
+  }
+
+  .topbar {
+    padding: 0.65rem 0.85rem;
+  }
+  .topbar-brand-title {
+    font-size: 0.85rem;
+  }
+  .topbar-left {
+    gap: 0.5rem;
+  }
+  .topbar-right {
+    gap: 0.5rem;
+  }
+  
+  .page-content {
+    padding: 0.85rem;
+    padding-bottom: 6.5rem;
+  }
+
+  /* 2-Column Touch Grid for Metrics */
+  .metrics-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.65rem !important;
+    margin-bottom: 1rem !important;
+  }
+  .metrics-row > :last-child:nth-child(odd) {
+    grid-column: span 2;
+  }
+
+  .metric-box {
+    padding: 0.75rem 0.85rem !important;
+    border-radius: var(--radius-md) !important;
+    gap: 0.4rem !important;
+  }
+
+  .metric-big-num {
+    font-size: 1.35rem !important;
+  }
+  .metric-label {
+    font-size: 0.65rem !important;
+    letter-spacing: 0.3px;
+  }
+  .metric-subtext {
+    font-size: 0.68rem !important;
+  }
+  .metric-icon-bubble {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  .metric-icon-bubble svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  /* Mobile Card Layout for Team Members */
+  .team-mobile-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .team-mobile-card {
+    background: #FFFFFF;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+    box-shadow: var(--shadow-xs);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .team-mobile-card:active {
+    transform: scale(0.99);
+  }
+
+  .team-mobile-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .team-mobile-card-progress {
+    background: #F8FAFC;
+    border-radius: var(--radius-md);
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--border-light);
+  }
+
+  .team-mobile-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border-light);
+    padding-top: 0.65rem;
+  }
+
+  /* Modals as bottom sheets on mobile */
+  .modal-overlay {
+    padding: 0.5rem;
+    align-items: flex-end;
+  }
+  .modal-content {
+    border-radius: 16px 16px 8px 8px;
+    max-height: 90vh;
+    overflow-y: auto;
+    width: 100%;
+    margin-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    animation: slideUpModal 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slideUpModal {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .topbar-dropdown {
+    width: calc(100vw - 1.5rem) !important;
+    right: -10px !important;
+    left: auto !important;
+  }
+
+  /* Bottom Nav Safe Area */
+  .bottom-nav {
+    padding-bottom: max(0.4rem, env(safe-area-inset-bottom));
+  }
+  .bottom-nav-btn {
+    padding: 0.4rem 0.85rem;
+    min-height: 48px;
   }
 }
 

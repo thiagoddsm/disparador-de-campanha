@@ -229,7 +229,7 @@ function renderProtectedApp(currentUser) {
   renderBottomNav(bottomNavMount, currentView, (newView) => {
     currentView = newView;
     renderProtectedApp(currentUserState);
-  });
+  }, currentUserState);
 
   // Renderiza Tela Conforme View Ativa
   if (currentView === 'admin') {

@@ -301,7 +301,8 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
             </div>
           </div>
 
-          <div class="table-container">
+          <!-- Desktop Table View -->
+          <div class="table-container desktop-only">
             <table class="panel-table">
               <thead>
                 <tr>
@@ -323,7 +324,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
                   const initials = (m.name || 'M').substring(0, 2).toUpperCase();
 
                   return `
-                    <tr>
+                    <tr class="member-row">
                       <td>
                         <div class="user-identity-cell">
                           <div class="user-identity-initials" style="background: #EFF6FF; color: #1D4ED8;">${initials}</div>
@@ -359,8 +360,72 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
               </tbody>
             </table>
           </div>
+
+          <!-- Smartphone Mobile Card View -->
+          <div class="team-mobile-card-list mobile-only" id="coord-mobile-cards" style="padding: 1rem;">
+            ${teamMembers.length === 0 ? `
+              <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem;">
+                Nenhum membro na equipe ainda.<br>Clique em <strong>+ Adicionar Membro</strong> acima.
+              </div>
+            ` : teamMembers.map(m => {
+              const goal = m.daily_goal || 30;
+              const memberContacts = teamContacts.filter(c => c.assigned_to === m.uid);
+              const abordados = memberContacts.filter(c => c.status === 'opened' || c.status === 'user_confirmed' || c.status === 'confirmed').length;
+              const progressPercent = Math.min(100, Math.round((abordados / goal) * 100));
+              const initials = (m.name || 'M').substring(0, 2).toUpperCase();
+
+              return `
+                <div class="team-mobile-card member-mobile-item">
+                  <div class="team-mobile-card-header">
+                    <div style="display: flex; align-items: center; gap: 0.65rem;">
+                      <div class="user-identity-initials" style="background: #EFF6FF; color: #1D4ED8; width: 38px; height: 38px; font-size: 0.88rem;">${initials}</div>
+                      <div>
+                        <div style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">${m.name}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">${m.email}</div>
+                      </div>
+                    </div>
+                    <span class="status-pill ativo">ATIVO</span>
+                  </div>
+
+                  <div class="team-mobile-card-progress">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; font-size: 0.8rem;">
+                      <span style="font-weight: 600; color: var(--text-main);">Meta do Dia:</span>
+                      <strong style="color: ${progressPercent >= 100 ? '#15803D' : 'var(--primary-blue)'};">${abordados} / ${goal} (${progressPercent}%)</strong>
+                    </div>
+                    <div class="table-progress-track" style="height: 7px;">
+                      <div class="table-progress-bar" style="width: ${progressPercent}%; background: ${progressPercent >= 100 ? 'var(--whatsapp-green)' : 'var(--primary-blue)'};"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem;">
+                      <span>Leads vinculados: ${memberContacts.length}</span>
+                      <span>Restantes: ${Math.max(0, goal - abordados)}</span>
+                    </div>
+                  </div>
+
+                  <div class="team-mobile-card-footer">
+                    <button class="btn-open-edit-goal btn-outline-white" data-uid="${m.uid}" data-name="${m.name}" data-goal="${goal}" style="width: 100%; font-size: 0.82rem; padding: 0.5rem; font-weight: 600; justify-content: center; border-radius: var(--radius-md);">
+                      🎯 Ajustar Meta Diária
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
         </div>
       `;
+
+      // Listener de busca de membros (Desktop + Mobile Cards)
+      const searchInput = mount.querySelector('#coord-search-member');
+      searchInput?.addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase();
+        mount.querySelectorAll('#coord-table-body .member-row').forEach(row => {
+          const text = row.innerText.toLowerCase();
+          row.style.display = text.includes(q) ? '' : 'none';
+        });
+        mount.querySelectorAll('#coord-mobile-cards .member-mobile-item').forEach(card => {
+          const text = card.innerText.toLowerCase();
+          card.style.display = text.includes(q) ? '' : 'none';
+        });
+      });
 
       // Listeners de ajuste de meta
       mount.querySelectorAll('.btn-open-edit-goal').forEach(btn => {

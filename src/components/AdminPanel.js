@@ -232,7 +232,8 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
     if (currentTab === 'teams') {
       contentEl.innerHTML = `
         <div class="main-panel-card">
-          <div class="table-container">
+          <!-- Desktop Table -->
+          <div class="table-container desktop-only">
             <table class="panel-table">
               <thead>
                 <tr>
@@ -276,6 +277,34 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
               </tbody>
             </table>
           </div>
+
+          <!-- Smartphone Mobile Cards -->
+          <div class="team-mobile-card-list mobile-only" style="padding: 1rem;">
+            ${allTeams.length === 0 ? `
+              <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem;">Nenhuma equipe cadastrada ainda.</div>
+            ` : allTeams.map(t => {
+              const initials = t.name ? t.name.substring(0, 2).toUpperCase() : 'EQ';
+              return `
+                <div class="team-mobile-card">
+                  <div class="team-mobile-card-header">
+                    <div style="display: flex; align-items: center; gap: 0.65rem;">
+                      <div class="user-identity-initials" style="background: #EFF6FF; color: #1D4ED8; width: 38px; height: 38px; font-size: 0.88rem;">${initials}</div>
+                      <div>
+                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${t.name}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">👔 Líder: ${t.coordinator_name || 'Não vinculado'}</div>
+                      </div>
+                    </div>
+                    <span class="status-pill ativo">ATIVO</span>
+                  </div>
+                  <div class="team-mobile-card-footer">
+                    <button class="btn-manage-team-view btn-primary-blue" data-team="${t.id}" style="width: 100%; font-size: 0.82rem; padding: 0.5rem; font-weight: 600; justify-content: center; border-radius: var(--radius-md);">
+                      📊 Ver Painel da Equipe
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
         </div>
       `;
 
@@ -290,7 +319,8 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
 
       contentEl.innerHTML = `
         <div class="main-panel-card">
-          <div class="table-container">
+          <!-- Desktop Table -->
+          <div class="table-container desktop-only">
             <table class="panel-table">
               <thead>
                 <tr>
@@ -375,6 +405,68 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
                 }).join('')}
               </tbody>
             </table>
+          </div>
+
+          <!-- Smartphone Mobile Cards for Users -->
+          <div class="team-mobile-card-list mobile-only" style="padding: 1rem;">
+            ${validUsers.length === 0 ? `
+              <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem;">Nenhum usuário cadastrado.</div>
+            ` : validUsers.map(u => {
+              const initials = ((u.name || u.email || 'U')).substring(0, 2).toUpperCase();
+              const isActive = u.is_active !== false;
+              const isSuperAdmin = (u.email || '').toLowerCase() === 'thiagoddsm@gmail.com';
+              const currentRole = isSuperAdmin ? 'admin' : (u.role || 'member');
+
+              const roleLabel = currentRole === 'admin' 
+                ? '👑 Administrador' 
+                : currentRole === 'coordinator' 
+                ? '👔 Coordenador' 
+                : '🎯 Membro';
+
+              return `
+                <div class="team-mobile-card">
+                  <div class="team-mobile-card-header">
+                    <div style="display: flex; align-items: center; gap: 0.65rem;">
+                      <div class="user-identity-initials" style="background: #EFF6FF; color: #1D4ED8; width: 38px; height: 38px; font-size: 0.88rem;">${initials}</div>
+                      <div>
+                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${u.name || u.email.split('@')[0]}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">${u.email || ''}</div>
+                      </div>
+                    </div>
+                    <span class="status-pill ${isActive ? 'ativo' : 'inativo'}">${isActive ? 'ATIVO' : 'DESATIVADO'}</span>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.8rem;">
+                    <div>
+                      <label style="display: block; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 2px;">Cargo:</label>
+                      <button class="btn-open-role-modal btn-outline-white" data-uid="${u.uid}" data-name="${u.name || u.email}" data-role="${currentRole}" style="width: 100%; font-size: 0.78rem; font-weight: 700; padding: 0.35rem 0.5rem; justify-content: center;">
+                        ${roleLabel} ▾
+                      </button>
+                    </div>
+                    <div>
+                      <label style="display: block; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 2px;">Equipe:</label>
+                      <select class="user-team-select form-control" data-uid="${u.uid}" style="padding: 0.35rem 0.5rem; font-size: 0.78rem; font-weight: 600;">
+                        <option value="" ${!u.team_id ? 'selected' : ''}>Sem Equipe</option>
+                        ${allTeams.map(t => `
+                          <option value="${t.id}" ${u.team_id === t.id ? 'selected' : ''}>${t.name}</option>
+                        `).join('')}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="team-mobile-card-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                    <button class="btn-toggle-active btn-outline-white" data-uid="${u.uid}" data-active="${isActive}" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
+                      ${isActive ? 'Desativar' : 'Ativar'}
+                    </button>
+                    ${!isSuperAdmin ? `
+                      <button class="btn-delete-user" data-uid="${u.uid}" data-name="${u.name || u.email}" style="background: #FEE2E2; border: 1px solid #FECACA; border-radius: var(--radius-sm); cursor: pointer; color: #DC2626; padding: 0.35rem 0.65rem; font-size: 0.78rem;" title="Excluir Usuário">
+                        Excluir
+                      </button>
+                    ` : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
           </div>
         </div>
       `;
