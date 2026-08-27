@@ -310,8 +310,9 @@ export function renderDispatchView(container, currentUser) {
                   <tr>
                     <td style="font-size: 0.78rem; color: var(--text-muted);">${dateStr}</td>
                     <td>
-                      <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main);">${msg.phone || 'Sem número'}</div>
-                      <div style="font-size: 0.72rem; color: var(--text-muted);">Lead ID: ${msg.contact_id ? msg.contact_id.substring(0, 8) : 'N/A'}</div>
+                      <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main);">${msg.contact_name || msg.phone || 'Destinatário'}</div>
+                      <div style="font-family: monospace; font-size: 0.78rem; color: var(--text-muted);">${msg.phone || ''}</div>
+                      ${msg.user_name ? `<div style="font-size: 0.7rem; color: var(--primary-blue);">👤 ${msg.user_name}</div>` : ''}
                     </td>
                     <td>
                       <span class="pill-btn" style="font-size: 0.72rem; padding: 0.2rem 0.5rem; background: ${isEvolution ? '#ECFDF5' : '#EFF6FF'}; color: ${isEvolution ? '#059669' : '#1D4ED8'}; font-weight: 600;">

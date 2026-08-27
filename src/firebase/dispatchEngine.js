@@ -152,15 +152,18 @@ export async function executeDispatch({
       transaction.set(messageRef, {
         id: messageId,
         tenant_id: tenantId,
-        team_id: teamId,
+        team_id: teamId || 'team_global',
         contact_id: contactId,
+        contact_name: cleanName,
         user_uid: userId,
+        user_name: user?.name || user?.email || 'Operador',
         phone: formattedPhone,
         message_body: personalizedMessage,
         strategy: strategy,
-        status: 'opened',
+        status: strategy === 'evolution_api' ? 'confirmed' : 'opened',
         opened_at: serverTimestamp(),
-        confirmed_at: null,
+        sent_at: serverTimestamp(),
+        confirmed_at: strategy === 'evolution_api' ? serverTimestamp() : null,
         created_at: serverTimestamp()
       });
     });
@@ -226,6 +229,15 @@ export async function confirmUserDispatch({ contactId, messageId, user }) {
         status: 'user_confirmed',
         confirmed_at: serverTimestamp()
       });
+
+      if (messageId) {
+        const msgRef = doc(db, 'messages', messageId);
+        transaction.set(msgRef, {
+          status: 'confirmed',
+          confirmed_at: serverTimestamp(),
+          sent_at: serverTimestamp()
+        }, { merge: true });
+      }
 
       try {
         transaction.set(userRef, {

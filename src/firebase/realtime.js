@@ -499,15 +499,25 @@ export function subscribeToTemplates(callback) {
  */
 export function subscribeToMessagesHistory(teamId, callback) {
   try {
-    let q;
-    if (teamId) {
-      q = query(collection(db, 'messages'), where('team_id', '==', teamId), orderBy('sent_at', 'desc'), limit(150));
-    } else {
-      q = query(collection(db, 'messages'), orderBy('sent_at', 'desc'), limit(150));
-    }
+    const q = query(collection(db, 'messages'), limit(300));
 
     const unsub = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      let msgs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (teamId) {
+        msgs = msgs.filter(m => m.team_id === teamId || !m.team_id || m.team_id === 'team_global');
+      }
+      // Ordena por data decrescente (sent_at || confirmed_at || created_at || opened_at)
+      msgs.sort((a, b) => {
+        const getTime = (obj) => {
+          if (obj?.sent_at?.toMillis) return obj.sent_at.toMillis();
+          if (obj?.confirmed_at?.toMillis) return obj.confirmed_at.toMillis();
+          if (obj?.created_at?.toMillis) return obj.created_at.toMillis();
+          if (obj?.opened_at?.toMillis) return obj.opened_at.toMillis();
+          if (obj?.created_at) return new Date(obj.created_at).getTime();
+          return 0;
+        };
+        return getTime(b) - getTime(a);
+      });
       callback(msgs);
     }, (err) => {
       console.warn('Erro ao escutar histórico de mensagens:', err);
