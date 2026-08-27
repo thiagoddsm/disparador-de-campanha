@@ -15,6 +15,9 @@ import { renderRolesManagement } from './components/RolesManagement.js';
 import { renderSecuritySettings } from './components/SecuritySettings.js';
 import { subscribeToTenantTeams, DEFAULT_TENANT_ID } from './firebase/realtime.js';
 
+import { db } from './firebase/config.js';
+import { doc, getDoc } from 'firebase/firestore';
+
 const appEl = document.querySelector('#app');
 
 // Remove somente o cache legado de demonstração; a fonte de dados em produção é o Firestore.
@@ -26,6 +29,19 @@ let currentTeamId = null;
 let currentUserState = null;
 let tenantTeams = [];
 
+function updateAllTeamBadges(teamName) {
+  if (!teamName) return;
+  const topbarBadge = appEl?.querySelector('#topbar-team-badge-name');
+  if (topbarBadge) topbarBadge.textContent = teamName;
+  
+  const sidebarBadge = appEl?.querySelector('#sidebar-team-badge-name');
+  if (sidebarBadge) sidebarBadge.textContent = teamName;
+
+  appEl?.querySelectorAll('.current-user-team-name').forEach(el => {
+    el.textContent = teamName;
+  });
+}
+
 // Subscreve às equipes para mapeamento de nome e seletor global
 subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
   tenantTeams = teams;
@@ -36,6 +52,7 @@ subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
     const teamObj = tenantTeams.find(t => t.id === currentUserState.team_id || t.name === currentUserState.team_name);
     if (teamObj && teamObj.name) {
       currentUserState.team_name = teamObj.name;
+      updateAllTeamBadges(teamObj.name);
     }
   }
 
@@ -45,15 +62,6 @@ subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
     topbarSel.innerHTML = tenantTeams.length === 0 
       ? `<option value="">Nenhuma equipe cadastrada</option>`
       : tenantTeams.map(t => `<option value="${t.id}" ${currentTeamId === t.id ? 'selected' : ''}>👥 ${t.name} ⌵</option>`).join('');
-  }
-
-  // Atualiza o selo da equipe na topbar para membros e coordenadores
-  const topbarBadge = appEl?.querySelector('#topbar-team-badge-name');
-  if (topbarBadge && currentUserState?.team_id) {
-    const myTeam = tenantTeams.find(t => t.id === currentUserState.team_id || t.name === currentUserState.team_name);
-    if (myTeam && myTeam.name) {
-      topbarBadge.textContent = myTeam.name;
-    }
   }
 });
 
@@ -69,7 +77,18 @@ function renderProtectedApp(currentUser) {
 
   // Localiza o nome real da equipe do operador ou coordenador
   const teamObj = tenantTeams.find(t => t.id === currentUser.team_id || t.name === currentUser.team_name);
-  const teamDisplayName = currentUser.team_name || teamObj?.name || (currentUser.team_id ? currentUser.team_id.replace(/^team_/, '').toUpperCase() : null);
+  let teamDisplayName = currentUser.team_name || teamObj?.name || null;
+
+  if (!teamDisplayName && currentUser.team_id) {
+    getDoc(doc(db, 'teams', currentUser.team_id)).then((snap) => {
+      if (snap.exists() && snap.data().name) {
+        const resolvedName = snap.data().name;
+        currentUser.team_name = resolvedName;
+        if (currentUserState) currentUserState.team_name = resolvedName;
+        updateAllTeamBadges(resolvedName);
+      }
+    }).catch(() => {});
+  }
 
   // Define a view padrão com base no papel
   if (!currentView) {
@@ -79,7 +98,7 @@ function renderProtectedApp(currentUser) {
   }
 
   // Guard de Rota no Frontend (Blindagem de Nível de Acesso)
-  if (role === 'member' && ['admin', 'manager', 'import', 'evolution', 'roles'].includes(currentView)) {
+  if (role === 'member' && ['admin', 'manager', 'import', 'roles'].includes(currentView)) {
     currentView = 'contacts';
   } else if (role === 'coordinator' && currentView === 'admin') {
     currentView = 'manager';

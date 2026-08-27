@@ -39,9 +39,9 @@ export function renderDispatchView(container, currentUser) {
             <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem;">
               👤 Minha Fila Individual: <span id="queue-header-count">0</span> contatos
             </span>
-            ${teamLabel ? `
+            ${currentUser?.team_id ? `
               <span class="pill-btn" style="background: #F8FAFC; color: var(--text-muted); font-weight: 600; font-size: 0.75rem; border: 1px solid var(--border-color);">
-                👥 Equipe: ${teamLabel}
+                👥 Equipe: <strong class="current-user-team-name">${currentUser?.team_name || 'Minha Equipe'}</strong>
               </span>
             ` : ''}
           </div>

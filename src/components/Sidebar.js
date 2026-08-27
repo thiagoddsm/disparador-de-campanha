@@ -24,10 +24,10 @@ export function renderSidebar(container, currentUser, currentView, onViewChange,
             Gestão Enterprise 
             <span class="pill-btn" style="font-size: 0.6rem; padding: 1px 5px; background: #EFF6FF; color: #1D4ED8; font-weight: 700;">${roleLabel}</span>
           </span>
-          ${isMember && teamLabel ? `
+          ${isMember && currentUser?.team_id ? `
             <div style="margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; font-weight: 700; color: #1E40AF; background: #DBEAFE; padding: 2px 8px; border-radius: 9999px; width: fit-content;">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-              <span>${teamLabel}</span>
+              <span id="sidebar-team-badge-name" class="current-user-team-name">${currentUser?.team_name || teamDisplayName || 'Equipe'}</span>
             </div>
           ` : ''}
         </div>

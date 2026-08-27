@@ -35,7 +35,18 @@ export async function syncUserProfile(
       throw new Error('Seu acesso está desativado. Fale com um administrador.');
     }
 
-    return { uid: snap.id, tenant_id: data.tenant_id || tenantId, ...data };
+    let teamName = data.team_name || null;
+    if (data.team_id && (!teamName || teamName === data.team_id)) {
+      try {
+        const teamDoc = await getDoc(doc(db, 'teams', data.team_id));
+        if (teamDoc.exists()) {
+          teamName = teamDoc.data().name;
+          updateDoc(userRef, { team_name: teamName }).catch(() => {});
+        }
+      } catch (e) {}
+    }
+
+    return { uid: snap.id, tenant_id: data.tenant_id || tenantId, ...data, team_name: teamName };
   }
 
   // Se não encontrou por UID, verifica se existe pré-cadastro pelo e-mail
@@ -50,6 +61,17 @@ export async function syncUserProfile(
     console.warn('Erro ao verificar pré-cadastro:', err);
   }
 
+  let initialTeamId = preProfile?.team_id || defaultTeam;
+  let initialTeamName = preProfile?.team_name || null;
+  if (initialTeamId && !initialTeamName) {
+    try {
+      const teamDoc = await getDoc(doc(db, 'teams', initialTeamId));
+      if (teamDoc.exists()) {
+        initialTeamName = teamDoc.data().name;
+      }
+    } catch (e) {}
+  }
+
   // Novo perfil cadastrado (ou mesclado com pré-cadastro)
   const newProfile = {
     uid: firebaseUser.uid,
@@ -57,8 +79,8 @@ export async function syncUserProfile(
     name: firebaseUser.displayName || preProfile?.name || firebaseUser.email.split('@')[0],
     email: firebaseUser.email.toLowerCase(),
     role: preProfile?.role || defaultRole,
-    team_id: preProfile?.team_id || defaultTeam,
-    team_name: preProfile?.team_name || null,
+    team_id: initialTeamId,
+    team_name: initialTeamName,
     coordinator_uid: preProfile?.coordinator_uid || (coordinatorData ? coordinatorData.uid : null),
     coordinator_name: preProfile?.coordinator_name || (coordinatorData ? coordinatorData.name : null),
     avatar_url: firebaseUser.photoURL || preProfile?.avatar_url || null,
@@ -131,7 +153,7 @@ export async function createUserProfileDirectly({
   email,
   name,
   role = 'member',
-  teamId = 'team_alpha',
+  teamId = null,
   coordinatorData = null,
   dailyGoal = 30,
   tenantId = DEFAULT_TENANT_ID
@@ -142,6 +164,16 @@ export async function createUserProfileDirectly({
   const generatedUid = `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const userRef = doc(db, 'users', generatedUid);
 
+  let teamName = null;
+  if (teamId) {
+    try {
+      const teamDoc = await getDoc(doc(db, 'teams', teamId));
+      if (teamDoc.exists()) {
+        teamName = teamDoc.data().name;
+      }
+    } catch (e) {}
+  }
+
   const profileData = {
     uid: generatedUid,
     tenant_id: tenantId,
@@ -149,6 +181,7 @@ export async function createUserProfileDirectly({
     email: cleanEmail,
     role,
     team_id: teamId,
+    team_name: teamName,
     coordinator_uid: coordinatorData ? coordinatorData.uid : null,
     coordinator_name: coordinatorData ? coordinatorData.name : null,
     avatar_url: null,

@@ -37,9 +37,9 @@ export function renderContactsView(container, currentUser, onNavigate) {
             <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">
               ${isMember ? 'Meus Contatos' : isCoordinator ? 'Banco de Contatos da Equipe' : 'Banco Global de Contatos'}
             </h2>
-            ${teamLabel ? `
+            ${currentUser?.team_id ? `
               <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem;">
-                👥 Equipe: ${teamLabel}
+                👥 Equipe: <strong class="current-user-team-name">${currentUser?.team_name || 'Minha Equipe'}</strong>
               </span>
             ` : ''}
           </div>
