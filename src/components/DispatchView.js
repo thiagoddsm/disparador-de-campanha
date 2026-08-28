@@ -322,13 +322,26 @@ export function renderDispatchView(container, currentUser, onNavigate) {
     });
   }
 
-  // Sincronização em Tempo Real de Digitação
+  // Sincronização em Tempo Real de Digitação e Expansão Automática (Auto-resize)
   const textarea = container.querySelector('#dispatch-template-input');
   const preview = container.querySelector('#wa-live-message-preview');
+
+  function autoResizeTextarea(el) {
+    if (!el) return;
+    el.style.height = 'auto';
+    const newHeight = Math.min(Math.max(el.scrollHeight, 24), 160);
+    el.style.height = `${newHeight}px`;
+  }
+
+  // Inicializa o tamanho correto na carga inicial
+  if (textarea) {
+    autoResizeTextarea(textarea);
+  }
 
   textarea?.addEventListener('input', (e) => {
     templateText = e.target.value;
     localStorage.setItem('dispatch_active_template', templateText);
+    autoResizeTextarea(textarea);
     if (preview) {
       preview.textContent = templateText || 'Digite uma mensagem...';
     }
@@ -518,17 +531,17 @@ export function renderDispatchView(container, currentUser, onNavigate) {
 
   // Escuta Templates no Firestore
   const unsubscribeTemplates = subscribeToTemplates(currentUser, (templates) => {
-    availableTemplates = templates;
+    availableTemplates = templates || [];
     const select = container.querySelector('#select-quick-template');
     if (select) {
-      if (templates.length === 0) {
+      if (availableTemplates.length === 0) {
         select.innerHTML = `<option value="">📄 Sem templates cadastrados</option>`;
       } else {
         select.innerHTML = `
-          <option value="">📄 Escolher Modelo de Mensagem... ⌵</option>
-          ${templates.map(t => `
-            <option value="${encodeURIComponent(t.body)}">
-              ${t.title} (${t.category || 'Geral'})
+          <option value="">📄 Modelo: Escolher template... ⌵</option>
+          ${availableTemplates.map(t => `
+            <option value="${encodeURIComponent(t.body || '')}" ${t.body === templateText ? 'selected' : ''}>
+              ${t.title || 'Sem título'}
             </option>
           `).join('')}
         `;
@@ -539,7 +552,10 @@ export function renderDispatchView(container, currentUser, onNavigate) {
   container.querySelector('#select-quick-template')?.addEventListener('change', (e) => {
     if (e.target.value) {
       const decodedBody = decodeURIComponent(e.target.value);
-      if (textarea) textarea.value = decodedBody;
+      if (textarea) {
+        textarea.value = decodedBody;
+        autoResizeTextarea(textarea);
+      }
       templateText = decodedBody;
       localStorage.setItem('dispatch_active_template', decodedBody);
       if (preview) preview.textContent = decodedBody;

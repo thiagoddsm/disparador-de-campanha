@@ -484,8 +484,10 @@ export async function deleteTemplateFromFirestore(templateId) {
 
 /**
  * Escuta os templates cadastrados no tenant.
+ * Aceita tanto subscribeToTemplates(callback) quanto subscribeToTemplates(currentUser, callback).
  */
-export function subscribeToTemplates(callback) {
+export function subscribeToTemplates(arg1, arg2) {
+  const callback = typeof arg1 === 'function' ? arg1 : (typeof arg2 === 'function' ? arg2 : () => {});
   try {
     const q = collection(db, 'templates');
     const unsub = onSnapshot(q, (snapshot) => {
