@@ -52,18 +52,23 @@ body {
   min-height: 100vh;
   margin: 0;
   padding: 0;
-  background-color: #0F172A; /* Fundo elegante no desktop destacando a tela 440x956 */
   color: var(--text-main);
-  display: flex;
-  justify-content: center;
-  align-items: center;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   position: relative;
 }
 
-/* Moldura Proporção 440 x 956 (Smartphone Viewport) */
-#app {
+/* ==========================================================
+   1. MODO CELULAR (Proporção 440 x 956 - Smartphone Frame)
+   ========================================================== */
+body.view-mode-mobile {
+  background-color: #0F172A;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+body.view-mode-mobile #app {
   width: 100%;
   max-width: 440px;
   min-height: 100vh;
@@ -78,7 +83,7 @@ body {
 }
 
 @media (min-width: 441px) {
-  #app {
+  body.view-mode-mobile #app {
     border-radius: 36px;
     border: 8px solid #1E293B;
     box-sizing: content-box;
@@ -87,11 +92,11 @@ body {
 }
 
 @media (max-width: 440px) {
-  body {
+  body.view-mode-mobile {
     background-color: #FFFFFF;
     align-items: flex-start;
   }
-  #app {
+  body.view-mode-mobile #app {
     max-width: 100vw;
     height: 100vh;
     max-height: none;
@@ -102,19 +107,7 @@ body {
   }
 }
 
-/* App Layout Grid */
-.app-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
-  max-width: 100%;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Sidebar Clean Drawer */
-.sidebar {
+body.view-mode-mobile .sidebar {
   width: 280px;
   max-width: 80%;
   background-color: var(--bg-sidebar);
@@ -132,8 +125,140 @@ body {
   box-shadow: 4px 0 25px rgba(0, 0, 0, 0.2);
 }
 
-.sidebar.mobile-open {
+body.view-mode-mobile .sidebar.mobile-open {
   transform: translateX(0);
+}
+
+body.view-mode-mobile .app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  max-width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+body.view-mode-mobile .main-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  max-width: 100%;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 64px;
+}
+
+body.view-mode-mobile .main-wrapper:has(.wa-chat-container) {
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+body.view-mode-mobile .bottom-nav {
+  display: flex !important;
+}
+
+body.view-mode-mobile .desktop-only {
+  display: none !important;
+}
+
+body.view-mode-mobile .mobile-only {
+  display: block !important;
+}
+
+/* ==========================================================
+   2. MODO DESKTOP COMPLETO (Versão Expandida para Admin/Líder)
+   ========================================================== */
+body.view-mode-desktop {
+  background-color: var(--bg-app);
+  display: block;
+}
+
+body.view-mode-desktop #app {
+  width: 100%;
+  max-width: 100vw;
+  min-height: 100vh;
+  height: auto;
+  max-height: none;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+body.view-mode-desktop .app-container {
+  display: flex;
+  flex-direction: row;
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  position: relative;
+}
+
+body.view-mode-desktop .sidebar {
+  width: var(--sidebar-width);
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: 40;
+  transform: none;
+  box-shadow: none;
+  padding: 1.25rem 1rem;
+}
+
+body.view-mode-desktop .main-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-bottom: 0;
+  overflow-y: auto;
+}
+
+body.view-mode-desktop .bottom-nav {
+  display: none !important;
+}
+
+body.view-mode-desktop .desktop-only {
+  display: block !important;
+}
+
+body.view-mode-desktop .mobile-only {
+  display: none !important;
+}
+
+body.view-mode-desktop .dispatch-split-grid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 1.5rem;
+}
+
+body.view-mode-desktop .topbar {
+  background: var(--bg-topbar);
+  color: var(--text-main);
+  border-bottom: 1px solid var(--border-color);
+  padding: 1rem 2rem;
+}
+
+body.view-mode-desktop .topbar h2,
+body.view-mode-desktop .topbar span {
+  color: var(--text-main);
+}
+
+body.view-mode-desktop .page-content {
+  padding: 1.75rem 2rem;
+  max-width: 1400px;
 }
 
 .sidebar-backdrop {

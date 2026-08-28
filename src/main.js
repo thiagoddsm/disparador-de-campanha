@@ -30,6 +30,25 @@ let currentTeamId = null;
 let currentUserState = null;
 let tenantTeams = [];
 
+// Modo de Visualização: 'mobile' (440x956) ou 'desktop' (Tela Ampla)
+let displayMode = localStorage.getItem('app_display_mode') || 'mobile';
+
+export function applyDisplayMode(mode, userRole) {
+  const isAllowed = userRole === 'admin' || userRole === 'coordinator';
+  const effectiveMode = isAllowed ? mode : 'mobile';
+
+  if (effectiveMode === 'desktop') {
+    document.body.classList.add('view-mode-desktop');
+    document.body.classList.remove('view-mode-mobile');
+    displayMode = 'desktop';
+  } else {
+    document.body.classList.add('view-mode-mobile');
+    document.body.classList.remove('view-mode-desktop');
+    displayMode = 'mobile';
+  }
+  localStorage.setItem('app_display_mode', displayMode);
+}
+
 function updateAllTeamBadges(teamName) {
   if (!teamName) return;
   const topbarBadge = appEl?.querySelector('#topbar-team-badge-name');
@@ -69,6 +88,9 @@ subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
 function renderProtectedApp(currentUser) {
   currentUserState = currentUser;
   const role = currentUser.role || 'member';
+
+  // Aplica o modo de visualização (mobile ou desktop) respeitando a permissão do usuário
+  applyDisplayMode(displayMode, role);
 
   if (!currentTeamId && tenantTeams.length > 0) {
     currentTeamId = currentUser.team_id || tenantTeams[0].id;
@@ -195,12 +217,26 @@ function renderProtectedApp(currentUser) {
               </div>
 
               <!-- Dropdown Perfil / Configurações -->
-              <div id="dropdown-profile" class="topbar-dropdown" style="display: none; width: 220px;">
+              <div id="dropdown-profile" class="topbar-dropdown" style="display: none; width: 250px;">
                 <div style="padding: 1rem; border-bottom: 1px solid var(--border-color);">
                   <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main);">${currentUser.name || 'Usuário'}</div>
                   <div style="font-size: 0.75rem; color: var(--text-muted);">${currentUser.email}</div>
                   <span class="pill-btn" style="font-size: 0.68rem; margin-top: 0.4rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8;">${roleLabel}</span>
                 </div>
+
+                ${(role === 'admin' || role === 'coordinator') ? `
+                  <!-- Alternador de Modo de Visualização (Exclusivo Líder / Admin) -->
+                  <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); background: #F8FAFC;">
+                    <div style="font-size: 0.7rem; font-weight: 700; color: #64748B; margin-bottom: 0.35rem; text-transform: uppercase;">
+                      Visualização de Tela
+                    </div>
+                    <button id="btn-toggle-display-mode" class="btn-outline-white" style="width: 100%; font-size: 0.78rem; font-weight: 700; padding: 0.45rem 0.65rem; display: flex; align-items: center; justify-content: space-between; background: #FFFFFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); cursor: pointer; color: var(--text-main);">
+                      <span>${displayMode === 'desktop' ? '🖥️ Modo Desktop' : '📱 Modo Celular (440x956)'}</span>
+                      <span style="font-size: 0.72rem; color: var(--primary-blue); font-weight: 800;">⇄ Trocar</span>
+                    </button>
+                  </div>
+                ` : ''}
+
                 <div style="padding: 0.5rem 0;">
                   <a href="#" id="menu-topbar-profile" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1rem; color: var(--text-main); text-decoration: none; font-size: 0.85rem;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -324,6 +360,13 @@ function renderProtectedApp(currentUser) {
 
   settingsBtn?.addEventListener('click', () => {
     currentView = 'settings';
+    renderProtectedApp(currentUserState);
+  });
+
+  appEl.querySelector('#btn-toggle-display-mode')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const nextMode = displayMode === 'desktop' ? 'mobile' : 'desktop';
+    applyDisplayMode(nextMode, currentUser.role);
     renderProtectedApp(currentUserState);
   });
 

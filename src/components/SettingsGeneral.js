@@ -104,6 +104,31 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
 
         <!-- Right Column: Password & Account Security -->
         <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+          
+          ${(currentUser.role === 'admin' || currentUser.role === 'coordinator') ? `
+            <!-- Card: Modo de Visualização da Tela -->
+            <div class="main-panel-card" style="padding: 1.5rem; border-radius: var(--radius-lg); background: #F8FAFC; border: 2px solid var(--border-color);">
+              <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;">
+                <div style="width: 32px; height: 32px; border-radius: var(--radius-md); background: #EFF6FF; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
+                  📱
+                </div>
+                <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin: 0;">Modo de Visualização</h4>
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.4;">
+                Alterne entre a visualização otimizada para celular (440x956) e a versão desktop completa de tela ampla.
+              </p>
+              
+              <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <button type="button" id="btn-set-mode-mobile" class="btn-outline-white" style="width: 100%; justify-content: flex-start; gap: 0.5rem; font-size: 0.82rem; padding: 0.6rem 0.85rem; font-weight: 700; ${localStorage.getItem('app_display_mode') !== 'desktop' ? 'background: #EFF6FF; border-color: #3B82F6; color: #1D4ED8;' : ''}">
+                  📱 Modo Celular (440x956) ${localStorage.getItem('app_display_mode') !== 'desktop' ? '✓ Ativo' : ''}
+                </button>
+                <button type="button" id="btn-set-mode-desktop" class="btn-outline-white" style="width: 100%; justify-content: flex-start; gap: 0.5rem; font-size: 0.82rem; padding: 0.6rem 0.85rem; font-weight: 700; ${localStorage.getItem('app_display_mode') === 'desktop' ? 'background: #EFF6FF; border-color: #3B82F6; color: #1D4ED8;' : ''}">
+                  🖥️ Modo Desktop Completo ${localStorage.getItem('app_display_mode') === 'desktop' ? '✓ Ativo' : ''}
+                </button>
+              </div>
+            </div>
+          ` : ''}
+
           <div class="main-panel-card" style="padding: 1.75rem; border-radius: var(--radius-lg);">
             <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -220,6 +245,21 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
 
   container.querySelector('#btn-goto-evolution')?.addEventListener('click', () => {
     onNavigate('evolution');
+  });
+
+  // Alternador de Modo de Visualização
+  container.querySelector('#btn-set-mode-mobile')?.addEventListener('click', () => {
+    localStorage.setItem('app_display_mode', 'mobile');
+    document.body.classList.add('view-mode-mobile');
+    document.body.classList.remove('view-mode-desktop');
+    onNavigate('settings');
+  });
+
+  container.querySelector('#btn-set-mode-desktop')?.addEventListener('click', () => {
+    localStorage.setItem('app_display_mode', 'desktop');
+    document.body.classList.add('view-mode-desktop');
+    document.body.classList.remove('view-mode-mobile');
+    onNavigate('settings');
   });
 
   return () => {};
