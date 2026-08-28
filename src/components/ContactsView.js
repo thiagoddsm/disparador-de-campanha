@@ -10,6 +10,7 @@ import {
   DEFAULT_TENANT_ID
 } from '../firebase/realtime.js';
 import { showToast } from '../utils/feedback.js';
+import { setupSearchableLocationInput } from './SearchableLocationSelect.js';
 
 export function renderContactsView(container, currentUser, onNavigate) {
   let allContacts = [];
@@ -20,6 +21,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
   let selectedTeamId = 'all'; // 'all' | 'mine' | '<team_id>'
   let selectedMemberUid = 'all'; // 'all' | '<uid>'
   let statusFilter = 'all'; // 'all' | 'confirmed' | 'opened' | 'pending'
+  let locationFilter = '';
   let searchQuery = '';
 
   const isMember = currentUser?.role === 'member';
@@ -29,22 +31,29 @@ export function renderContactsView(container, currentUser, onNavigate) {
   if (isMember) {
     // LAYOUT MOBILE E OPERADOR
     container.innerHTML = `
-      <div style="background: #075E54; color: #FFFFFF; padding: 0.75rem 1rem 0.25rem; display: flex; align-items: center; justify-content: space-between;">
-        <div style="font-size: 1.15rem; font-weight: 700;">Meus Contatos</div>
-        <div style="display: flex; gap: 0.5rem;">
-          <button id="btn-goto-history-mobile" class="pill-btn" style="background: rgba(255,255,255,0.2); color: #FFFFFF; font-size: 0.75rem; border: none; cursor: pointer; padding: 0.35rem 0.75rem;">
-            📜 Histórico
+      <!-- Topbar Verde WhatsApp (Mobile) -->
+      <div style="background: #008069; color: #FFFFFF; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <h2 style="font-size: 1.15rem; font-weight: 800; margin: 0; letter-spacing: -0.3px;">WhatsApp - ${currentUser.name || 'Operador'}</h2>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <button id="btn-goto-history-mobile" style="background: none; border: none; color: #FFFFFF; font-size: 1.15rem; cursor: pointer; padding: 0;" title="Histórico de Envios">
+            📜
           </button>
         </div>
       </div>
 
-      <div style="background: #075E54; padding: 0.5rem 1rem 0.75rem;">
+      <div style="background: #075E54; padding: 0.5rem 1rem 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
         <div style="position: relative;">
-          <input type="text" id="contacts-search-mobile" placeholder="Buscar contato por nome, telefone, bairro..." style="width: 100%; padding: 0.55rem 1rem 0.55rem 2.2rem; border-radius: 9999px; border: none; font-size: 0.85rem; background: #FFFFFF; color: #1E293B; outline: none; box-sizing: border-box;">
+          <input type="text" id="contacts-search-mobile" placeholder="Buscar por nome, telefone..." style="width: 100%; padding: 0.55rem 1rem 0.55rem 2.2rem; border-radius: 9999px; border: none; font-size: 0.85rem; background: #FFFFFF; color: #1E293B; outline: none; box-sizing: border-box;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.5" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%);">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
+        </div>
+        <div style="position: relative;">
+          <input type="text" id="contacts-location-filter-mobile" placeholder="📍 Filtrar por Cidade ou Bairro (RJ)..." style="width: 100%; padding: 0.5rem 1rem 0.5rem 2.2rem; border-radius: 9999px; border: none; font-size: 0.82rem; background: #FFFFFF; color: #1E293B; outline: none; box-sizing: border-box;">
+          <span style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); font-size: 0.85rem;">📍</span>
         </div>
       </div>
 
@@ -79,16 +88,16 @@ export function renderContactsView(container, currentUser, onNavigate) {
             </div>
             <div style="margin-bottom: 1rem;">
               <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">WhatsApp / Telefone (DDD + Número)</label>
-              <input type="tel" inputmode="tel" id="input-contact-phone" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: 5511999998888" required>
+              <input type="tel" inputmode="tel" id="input-contact-phone" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: 5521999998888" required>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.5rem;">
               <div>
-                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Cidade</label>
-                <input type="text" id="input-contact-city" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: Rio de Janeiro">
+                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Cidade (RJ)</label>
+                <input type="text" id="input-contact-city" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Digite para buscar cidade..." autocomplete="off">
               </div>
               <div>
-                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Bairro</label>
-                <input type="text" id="input-contact-neighborhood" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: Copacabana">
+                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Bairro (RJ)</label>
+                <input type="text" id="input-contact-neighborhood" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Digite para buscar bairro..." autocomplete="off">
               </div>
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
@@ -209,12 +218,20 @@ export function renderContactsView(container, currentUser, onNavigate) {
               </select>
             </div>
 
-            <!-- Busca Rápida -->
+            <!-- Seletor de Cidade / Bairro do RJ (Menu Suspenso com Digitação) -->
             <div>
               <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
-                🔍 Pesquisar
+                📍 Cidade / Bairro (RJ)
               </label>
-              <input type="text" id="contacts-search" class="topbar-search-input" placeholder="Nome, telefone, cidade, bairro..." style="width: 100%; background: #F8FAFC; font-size: 0.82rem;">
+              <input type="text" id="filter-location-select" class="topbar-search-input" placeholder="Digite cidade ou bairro..." style="width: 100%; background: #F8FAFC; font-size: 0.82rem;" autocomplete="off">
+            </div>
+
+            <!-- Busca Rápida de Texto -->
+            <div>
+              <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
+                🔍 Pesquisar Nome / Tel
+              </label>
+              <input type="text" id="contacts-search" class="topbar-search-input" placeholder="Buscar texto..." style="width: 100%; background: #F8FAFC; font-size: 0.82rem;">
             </div>
 
           </div>
@@ -273,16 +290,16 @@ export function renderContactsView(container, currentUser, onNavigate) {
             </div>
             <div style="margin-bottom: 1rem;">
               <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">WhatsApp / Telefone (DDD + Número)</label>
-              <input type="tel" inputmode="tel" id="input-contact-phone" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: 5511999998888" required>
+              <input type="tel" inputmode="tel" id="input-contact-phone" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: 5521999998888" required>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
               <div>
-                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Cidade</label>
-                <input type="text" id="input-contact-city" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: Rio de Janeiro">
+                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Cidade (RJ)</label>
+                <input type="text" id="input-contact-city" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Digite para buscar cidade..." autocomplete="off">
               </div>
               <div>
-                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Bairro</label>
-                <input type="text" id="input-contact-neighborhood" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: Copacabana">
+                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Bairro (RJ)</label>
+                <input type="text" id="input-contact-neighborhood" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Digite para buscar bairro..." autocomplete="off">
               </div>
             </div>
 
@@ -440,12 +457,16 @@ export function renderContactsView(container, currentUser, onNavigate) {
       filtered = filtered.filter(c => c.team_id === selectedTeamId);
     }
 
-    // Filtro por Membro
-    if (selectedMemberUid !== 'all') {
-      filtered = filtered.filter(c => c.assigned_to === selectedMemberUid);
+    // Filtro de Busca por Localização (Cidade / Bairro do RJ)
+    if (locationFilter.trim().length > 0) {
+      const loc = locationFilter.toLowerCase().trim();
+      filtered = filtered.filter(c => 
+        (c.city && c.city.toLowerCase().includes(loc)) ||
+        ((c.neighborhood || c.bairro) && (c.neighborhood || c.bairro).toLowerCase().includes(loc))
+      );
     }
 
-    // Filtro de Busca por Texto
+    // Filtro de Busca por Texto (Nome / Tel)
     if (searchQuery.trim().length > 0) {
       const q = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(c => 
@@ -496,15 +517,15 @@ export function renderContactsView(container, currentUser, onNavigate) {
     const mobileList = container.querySelector('#contacts-mobile-list');
 
     if (countLabel) {
-      countLabel.textContent = `Mostrando ${list.length} contato(s) nesta seleção`;
+      countLabel.textContent = `Mostrando ${list.length} contato(s) ${locationFilter ? `em "${locationFilter}"` : ''}`;
     }
 
     if (tbody) {
       if (list.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="${isMember ? 5 : 7}" style="text-align: center; color: var(--text-muted); padding: 3rem;">
-              Nenhum contato encontrado com os filtros selecionados.
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+              Nenhum contato encontrado nesta seleção ou filtro.
             </td>
           </tr>
         `;
@@ -517,7 +538,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
           const statusBadge = isConfirmed
             ? '<span class="status-pill ativo">CONFIRMADO</span>'
             : isOpened
-            ? '<span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-size: 0.72rem;">ABERTO (WA)</span>'
+            ? '<span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-size: 0.72rem; font-weight: 700;">ABERTO (WA)</span>'
             : '<span class="status-pill inativo">PENDENTE</span>';
 
           return `
@@ -530,20 +551,16 @@ export function renderContactsView(container, currentUser, onNavigate) {
               </td>
               <td style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem;">${c.phone}</td>
               <td style="color: var(--text-main); font-size: 0.85rem; font-weight: 500;">${c.city || '—'}</td>
-              <td style="color: var(--text-muted); font-size: 0.85rem;">${c.neighborhood || c.bairro || '—'}</td>
-              ${!isMember ? `
-                <td style="font-size: 0.82rem; color: var(--text-main); font-weight: 600;">
-                  👤 ${c.assigned_to_name || (c.assigned_to === currentUser.uid ? 'Você' : 'Não Atribuído')}
-                </td>
-              ` : ''}
+              <td style="color: #64748B; font-size: 0.85rem;">${c.neighborhood || c.bairro || '—'}</td>
+              <td style="font-size: 0.82rem; color: var(--text-main); font-weight: 600;">
+                👤 ${c.assigned_to_name || (c.assigned_to === currentUser.uid ? 'Você' : 'Não Atribuído')}
+              </td>
               <td style="text-align: center;">${statusBadge}</td>
-              ${!isMember ? `
-                <td style="text-align: right;">
-                  <button class="btn-reassign-action btn-outline-white" data-id="${c.id}" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
-                    Reatribuir
-                  </button>
-                </td>
-              ` : ''}
+              <td style="text-align: right;">
+                <button class="btn-reassign-action btn-outline-white" data-id="${c.id}" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
+                  Reatribuir
+                </button>
+              </td>
             </tr>
           `;
         }).join('');
@@ -553,61 +570,65 @@ export function renderContactsView(container, currentUser, onNavigate) {
     if (mobileList) {
       if (list.length === 0) {
         mobileList.innerHTML = `
-          <div style="text-align: center; background: #FFFFFF; padding: 3.5rem 1rem; color: var(--text-muted);">
-            <div style="width: 56px; height: 56px; border-radius: 50%; background: #F1F5F9; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; color: #94A3B8;">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
-            </div>
-            <strong style="color: #1E293B; font-size: 0.95rem;">Nenhum contato cadastrado ainda</strong>
-            <p style="font-size: 0.82rem; margin-top: 0.35rem; color: #64748B;">Toque no botão verde <strong>(+)</strong> abaixo para adicionar.</p>
+          <div style="text-align: center; background: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 12px; padding: 3rem 1.5rem; color: var(--text-muted); margin: 1rem;">
+            <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">👥</div>
+            <strong style="font-size: 1rem; color: var(--text-main);">Nenhum contato encontrado</strong>
+            <p style="font-size: 0.82rem; margin-top: 0.25rem;">Nenhum registro para este filtro de localização ou busca.</p>
           </div>
         `;
       } else {
-        mobileList.innerHTML = list.map(c => {
-          const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
-          const isOpened = c.status === 'opened';
-          const locationInfo = [c.city, c.neighborhood || c.bairro].filter(Boolean).join(' · ');
-
-          return `
-            <div class="wa-contact-item-row" data-id="${c.id}" style="display: flex; align-items: center; gap: 0.95rem; padding: 0.85rem 1rem; border-bottom: 1px solid #F1F5F9; cursor: pointer; transition: background 0.15s ease;">
-              <div style="width: 48px; height: 48px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; color: #94A3B8; flex-shrink: 0;">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
-              </div>
-
-              <div style="flex: 1; min-width: 0;">
-                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
-                  <span style="font-weight: 700; font-size: 1rem; color: #1E293B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                    ${c.name}
-                  </span>
-                  ${isConfirmed ? `
-                    <span style="font-size: 0.72rem; color: #15803D; font-weight: 700;">✓ Enviado</span>
-                  ` : isOpened ? `
-                    <span style="font-size: 0.72rem; color: #B45309; font-weight: 700;">Aberto</span>
-                  ` : ''}
-                </div>
-                <div style="font-size: 0.82rem; color: #64748B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                  ${c.phone} ${locationInfo ? `• ${locationInfo}` : ''}
-                </div>
-              </div>
+        mobileList.innerHTML = `
+          <!-- WhatsApp Sub-Tabs Bar -->
+          <div style="background: #008069; color: #FFFFFF; display: flex; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.1); margin: -0.5rem -1rem 0.5rem -1rem; padding: 0 0.5rem;">
+            <div style="padding: 0.75rem 1rem; color: rgba(255,255,255,0.7); display: flex; align-items: center;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             </div>
-          `;
-        }).join('');
+            <div style="flex: 1; text-align: center; padding: 0.75rem 0.5rem; color: #FFFFFF; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #FFFFFF; letter-spacing: 0.5px;">
+              CONVERSAS (${list.length})
+            </div>
+          </div>
 
-        mobileList.querySelectorAll('.wa-contact-item-row').forEach(row => {
-          row.addEventListener('click', () => {
-            if (onNavigate) onNavigate('dispatch');
-          });
-        });
+          <div style="display: flex; flex-direction: column; background: #FFFFFF;">
+            ${list.map(c => {
+              const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
+              const isOpened = c.status === 'opened';
+              const locationInfo = [c.city, c.neighborhood || c.bairro].filter(Boolean).join(' · ');
+
+              return `
+                <div class="wa-contact-item-row" style="display: flex; align-items: center; gap: 0.95rem; padding: 0.85rem 0.75rem; border-bottom: 1px solid #F1F5F9; cursor: pointer; transition: background 0.15s ease;">
+                  <!-- Gray Avatar Silhouette -->
+                  <div style="width: 46px; height: 46px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; color: #94A3B8; flex-shrink: 0;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
+                  </div>
+
+                  <!-- Info -->
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
+                      <span style="font-weight: 700; font-size: 0.98rem; color: #1E293B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${c.name}
+                      </span>
+                      ${isConfirmed ? `
+                        <span style="font-size: 0.72rem; color: #15803D; font-weight: 700;">✓ Enviado</span>
+                      ` : isOpened ? `
+                        <span style="font-size: 0.72rem; color: #B45309; font-weight: 700;">Aberto</span>
+                      ` : ''}
+                    </div>
+                    <div style="font-size: 0.85rem; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace;">
+                      ${c.phone}
+                    </div>
+                    ${locationInfo ? `
+                      <div style="font-size: 0.75rem; color: #0284C7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px;">
+                        📍 ${locationInfo}
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
       }
     }
-
-    // Listeners de Reatribuição
-    container.querySelectorAll('.btn-reassign-action').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-id');
-        container.querySelector('#reassign-contact-id').value = id;
-        container.querySelector('#modal-reassign').style.display = 'flex';
-      });
-    });
   }
 
   // Filter Listeners
@@ -637,6 +658,79 @@ export function renderContactsView(container, currentUser, onNavigate) {
     searchQuery = e.target.value;
     applyFiltersAndRender();
   });
+
+  // Filtros de Localização com Menu Suspenso Pesquisável
+  const mobileLocInput = container.querySelector('#contacts-location-filter-mobile');
+  if (mobileLocInput) {
+    setupSearchableLocationInput({
+      inputEl: mobileLocInput,
+      type: 'all',
+      placeholder: '📍 Filtrar por Cidade ou Bairro (RJ)...',
+      onSelect: ({ value }) => {
+        locationFilter = value;
+        applyFiltersAndRender();
+      }
+    });
+    mobileLocInput.addEventListener('input', (e) => {
+      locationFilter = e.target.value;
+      applyFiltersAndRender();
+    });
+  }
+
+  const desktopLocInput = container.querySelector('#filter-location-select');
+  if (desktopLocInput) {
+    setupSearchableLocationInput({
+      inputEl: desktopLocInput,
+      type: 'all',
+      placeholder: 'Digite cidade ou bairro do RJ...',
+      onSelect: ({ value }) => {
+        locationFilter = value;
+        applyFiltersAndRender();
+      }
+    });
+    desktopLocInput.addEventListener('input', (e) => {
+      locationFilter = e.target.value;
+      applyFiltersAndRender();
+    });
+  }
+
+  // Setup dos Campos de Cidade e Bairro no Modal de Adicionar Contato
+  const modalCityInput = container.querySelector('#input-contact-city');
+  const modalNeighInput = container.querySelector('#input-contact-neighborhood');
+
+  if (modalCityInput) {
+    setupSearchableLocationInput({
+      inputEl: modalCityInput,
+      type: 'cities',
+      placeholder: 'Digite para buscar cidade...'
+    });
+  }
+
+  if (modalNeighInput) {
+    setupSearchableLocationInput({
+      inputEl: modalNeighInput,
+      type: 'neighborhoods',
+      placeholder: 'Digite para buscar bairro...',
+      onSelect: ({ value, category }) => {
+        if (modalCityInput && (!modalCityInput.value || modalCityInput.value === 'Rio de Janeiro')) {
+          if (category.includes('Niterói')) {
+            modalCityInput.value = 'Niterói';
+          } else if (category.includes('Baixada')) {
+            if (value.includes('Caxias')) modalCityInput.value = 'Duque de Caxias';
+            else if (value.includes('Nova Iguaçu')) modalCityInput.value = 'Nova Iguaçu';
+            else if (value.includes('Meriti')) modalCityInput.value = 'São João de Meriti';
+            else if (value.includes('Belford Roxo')) modalCityInput.value = 'Belford Roxo';
+            else if (value.includes('Nilópolis')) modalCityInput.value = 'Nilópolis';
+            else if (value.includes('Mesquita')) modalCityInput.value = 'Mesquita';
+            else if (value.includes('Queimados')) modalCityInput.value = 'Queimados';
+            else modalCityInput.value = 'Duque de Caxias';
+          } else {
+            modalCityInput.value = 'Rio de Janeiro';
+          }
+        }
+      }
+    });
+  }
 
   container.querySelector('#btn-goto-import')?.addEventListener('click', () => onNavigate('import'));
   container.querySelector('#btn-goto-history')?.addEventListener('click', () => onNavigate('history'));
