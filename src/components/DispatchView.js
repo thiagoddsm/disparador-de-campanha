@@ -111,18 +111,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
               <option value="mine">⭐ Minha Fila Direta</option>
             </select>
           </div>
-        ` : `
-          <!-- Member Goal Banner -->
-          <div id="member-goal-banner" style="background: linear-gradient(135deg, #F0FDF4 0%, #EFF6FF 100%); border-radius: 12px; padding: 0.85rem 1rem; border: 1px solid #BFDBFE; margin-bottom: 0.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-              <span style="font-weight: 700; font-size: 0.82rem; color: var(--text-main);">🎯 Minha Meta de Envios Hoje:</span>
-              <strong id="member-goal-progress-text" style="font-size: 0.82rem; color: #15803D;">0 / ${currentUser?.daily_goal || 30}</strong>
-            </div>
-            <div style="width: 100%; height: 6px; background: #E2E8F0; border-radius: 9999px; overflow: hidden;">
-              <div id="member-goal-bar" style="width: 0%; height: 100%; background: #22C55E; transition: width 0.3s ease;"></div>
-            </div>
-          </div>
-        `}
+        ` : ''}
 
         <!-- Quick Controls Top Bar inside Chat -->
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
@@ -219,17 +208,6 @@ export function renderDispatchView(container, currentUser, onNavigate) {
       contacts = rawContacts.filter(c => c.assigned_to === currentUser.uid);
     } else {
       contacts = rawContacts.filter(c => c.assigned_to === selectedLeaderFilter);
-    }
-
-    // Atualiza barra de meta do membro
-    if (isMember) {
-      const goal = currentUser?.daily_goal || 30;
-      const abordados = rawContacts.filter(c => c.status === 'opened' || c.status === 'user_confirmed' || c.status === 'confirmed').length;
-      const pct = Math.min(100, Math.round((abordados / goal) * 100));
-      const goalText = container.querySelector('#member-goal-progress-text');
-      const goalBar = container.querySelector('#member-goal-bar');
-      if (goalText) goalText.textContent = `${abordados} / ${goal} (${pct}%)`;
-      if (goalBar) goalBar.style.width = `${pct}%`;
     }
 
     renderQueueList();
