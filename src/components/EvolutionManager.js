@@ -390,7 +390,10 @@ export function renderEvolutionManager(container, currentUser) {
             </span>
           </td>
           <td style="font-size: 0.8rem; color: var(--text-muted);">${formattedDate}</td>
-          <td style="text-align: right;">
+          <td style="text-align: right; display: flex; justify-content: flex-end; gap: 0.4rem;">
+            <button class="btn-use-server-inst btn-outline-white" data-name="${inst.name}" style="color: #008069; border-color: #008069; font-size: 0.75rem; padding: 0.3rem 0.6rem; font-weight: 700;">
+              ⚡ Usar Instância
+            </button>
             <button class="btn-delete-server-inst btn-outline-white" data-name="${inst.name}" style="color: #DC2626; border-color: #FECACA; font-size: 0.75rem; padding: 0.3rem 0.6rem;">
               🗑️ Excluir
             </button>
@@ -411,15 +414,31 @@ export function renderEvolutionManager(container, currentUser) {
               </div>
               <span class="status-pill ${isOpen ? 'ativo' : 'inativo'}">${isOpen ? 'CONECTADO' : 'OFFLINE'}</span>
             </div>
-            <div class="team-mobile-card-footer">
-              <button class="btn-delete-server-inst btn-outline-white" data-name="${inst.name}" style="width: 100%; color: #DC2626; border-color: #FECACA; font-size: 0.8rem; padding: 0.4rem; justify-content: center;">
-                🗑️ Excluir do Servidor
+            <div class="team-mobile-card-footer" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;">
+              <button class="btn-use-server-inst btn-outline-white" data-name="${inst.name}" style="color: #008069; border-color: #008069; font-size: 0.8rem; padding: 0.4rem; justify-content: center; font-weight: 700;">
+                ⚡ Usar
+              </button>
+              <button class="btn-delete-server-inst btn-outline-white" data-name="${inst.name}" style="color: #DC2626; border-color: #FECACA; font-size: 0.8rem; padding: 0.4rem; justify-content: center;">
+                🗑️ Excluir
               </button>
             </div>
           </div>
         `;
       }).join('');
     }
+
+    container.querySelectorAll('.btn-use-server-inst').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const instName = btn.dataset.name;
+        activeInstanceName = instName;
+        if (slugInput) slugInput.value = instName;
+        localStorage.setItem('evolution_active_instance', instName);
+        const nameDisplay = container.querySelector('#instance-name-display');
+        if (nameDisplay) nameDisplay.innerHTML = `Instância: <strong>${instName}</strong>`;
+        showToast(`Instância ativada: "${instName}"!`, 'success');
+        checkStatus();
+      });
+    });
 
     container.querySelectorAll('.btn-delete-server-inst').forEach(btn => {
       btn.addEventListener('click', async () => {
