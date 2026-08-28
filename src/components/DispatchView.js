@@ -355,15 +355,31 @@ export function renderDispatchView(container, currentUser, onNavigate) {
     }, 150);
   }
 
+  function renderMessagePreview(text) {
+    if (!preview) return;
+    if (!text || !text.trim()) {
+      if (previewBubble) previewBubble.style.display = 'none';
+      return;
+    }
+    const sampleContact = contacts?.[0];
+    const sampleFull = sampleContact?.name ? sampleContact.name.trim() : 'Mariana Moura';
+    const sampleFirst = sampleFull.split(/\s+/)[0] || 'Mariana';
+    const sampleCity = sampleContact?.city || 'sua cidade';
+
+    const rendered = text
+      .replace(/\{primeiro_nome\}|\{primeironome\}|\{first_name\}/gi, sampleFirst)
+      .replace(/\{nome\}/gi, sampleFirst)
+      .replace(/\{nome_completo\}|\{nomecompleto\}|\{full_name\}/gi, sampleFull)
+      .replace(/\{empresa\}|\{cidade\}/gi, sampleCity);
+
+    preview.textContent = rendered;
+    if (previewBubble) previewBubble.style.display = 'block';
+  }
+
   textarea?.addEventListener('input', (e) => {
     templateText = e.target.value;
     autoResizeTextarea(textarea);
-    if (preview) {
-      preview.textContent = templateText;
-    }
-    if (previewBubble) {
-      previewBubble.style.display = templateText.trim() ? 'block' : 'none';
-    }
+    renderMessagePreview(templateText);
   });
 
   // Gavetas Interativas
@@ -539,8 +555,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
         autoResizeTextarea(textarea);
       }
       templateText = decodedBody;
-      if (preview) preview.textContent = decodedBody;
-      if (previewBubble) previewBubble.style.display = 'block';
+      renderMessagePreview(decodedBody);
     }
   });
 

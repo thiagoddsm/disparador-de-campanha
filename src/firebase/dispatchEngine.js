@@ -108,9 +108,13 @@ export async function executeDispatch({
   const messageTemplate = (templateBody || '').trim() || await getTemplateBody(templateId);
   if (!messageTemplate) throw new Error('Digite uma mensagem antes de disparar.');
   const cleanName = contactName ? contactName.trim() : 'Prezado(a)';
+  // Extrai automaticamente apenas o primeiro nome (ex: "Mariana Moura" -> "Mariana")
+  const firstName = cleanName.split(/\s+/)[0] || cleanName;
   const cleanCompany = contactCompany ? contactCompany.trim() : 'sua empresa';
 
-  let personalizedMessage = messageTemplate.replace(/\{nome\}/gi, cleanName);
+  let personalizedMessage = messageTemplate.replace(/\{primeiro_nome\}|\{primeironome\}|\{first_name\}/gi, firstName);
+  personalizedMessage = personalizedMessage.replace(/\{nome\}/gi, firstName);
+  personalizedMessage = personalizedMessage.replace(/\{nome_completo\}|\{nomecompleto\}|\{full_name\}/gi, cleanName);
   personalizedMessage = personalizedMessage.replace(/\{empresa\}/gi, cleanCompany);
 
   const formattedPhone = sanitizePhoneNumber(contactPhone);
