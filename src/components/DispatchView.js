@@ -54,50 +54,17 @@ export function renderDispatchView(container, currentUser, onNavigate) {
 
   // Renderiza layout de conversa estilo WhatsApp
   container.innerHTML = `
-    <div class="wa-chat-container">
-      
-      <!-- WhatsApp Authentic Top Bar -->
-      <div class="wa-chat-header" style="background: #008069; color: #FFFFFF; padding: 0.65rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-shrink: 0;">
-        <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1;">
-          <!-- Seta Voltar / Menu Lateral -->
-          <button id="btn-chat-back-arrow" style="background: none; border: none; color: #FFFFFF; font-size: 1.25rem; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Voltar">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-          </button>
-
-          <!-- Foto Avatar -->
-          <div style="width: 40px; height: 40px; min-width: 40px; min-height: 40px; max-width: 40px; max-height: 40px; border-radius: 50%; overflow: hidden; border: 1.5px solid rgba(255,255,255,0.7); flex-shrink: 0; background: #E2E8F0;">
-            <img src="${currentUser?.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; display: block;">
-          </div>
-
-          <div style="min-width: 0; display: flex; flex-direction: column;">
-            <h3 style="margin: 0; font-size: 1.02rem; font-weight: 800; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">
-              ${isMember ? `Olá, ${currentUser?.name || 'Membro'}` : `Fila: Equipe ${teamLabel}`}
-            </h3>
-            <div style="display: flex; align-items: center; gap: 0.4rem; margin-top: 1px;">
-              <span style="font-size: 0.75rem; color: rgba(255,255,255,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                <span id="queue-header-count">0</span> contatos na fila
-              </span>
-              <span id="wa-connection-indicator" style="font-size: 0.65rem; padding: 1px 6px; border-radius: 99px; background: rgba(255,255,255,0.2); color: #FFFFFF; font-weight: 700; white-space: nowrap;">
-                Verificando...
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Engrenagem de Configurações -->
-        <div style="display: flex; align-items: center; gap: 0.4rem;">
-          <button id="btn-chat-settings-gear" style="background: none; border: none; color: #FFFFFF; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; padding: 0;" title="Configurações & Conexão WhatsApp">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-          </button>
-        </div>
+    <!-- Top Sub-Bar (WhatsApp Style Subtab) -->
+    <div style="background: #008069; color: #FFFFFF; display: flex; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.1); padding: 0 0.5rem; width: 100%; box-sizing: border-box; flex-shrink: 0;">
+      <div style="padding: 0.75rem 1rem; color: rgba(255,255,255,0.7); display: flex; align-items: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg); margin-left: -2px;"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
       </div>
+      <div style="flex: 1; text-align: center; padding: 0.75rem 0.5rem; color: #FFFFFF; font-size: 0.88rem; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #25D366; letter-spacing: 0.5px;">
+        ENVIOS
+      </div>
+    </div>
 
+    <div class="wa-chat-container">
       <!-- WhatsApp Chat Body -->
       <div class="wa-chat-body" id="wa-chat-body">
         
@@ -126,9 +93,14 @@ export function renderDispatchView(container, currentUser, onNavigate) {
             </button>
           </div>
 
-          <button id="btn-toggle-queue-list" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: #008069; font-size: 0.75rem; font-weight: 800; padding: 0.35rem 0.75rem; cursor: pointer;">
-            👥 Fila (<span id="queue-badge-count">0</span>) ⌵
-          </button>
+          <div style="display: flex; align-items: center; gap: 0.35rem;">
+            <span id="wa-connection-indicator" style="font-size: 0.68rem; padding: 3px 8px; border-radius: 99px; background: #DCFCE7; color: #15803D; font-weight: 700; border: 1px solid #86EFAC;">
+              ⚡ API Ativa
+            </span>
+            <button id="btn-toggle-queue-list" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: #008069; font-size: 0.75rem; font-weight: 800; padding: 0.35rem 0.75rem; cursor: pointer;">
+              👥 Fila (<span id="queue-badge-count">0</span>) ⌵
+            </button>
+          </div>
         </div>
 
         <!-- Collapsible Queue Drawer / Card -->
@@ -425,22 +397,6 @@ export function renderDispatchView(container, currentUser, onNavigate) {
     applyFilterAndRender();
   });
 
-  // Botão Engrenagem (Abre Configurações & Conexão WhatsApp)
-  container.querySelector('#btn-chat-settings-gear')?.addEventListener('click', () => {
-    if (onNavigate) {
-      onNavigate('settings');
-    }
-  });
-
-  // Botão Seta Voltar (Alterna menu ou vai para contatos)
-  container.querySelector('#btn-chat-back-arrow')?.addEventListener('click', () => {
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar) {
-      sidebar.classList.toggle('mobile-open');
-    } else if (onNavigate) {
-      onNavigate('contacts');
-    }
-  });
 
   // Disparo em Lote para os Contatos Selecionados (Ao tocar no botão de envio verde ➤)
   async function triggerBatchDispatch() {
