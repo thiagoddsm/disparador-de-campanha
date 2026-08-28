@@ -33,38 +33,40 @@ export function renderDispatchView(container, currentUser) {
 
   container.innerHTML = `
     <div class="page-content">
-      <!-- Top Title & Navigation -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-        <div>
-          <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-            <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">Envio & Histórico de Disparos</h2>
-            <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem;">
-              👤 Minha Fila Individual: <span id="queue-header-count">0</span> contatos
+      <!-- Top Title & Navigation Row -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem; width: 100%;">
+        <div style="min-width: 0; max-width: 100%;">
+          <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.35rem;">
+            <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem; padding: 2px 8px;">
+              👤 Minha Fila: <span id="queue-header-count">0</span> contatos
             </span>
             ${currentUser?.team_id ? `
-              <span class="pill-btn" style="background: #F8FAFC; color: var(--text-muted); font-weight: 600; font-size: 0.75rem; border: 1px solid var(--border-color);">
+              <span class="pill-btn" style="background: #F8FAFC; color: var(--text-muted); font-weight: 600; font-size: 0.75rem; border: 1px solid var(--border-color); padding: 2px 8px;">
                 👥 Equipe: <strong class="current-user-team-name">${currentUser?.team_name || 'Minha Equipe'}</strong>
               </span>
             ` : ''}
           </div>
-          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
+          <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px; word-break: break-word; margin: 0;">
+            Envio & Histórico de Disparos
+          </h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem; line-height: 1.4;">
             Cada líder visualiza e dispara exclusivamente a sua própria lista de contatos atribuídos.
           </p>
         </div>
 
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
-          <button id="tab-btn-queue" class="pill-btn" style="cursor: pointer; padding: 0.5rem 1rem; font-weight: 700; font-size: 0.82rem; background: #1D4ED8; color: #FFFFFF; border: none; transition: all 0.2s;">
-            🎯 Minha Fila de Disparos
+        <div style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
+          <button id="tab-btn-queue" class="pill-btn" style="flex: 1; justify-content: center; cursor: pointer; padding: 0.5rem 0.75rem; font-weight: 700; font-size: 0.82rem; background: #1D4ED8; color: #FFFFFF; border: none; transition: all 0.2s; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">
+            🎯 Minha Fila
           </button>
-          <button id="tab-btn-history" class="pill-btn" style="cursor: pointer; padding: 0.5rem 1rem; font-weight: 700; font-size: 0.82rem; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color); transition: all 0.2s;">
-            📜 Histórico de Disparos (<span id="history-badge-count">0</span>)
+          <button id="tab-btn-history" class="pill-btn" style="flex: 1; justify-content: center; cursor: pointer; padding: 0.5rem 0.75rem; font-weight: 700; font-size: 0.82rem; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color); transition: all 0.2s; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">
+            📜 Histórico (<span id="history-badge-count">0</span>)
           </button>
         </div>
       </div>
 
       <!-- Strategy Selector Card -->
-      <div class="main-panel-card" style="padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; background: #FFFFFF;">
-        <div>
+      <div class="main-panel-card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; background: #FFFFFF;">
+        <div style="min-width: 0; max-width: 100%;">
           <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.2rem;">
             Método de Envio:
           </label>
@@ -73,18 +75,18 @@ export function renderDispatchView(container, currentUser) {
           </p>
         </div>
 
-        <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;" id="strategy-selector-mount">
-          <button type="button" id="strategy-btn-wame" class="pill-btn" style="cursor: pointer; padding: 0.45rem 0.9rem; font-size: 0.78rem; font-weight: 700; background: #EFF6FF; color: #1D4ED8; border: 1.5px solid #3B82F6; transition: all 0.2s;">
+        <div style="display: flex; gap: 0.5rem; align-items: center; width: 100%;" id="strategy-selector-mount">
+          <button type="button" id="strategy-btn-wame" class="pill-btn" style="flex: 1; justify-content: center; cursor: pointer; padding: 0.5rem 0.75rem; font-size: 0.78rem; font-weight: 700; background: #EFF6FF; color: #1D4ED8; border: 1.5px solid #3B82F6; transition: all 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
             📱 WhatsApp Web (wa.me)
           </button>
-          <button type="button" id="strategy-btn-api" class="pill-btn" style="cursor: not-allowed; padding: 0.45rem 0.9rem; font-size: 0.78rem; font-weight: 700; background: #F3F4F6; color: #9CA3AF; border: 1.5px solid var(--border-color); opacity: 0.7; transition: all 0.2s;" disabled>
-            ⚡ Evolution API Automático (Verificando...)
+          <button type="button" id="strategy-btn-api" class="pill-btn" style="flex: 1; justify-content: center; cursor: not-allowed; padding: 0.5rem 0.75rem; font-size: 0.78rem; font-weight: 700; background: #F3F4F6; color: #9CA3AF; border: 1.5px solid var(--border-color); opacity: 0.7; transition: all 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" disabled>
+            ⚡ Evolution API
           </button>
         </div>
       </div>
 
       <!-- Content Container (Tabs) -->
-      <div id="dispatch-view-main-content">
+      <div id="dispatch-view-main-content" style="width: 100%; max-width: 100%; overflow-x: hidden;">
         <!-- Renders Queue or History below -->
       </div>
     </div>

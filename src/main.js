@@ -123,10 +123,17 @@ function renderProtectedApp(currentUser) {
       <div class="main-wrapper">
         <!-- Topbar -->
         <header class="topbar">
-          <div class="topbar-left" style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-            <h2>
-              ${currentView === 'admin' ? 'Painel Administrativo Global' : currentView === 'manager' ? 'Painel de Gestão da Equipe' : currentView === 'settings' ? 'Enterprise Dashboard' : currentView === 'roles' ? 'Enterprise Dashboard' : currentView === 'security' ? 'Enterprise Dashboard' : 'Enterprise Dashboard'}
-            </h2>
+          <div class="topbar-left">
+            <div style="min-width: 0; display: flex; flex-direction: column;">
+              <h2 style="margin: 0; font-size: 1.05rem; font-weight: 800; line-height: 1.2;">
+                ${currentView === 'admin' ? 'Painel Administrativo' : currentView === 'manager' ? 'Gestão da Equipe' : currentView === 'dispatch' ? 'Disparos' : currentView === 'contacts' ? 'Contatos' : currentView === 'templates' ? 'Templates' : currentView === 'evolution' ? 'Conexões' : 'WhatsApp Manager'}
+              </h2>
+              ${teamDisplayName ? `
+                <span style="font-size: 0.72rem; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; margin-top: 2px;">
+                  👥 Equipe: <strong>${teamDisplayName}</strong>
+                </span>
+              ` : ''}
+            </div>
             
             ${role === 'admin' && isManagerView ? `
               <select id="topbar-team-select" class="team-selector-pill" style="padding: 0.35rem 0.85rem; font-size: 0.82rem; font-weight: 700; border-radius: 9999px; background: #FFFFFF; border: 1px solid var(--border-color); cursor: pointer; color: var(--text-main); outline: none;">
@@ -136,26 +143,13 @@ function renderProtectedApp(currentUser) {
                   <option value="${t.id}" ${currentTeamId === t.id ? 'selected' : ''}>👥 ${t.name} ⌵</option>
                 `).join('')}
               </select>
-            ` : (role === 'coordinator' || role === 'member') && teamDisplayName ? `
-              <div class="topbar-member-team-badge" style="display: inline-flex; align-items: center; gap: 6px; padding: 0.35rem 0.85rem; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; color: #1D4ED8;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                <span>Equipe: <strong id="topbar-team-badge-name">${teamDisplayName}</strong></span>
-              </div>
-            ` : `
-              <div class="topbar-search-wrap">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <input type="text" class="topbar-search-input" placeholder="Buscar...">
-              </div>
-            `}
+            ` : ''}
           </div>
 
           <div class="topbar-right" style="position: relative;">
             <!-- Notificações -->
             <button id="btn-topbar-notifications" class="topbar-icon-btn" title="Notificações" style="position: relative;">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
               </svg>
@@ -164,7 +158,7 @@ function renderProtectedApp(currentUser) {
 
             <!-- Configurações -->
             <button id="btn-topbar-settings" class="topbar-icon-btn" title="Configurações">
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
               </svg>
