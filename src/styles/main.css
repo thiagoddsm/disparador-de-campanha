@@ -52,6 +52,7 @@ body {
   min-height: 100vh;
   margin: 0;
   padding: 0;
+  background-color: var(--bg-app);
   color: var(--text-main);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -59,51 +60,38 @@ body {
 }
 
 /* ==========================================================
-   1. MODO CELULAR (Proporção 440 x 956 - Smartphone Frame)
+   1. VERSÃO CELULAR PADRÃO (Rota / - Otimizada para Celular)
    ========================================================== */
 body.view-mode-mobile {
-  background-color: #0F172A;
+  background-color: #F1F5F9;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: stretch;
 }
 
 body.view-mode-mobile #app {
   width: 100%;
-  max-width: 440px;
+  max-width: 520px; /* Fluido e centrado em telas grandes, 100% no celular */
   min-height: 100vh;
-  height: 100vh;
-  max-height: 956px;
+  height: 100%;
   position: relative;
   background-color: #FFFFFF;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.06);
+  border-left: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
 }
 
-@media (min-width: 441px) {
-  body.view-mode-mobile #app {
-    border-radius: 36px;
-    border: 8px solid #1E293B;
-    box-sizing: content-box;
-    margin: auto;
-  }
-}
-
-@media (max-width: 440px) {
+@media (max-width: 520px) {
   body.view-mode-mobile {
     background-color: #FFFFFF;
-    align-items: flex-start;
   }
   body.view-mode-mobile #app {
     max-width: 100vw;
-    height: 100vh;
-    max-height: none;
-    border-radius: 0;
-    border: none;
+    border-left: none;
+    border-right: none;
     box-shadow: none;
-    margin: 0;
   }
 }
 
@@ -114,7 +102,7 @@ body.view-mode-mobile .sidebar {
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   height: 100%;
@@ -132,34 +120,42 @@ body.view-mode-mobile .sidebar.mobile-open {
 body.view-mode-mobile .app-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 100vh;
   width: 100%;
   max-width: 100%;
   position: relative;
-  overflow: hidden;
 }
 
 body.view-mode-mobile .main-wrapper {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 0;
-  height: 100%;
   width: 100%;
-  max-width: 100%;
   position: relative;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-bottom: 64px;
+  padding-bottom: 68px; /* Espaço para a barra de navegação inferior */
 }
 
 body.view-mode-mobile .main-wrapper:has(.wa-chat-container) {
   padding-bottom: 0;
-  overflow: hidden;
 }
 
 body.view-mode-mobile .bottom-nav {
   display: flex !important;
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 520px;
+  height: 64px;
+  background: #FFFFFF !important;
+  border-top: 1px solid #E2E8F0 !important;
+  box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.06);
+  z-index: 100;
+  justify-content: space-around;
+  align-items: center;
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+  box-sizing: border-box;
 }
 
 body.view-mode-mobile .desktop-only {
@@ -170,8 +166,29 @@ body.view-mode-mobile .mobile-only {
   display: block !important;
 }
 
+/* Topbar Versão Celular (WhatsApp Business) */
+body.view-mode-mobile .topbar {
+  background: #008069 !important;
+  color: #FFFFFF !important;
+  border-bottom: none !important;
+  padding: 0.75rem 1rem !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.5rem !important;
+  flex-shrink: 0;
+}
+
+body.view-mode-mobile .topbar h2,
+body.view-mode-mobile .topbar span,
+body.view-mode-mobile .topbar svg {
+  color: #FFFFFF !important;
+}
+
 /* ==========================================================
-   2. MODO DESKTOP COMPLETO (Versão Expandida para Admin/Líder)
+   2. VERSÃO GESTÃO DESKTOP (Rota /admin - Painel Completo)
    ========================================================== */
 body.view-mode-desktop {
   background-color: var(--bg-app);
@@ -183,14 +200,13 @@ body.view-mode-desktop #app {
   max-width: 100vw;
   min-height: 100vh;
   height: auto;
-  max-height: none;
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
-  margin: 0;
+  position: relative;
+  background-color: transparent;
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  box-shadow: none;
+  border: none;
+  margin: 0;
 }
 
 body.view-mode-desktop .app-container {

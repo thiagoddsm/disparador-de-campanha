@@ -106,25 +106,27 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
         <div style="display: flex; flex-direction: column; gap: 1.5rem;">
           
           ${(currentUser.role === 'admin' || currentUser.role === 'coordinator') ? `
-            <!-- Card: Modo de Visualização da Tela -->
-            <div class="main-panel-card" style="padding: 1.5rem; border-radius: var(--radius-lg); background: #F8FAFC; border: 2px solid var(--border-color);">
+            <!-- Card: Versão do Sistema (/ ou /admin) -->
+            <div class="main-panel-card" style="padding: 1.5rem; border-radius: var(--radius-lg); background: #F8FAFC; border: 1px solid var(--border-color);">
               <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;">
                 <div style="width: 32px; height: 32px; border-radius: var(--radius-md); background: #EFF6FF; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
-                  📱
+                  🌐
                 </div>
-                <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin: 0;">Modo de Visualização</h4>
+                <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin: 0;">Versões do Sistema</h4>
               </div>
               <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.4;">
-                Alterne entre a visualização otimizada para celular (440x956) e a versão desktop completa de tela ampla.
+                Acesse a versão para celular ou o painel de gestão desktop através dos endereços diretos:
               </p>
               
               <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                <button type="button" id="btn-set-mode-mobile" class="btn-outline-white" style="width: 100%; justify-content: flex-start; gap: 0.5rem; font-size: 0.82rem; padding: 0.6rem 0.85rem; font-weight: 700; ${localStorage.getItem('app_display_mode') !== 'desktop' ? 'background: #EFF6FF; border-color: #3B82F6; color: #1D4ED8;' : ''}">
-                  📱 Modo Celular (440x956) ${localStorage.getItem('app_display_mode') !== 'desktop' ? '✓ Ativo' : ''}
-                </button>
-                <button type="button" id="btn-set-mode-desktop" class="btn-outline-white" style="width: 100%; justify-content: flex-start; gap: 0.5rem; font-size: 0.82rem; padding: 0.6rem 0.85rem; font-weight: 700; ${localStorage.getItem('app_display_mode') === 'desktop' ? 'background: #EFF6FF; border-color: #3B82F6; color: #1D4ED8;' : ''}">
-                  🖥️ Modo Desktop Completo ${localStorage.getItem('app_display_mode') === 'desktop' ? '✓ Ativo' : ''}
-                </button>
+                <a href="/" id="link-goto-mobile" style="display: flex; align-items: center; justify-content: space-between; text-decoration: none; font-size: 0.82rem; padding: 0.6rem 0.85rem; font-weight: 700; background: #FFFFFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); color: #059669;">
+                  <span>📱 Versão Celular (Rota /)</span>
+                  <span>Acessar →</span>
+                </a>
+                <a href="/admin" id="link-goto-admin" style="display: flex; align-items: center; justify-content: space-between; text-decoration: none; font-size: 0.82rem; padding: 0.6rem 0.85rem; font-weight: 700; background: #FFFFFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); color: #1D4ED8;">
+                  <span>🖥️ Painel Gestão (Rota /admin)</span>
+                  <span>Acessar →</span>
+                </a>
               </div>
             </div>
           ` : ''}
@@ -247,19 +249,16 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
     onNavigate('evolution');
   });
 
-  // Alternador de Modo de Visualização
-  container.querySelector('#btn-set-mode-mobile')?.addEventListener('click', () => {
-    localStorage.setItem('app_display_mode', 'mobile');
-    document.body.classList.add('view-mode-mobile');
-    document.body.classList.remove('view-mode-desktop');
-    onNavigate('settings');
+  container.querySelector('#link-goto-mobile')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.history.pushState(null, '', '/');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   });
 
-  container.querySelector('#btn-set-mode-desktop')?.addEventListener('click', () => {
-    localStorage.setItem('app_display_mode', 'desktop');
-    document.body.classList.add('view-mode-desktop');
-    document.body.classList.remove('view-mode-mobile');
-    onNavigate('settings');
+  container.querySelector('#link-goto-admin')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.history.pushState(null, '', '/admin');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   });
 
   return () => {};

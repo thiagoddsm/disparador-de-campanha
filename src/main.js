@@ -30,23 +30,11 @@ let currentTeamId = null;
 let currentUserState = null;
 let tenantTeams = [];
 
-// Modo de Visualização: 'mobile' (440x956) ou 'desktop' (Tela Ampla)
-let displayMode = localStorage.getItem('app_display_mode') || 'mobile';
-
-export function applyDisplayMode(mode, userRole) {
-  const isAllowed = userRole === 'admin' || userRole === 'coordinator';
-  const effectiveMode = isAllowed ? mode : 'mobile';
-
-  if (effectiveMode === 'desktop') {
-    document.body.classList.add('view-mode-desktop');
-    document.body.classList.remove('view-mode-mobile');
-    displayMode = 'desktop';
-  } else {
-    document.body.classList.add('view-mode-mobile');
-    document.body.classList.remove('view-mode-desktop');
-    displayMode = 'mobile';
-  }
-  localStorage.setItem('app_display_mode', displayMode);
+// Verifica se a URL atual é do Painel de Gestão Desktop (/admin ou #admin)
+export function isAdminUrl() {
+  const pathname = window.location.pathname;
+  const hash = window.location.hash;
+  return pathname.startsWith('/admin') || hash.startsWith('#admin') || hash.startsWith('#/admin');
 }
 
 function updateAllTeamBadges(teamName) {
@@ -88,9 +76,34 @@ subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
 function renderProtectedApp(currentUser) {
   currentUserState = currentUser;
   const role = currentUser.role || 'member';
+  const isAdminOrCoord = role === 'admin' || role === 'coordinator';
+  const onAdminRoute = isAdminUrl();
 
-  // Aplica o modo de visualização (mobile ou desktop) respeitando a permissão do usuário
-  applyDisplayMode(displayMode, role);
+  // ROTEAMENTO BASEADO EM URL:
+  // 1. Rota /admin: Painel de Gestão Desktop (Exclusivo Admin / Coordenador)
+  // 2. Rota / (Padrão): Versão Celular Otimizada (Fluida e Responsiva)
+  if (onAdminRoute) {
+    if (!isAdminOrCoord) {
+      window.history.replaceState(null, '', '/');
+      document.body.classList.add('view-mode-mobile');
+      document.body.classList.remove('view-mode-desktop');
+      if (!currentView || ['admin', 'manager', 'import', 'roles'].includes(currentView)) {
+        currentView = 'dispatch';
+      }
+    } else {
+      document.body.classList.add('view-mode-desktop');
+      document.body.classList.remove('view-mode-mobile');
+      if (!currentView || ['dispatch', 'evolution', 'contacts', 'templates'].includes(currentView)) {
+        currentView = role === 'admin' ? 'admin' : 'manager';
+      }
+    }
+  } else {
+    document.body.classList.add('view-mode-mobile');
+    document.body.classList.remove('view-mode-desktop');
+    if (!currentView || ['admin', 'manager', 'roles', 'import'].includes(currentView)) {
+      currentView = 'dispatch';
+    }
+  }
 
   if (!currentTeamId && tenantTeams.length > 0) {
     currentTeamId = currentUser.team_id || tenantTeams[0].id;
@@ -113,16 +126,9 @@ function renderProtectedApp(currentUser) {
     }).catch(() => {});
   }
 
-  // Define a view padrão com base no papel
-  if (!currentView) {
-    if (role === 'admin') currentView = 'admin';
-    else if (role === 'coordinator') currentView = 'manager';
-    else currentView = 'contacts';
-  }
-
-  // Guard de Rota no Frontend (Blindagem de Nível de Acesso)
+  // Guard de Rota no Frontend
   if (role === 'member' && ['admin', 'manager', 'import', 'roles'].includes(currentView)) {
-    currentView = 'contacts';
+    currentView = 'dispatch';
   } else if (role === 'coordinator' && currentView === 'admin') {
     currentView = 'manager';
   }
@@ -132,7 +138,6 @@ function renderProtectedApp(currentUser) {
     activeCleanup = null;
   }
 
-  const isMember = role === 'member';
   const isManagerView = currentView === 'manager' || currentView === 'admin';
   const roleLabel = role === 'admin' ? 'Administrador Geral' : role === 'coordinator' ? 'Coordenador de Equipe' : 'Membro da Equipe';
 
@@ -143,11 +148,11 @@ function renderProtectedApp(currentUser) {
 
       <!-- Main Content Area -->
       <div class="main-wrapper">
-        ${currentView === 'dispatch' ? '' : `
-          <!-- Topbar WhatsApp Business Style -->
+        ${(currentView === 'dispatch' && !onAdminRoute) ? '' : `
+          <!-- Topbar Header -->
           <header class="topbar">
             <div class="topbar-left" style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1;">
-              <button id="btn-mobile-sidebar-toggle" style="background: none; border: none; color: #FFFFFF; font-size: 1.25rem; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Menu">
+              <button id="btn-mobile-sidebar-toggle" style="background: none; border: none; color: inherit; font-size: 1.25rem; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Menu">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <line x1="3" y1="12" x2="21" y2="12"></line>
                   <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -156,18 +161,18 @@ function renderProtectedApp(currentUser) {
               </button>
 
               <div style="min-width: 0; display: flex; flex-direction: column;">
-                <h2 style="margin: 0; font-size: 1.05rem; font-weight: 800; line-height: 1.2; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <h2 style="margin: 0; font-size: 1.05rem; font-weight: 800; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                   ${currentUser.name || 'Alex Amarante'}
                 </h2>
                 ${teamDisplayName ? `
-                  <span style="font-size: 0.72rem; opacity: 0.9; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; margin-top: 1px;">
+                  <span style="font-size: 0.72rem; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; margin-top: 1px;">
                     👥 Equipe: <strong>${teamDisplayName}</strong>
                   </span>
                 ` : ''}
               </div>
               
               ${role === 'admin' && isManagerView ? `
-                <select id="topbar-team-select" class="team-selector-pill" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; font-weight: 700; border-radius: 9999px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: #FFFFFF; cursor: pointer; outline: none;">
+                <select id="topbar-team-select" class="team-selector-pill" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; font-weight: 700; border-radius: 9999px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: inherit; cursor: pointer; outline: none;">
                   ${tenantTeams.length === 0 ? `
                     <option value="" style="color: black;">Nenhuma equipe</option>
                   ` : tenantTeams.map(t => `
@@ -175,6 +180,8 @@ function renderProtectedApp(currentUser) {
                   `).join('')}
                 </select>
               ` : ''}
+            </div>
+
             <div class="topbar-right" style="position: relative;">
               <!-- Notificações -->
               <button id="btn-topbar-notifications" class="topbar-icon-btn" title="Notificações" style="position: relative;">
@@ -224,16 +231,20 @@ function renderProtectedApp(currentUser) {
                   <span class="pill-btn" style="font-size: 0.68rem; margin-top: 0.4rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8;">${roleLabel}</span>
                 </div>
 
-                ${(role === 'admin' || role === 'coordinator') ? `
-                  <!-- Alternador de Modo de Visualização (Exclusivo Líder / Admin) -->
-                  <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); background: #F8FAFC;">
-                    <div style="font-size: 0.7rem; font-weight: 700; color: #64748B; margin-bottom: 0.35rem; text-transform: uppercase;">
-                      Visualização de Tela
-                    </div>
-                    <button id="btn-toggle-display-mode" class="btn-outline-white" style="width: 100%; font-size: 0.78rem; font-weight: 700; padding: 0.45rem 0.65rem; display: flex; align-items: center; justify-content: space-between; background: #FFFFFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); cursor: pointer; color: var(--text-main);">
-                      <span>${displayMode === 'desktop' ? '🖥️ Modo Desktop' : '📱 Modo Celular (440x956)'}</span>
-                      <span style="font-size: 0.72rem; color: var(--primary-blue); font-weight: 800;">⇄ Trocar</span>
-                    </button>
+                ${isAdminOrCoord ? `
+                  <!-- Atalho para Alternar entre / e /admin -->
+                  <div style="padding: 0.65rem 1rem; border-bottom: 1px solid var(--border-color); background: #F8FAFC;">
+                    ${onAdminRoute ? `
+                      <a href="/" id="btn-switch-to-mobile" style="display: flex; align-items: center; justify-content: space-between; color: #059669; font-weight: 700; font-size: 0.82rem; text-decoration: none;">
+                        <span>📱 Versão Celular (Operador)</span>
+                        <span>→</span>
+                      </a>
+                    ` : `
+                      <a href="/admin" id="btn-switch-to-admin" style="display: flex; align-items: center; justify-content: space-between; color: #1D4ED8; font-weight: 700; font-size: 0.82rem; text-decoration: none;">
+                        <span>🖥️ Painel de Gestão (/admin)</span>
+                        <span>→</span>
+                      </a>
+                    `}
                   </div>
                 ` : ''}
 
@@ -363,10 +374,17 @@ function renderProtectedApp(currentUser) {
     renderProtectedApp(currentUserState);
   });
 
-  appEl.querySelector('#btn-toggle-display-mode')?.addEventListener('click', (e) => {
+  appEl.querySelector('#btn-switch-to-admin')?.addEventListener('click', (e) => {
     e.preventDefault();
-    const nextMode = displayMode === 'desktop' ? 'mobile' : 'desktop';
-    applyDisplayMode(nextMode, currentUser.role);
+    window.history.pushState(null, '', '/admin');
+    currentView = currentUserState?.role === 'admin' ? 'admin' : 'manager';
+    renderProtectedApp(currentUserState);
+  });
+
+  appEl.querySelector('#btn-switch-to-mobile')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.history.pushState(null, '', '/');
+    currentView = 'dispatch';
     renderProtectedApp(currentUserState);
   });
 
@@ -396,6 +414,14 @@ function renderProtectedApp(currentUser) {
     }
   });
 }
+
+// Escuta mudanças de URL pelo botão voltar/avançar do navegador ou hash
+window.addEventListener('popstate', () => {
+  if (currentUserState) renderProtectedApp(currentUserState);
+});
+window.addEventListener('hashchange', () => {
+  if (currentUserState) renderProtectedApp(currentUserState);
+});
 
 function renderLoading() {
   appEl.innerHTML = `

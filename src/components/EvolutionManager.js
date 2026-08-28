@@ -461,14 +461,55 @@ export function renderEvolutionManager(container, currentUser) {
   });
 
   disBtn?.addEventListener('click', async () => {
+    if (!confirm('Deseja realmente desconectar este WhatsApp? Você poderá conectar outro número gerando um novo QR Code.')) return;
+    
     disBtn.disabled = true;
+    disBtn.textContent = 'Desconectando...';
+
+    if (pollingTimer) {
+      clearInterval(pollingTimer);
+      pollingTimer = null;
+    }
+
     try {
-      await logoutEvolutionInstance(activeInstanceName);
-      checkStatus();
-      qrMount.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; padding: 2rem 0;">Instância desconectada com sucesso.</div>`;
-      showToast('Instância desconectada.', 'info');
+      // 1. Desconecta na Evolution API
+      const res = await logoutEvolutionInstance(activeInstanceName);
+      if (!res.success) {
+        await deleteEvolutionInstance(activeInstanceName);
+      }
+
+      // 2. Atualiza estado no Firestore
+      if (currentUser?.uid) {
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+          'whatsapp.enabled': false,
+          'whatsapp.status': 'DISCONNECTED',
+          'whatsapp.phoneNumber': null,
+          'whatsapp.updatedAt': serverTimestamp()
+        }).catch(() => {});
+      }
+      if (currentUser?.team_id) {
+        await updateDoc(doc(db, 'teams', currentUser.team_id), {
+          'whatsapp_connected': false,
+          'whatsapp_phone': null
+        }).catch(() => {});
+      }
+
+      lastSavedState = null;
+      await checkStatus();
+
+      qrMount.innerHTML = `
+        <div style="color: var(--text-muted); font-size: 0.85rem; padding: 2rem 0;">
+          <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🔌</div>
+          <strong style="color: var(--text-main);">WhatsApp Desconectado com Sucesso!</strong>
+          <p style="font-size: 0.8rem; margin-top: 0.35rem;">Toque em <strong>"Gerar QR Code de Conexão"</strong> para conectar um novo chip.</p>
+        </div>
+      `;
+      showToast('WhatsApp desconectado com sucesso.', 'success');
+    } catch (err) {
+      showToast(`Erro ao desconectar: ${err.message || 'Falha de conexão'}`, 'error');
     } finally {
       disBtn.disabled = false;
+      disBtn.textContent = 'Desconectar meu WhatsApp';
     }
   });
 
