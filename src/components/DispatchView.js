@@ -43,6 +43,8 @@ export function renderDispatchView(container, currentUser, onNavigate) {
   let isApiConnected = false;
   let connectedPhone = null;
   let selectedStrategy = 'wa.me';
+  let selectedContactIds = new Set();
+  let isFirstLoad = true;
 
   // Anti-Ban state (Padrão: 1 mensagem a cada 1 minuto com Jitter humano de 50s a 70s)
   let isBatchRunning = false;
@@ -130,10 +132,15 @@ export function renderDispatchView(container, currentUser, onNavigate) {
         </div>
 
         <!-- Collapsible Queue Drawer / Card -->
-        <div id="drawer-contacts-queue" style="display: none; background: #FFFFFF; border-radius: 12px; border: 1px solid var(--border-color); padding: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); max-height: 240px; overflow-y: auto;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border-light);">
-            <strong style="font-size: 0.85rem; color: var(--text-main);">Fila de Contatos da Equipe</strong>
-            <button id="btn-reset-all-contacts" style="background: none; border: none; color: #DC2626; font-size: 0.75rem; font-weight: 700; cursor: pointer;">🔁 Resetar Status</button>
+        <div id="drawer-contacts-queue" style="display: none; background: #FFFFFF; border-radius: 12px; border: 1px solid var(--border-color); padding: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); max-height: 320px; overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; padding-bottom: 0.45rem; border-bottom: 1px solid var(--border-light);">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.82rem; font-weight: 700; color: var(--text-main); user-select: none;">
+              <input type="checkbox" id="chk-select-all-contacts" checked style="width: 16px; height: 16px; accent-color: #25D366; cursor: pointer;">
+              <span>Selecionar Todos</span>
+            </label>
+            <span id="selected-contacts-count-badge" style="font-size: 0.72rem; font-weight: 700; color: #008069; background: #E8F5E9; padding: 2px 8px; border-radius: 99px;">
+              0 selecionados
+            </span>
           </div>
           <div id="wa-queue-list-items" style="display: flex; flex-direction: column; gap: 0.4rem;">
             <!-- Contacts items -->
@@ -210,6 +217,17 @@ export function renderDispatchView(container, currentUser, onNavigate) {
       contacts = rawContacts.filter(c => c.assigned_to === selectedLeaderFilter);
     }
 
+    if (isFirstLoad) {
+      selectedContactIds = new Set(contacts.map(c => c.id));
+      isFirstLoad = false;
+    } else {
+      const currentIds = new Set(contacts.map(c => c.id));
+      selectedContactIds = new Set([...selectedContactIds].filter(id => currentIds.has(id)));
+      if (selectedContactIds.size === 0 && contacts.length > 0) {
+        selectedContactIds = new Set(contacts.map(c => c.id));
+      }
+    }
+
     renderQueueList();
   }
 
@@ -218,9 +236,16 @@ export function renderDispatchView(container, currentUser, onNavigate) {
     const listMount = container.querySelector('#wa-queue-list-items');
     const headerCount = container.querySelector('#queue-header-count');
     const badgeCount = container.querySelector('#queue-badge-count');
+    const selectAllChk = container.querySelector('#chk-select-all-contacts');
+    const selectedBadge = container.querySelector('#selected-contacts-count-badge');
 
     if (headerCount) headerCount.textContent = contacts.length;
-    if (badgeCount) badgeCount.textContent = contacts.length;
+    if (badgeCount) badgeCount.textContent = `${selectedContactIds.size}/${contacts.length}`;
+    if (selectedBadge) selectedBadge.textContent = `${selectedContactIds.size} de ${contacts.length} selecionados`;
+    if (selectAllChk) {
+      selectAllChk.checked = contacts.length > 0 && selectedContactIds.size === contacts.length;
+      selectAllChk.indeterminate = selectedContactIds.size > 0 && selectedContactIds.size < contacts.length;
+    }
 
     if (!listMount) return;
 
@@ -237,35 +262,63 @@ export function renderDispatchView(container, currentUser, onNavigate) {
       const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
       const isOpened = c.status === 'opened';
       const initial = (c.name || 'C').charAt(0).toUpperCase();
+      const isChecked = selectedContactIds.has(c.id);
 
       return `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; background: #F8FAFC; border-radius: 8px; font-size: 0.8rem;">
-          <div style="display: flex; align-items: center; gap: 0.45rem; min-width: 0; flex: 1;">
-            <div style="width: 26px; height: 26px; border-radius: 50%; background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">${initial}</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.45rem 0.6rem; background: ${isChecked ? '#F0FDF4' : '#F8FAFC'}; border: 1px solid ${isChecked ? '#BBF7D0' : 'transparent'}; border-radius: 8px; font-size: 0.8rem; transition: all 0.15s ease;">
+          <div style="display: flex; align-items: center; gap: 0.55rem; min-width: 0; flex: 1; cursor: pointer;" class="contact-row-toggle" data-id="${c.id}">
+            <input type="checkbox" class="chk-contact-item" data-id="${c.id}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: #25D366; cursor: pointer; flex-shrink: 0;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">${initial}</div>
             <div style="min-width: 0;">
               <div style="font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.name}</div>
-              <div style="font-size: 0.72rem; color: var(--text-muted);">${c.phone} ${c.assigned_to_name ? `· ${c.assigned_to_name}` : ''}</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
+                <span>${c.phone}</span>
+                ${c.assigned_to_name ? `<span>· ${c.assigned_to_name}</span>` : ''}
+                ${isConfirmed ? `<span style="color: #15803D; font-weight: 700;">✓ Enviado</span>` : isOpened ? `<span style="color: #2563EB; font-weight: 600;">● Aberto</span>` : ''}
+              </div>
             </div>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 0.4rem;">
-            ${isConfirmed ? `
-              <span style="color: #15803D; font-weight: 700; font-size: 0.72rem;">✓ Enviado</span>
-            ` : isOpened ? `
-              <span style="color: #2563EB; font-weight: 700; font-size: 0.72rem;">Aberto</span>
-            ` : `
-              <button class="btn-quick-send-one" data-id="${c.id}" data-name="${c.name || ''}" data-phone="${c.phone}" data-city="${c.city || ''}" style="background: #25D366; color: #FFFFFF; border: none; font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer;">
-                📱 Enviar
-              </button>
-            `}
+          <div style="display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; margin-left: 0.5rem;">
+            <button class="btn-quick-send-one" data-id="${c.id}" data-name="${c.name || ''}" data-phone="${c.phone}" data-city="${c.city || ''}" style="background: #25D366; color: #FFFFFF; border: none; font-size: 0.72rem; font-weight: 700; padding: 0.3rem 0.65rem; border-radius: 6px; cursor: pointer;" title="Enviar diretamente para este contato">
+              📱 Enviar
+            </button>
           </div>
         </div>
       `;
     }).join('');
 
+    // Listener checkbox individual
+    listMount.querySelectorAll('.chk-contact-item').forEach(chk => {
+      chk.addEventListener('change', (e) => {
+        const id = e.target.getAttribute('data-id');
+        if (e.target.checked) {
+          selectedContactIds.add(id);
+        } else {
+          selectedContactIds.delete(id);
+        }
+        renderQueueList();
+      });
+    });
+
+    // Listener clique no nome da linha para alternar checkbox
+    listMount.querySelectorAll('.contact-row-toggle').forEach(row => {
+      row.addEventListener('click', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        const id = row.getAttribute('data-id');
+        if (selectedContactIds.has(id)) {
+          selectedContactIds.delete(id);
+        } else {
+          selectedContactIds.add(id);
+        }
+        renderQueueList();
+      });
+    });
+
     // Listener de envio rápido individual
     listMount.querySelectorAll('.btn-quick-send-one').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         const contactId = btn.getAttribute('data-id');
         const contactName = btn.getAttribute('data-name');
         const contactPhone = btn.getAttribute('data-phone');
@@ -310,10 +363,21 @@ export function renderDispatchView(container, currentUser, onNavigate) {
           showToast('Erro no envio: ' + err.message, 'error');
         } finally {
           btn.disabled = false;
+          btn.textContent = '📱 Enviar';
         }
       });
     });
   }
+
+  // Listener Selecionar Todos
+  container.querySelector('#chk-select-all-contacts')?.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      contacts.forEach(c => selectedContactIds.add(c.id));
+    } else {
+      selectedContactIds.clear();
+    }
+    renderQueueList();
+  });
 
   // Sincronização em Tempo Real de Digitação e Expansão Automática (Auto-resize)
   const textarea = container.querySelector('#dispatch-template-input');
@@ -378,23 +442,13 @@ export function renderDispatchView(container, currentUser, onNavigate) {
     }
   });
 
-  // Resetar Status de Contatos
-  container.querySelector('#btn-reset-all-contacts')?.addEventListener('click', async () => {
-    if (confirm('Deseja resetar o status de todos os contatos para permitir um novo envio?')) {
-      await resetTeamContactsStatus(currentUser?.team_id);
-      rawContacts.forEach(c => c.status = 'pending');
-      applyFilterAndRender();
-      showToast('Status dos contatos resetado com sucesso!', 'success');
-    }
-  });
-
-  // Disparo em Lote (Ao tocar no botão de envio verde ➤)
+  // Disparo em Lote para os Contatos Selecionados (Ao tocar no botão de envio verde ➤)
   async function triggerBatchDispatch() {
     if (isBatchRunning) return;
 
-    const pendingContacts = contacts.filter(c => c.status === 'pending' || !c.status);
-    if (pendingContacts.length === 0) {
-      alert('Não há contatos pendentes para envio na sua fila selecionada.');
+    const targetContacts = contacts.filter(c => selectedContactIds.has(c.id));
+    if (targetContacts.length === 0) {
+      showToast('Selecione pelo menos um contato na fila para disparar.', 'warning');
       return;
     }
 
@@ -406,8 +460,8 @@ export function renderDispatchView(container, currentUser, onNavigate) {
       return;
     }
 
-    const total = pendingContacts.length;
-    if (!confirm(`Iniciar o envio automático para ${total} contato(s) da fila?`)) return;
+    const total = targetContacts.length;
+    if (!confirm(`Iniciar o envio para os ${total} contato(s) selecionados?`)) return;
 
     isBatchRunning = true;
     const progressContainer = container.querySelector('#batch-progress-container');
@@ -423,13 +477,14 @@ export function renderDispatchView(container, currentUser, onNavigate) {
     }
 
     let sentCount = 0;
-    for (let i = 0; i < pendingContacts.length; i++) {
-      const contact = pendingContacts[i];
+    for (let i = 0; i < targetContacts.length; i++) {
+      const contact = targetContacts[i];
       if (statusText) statusText.textContent = `Enviando para ${contact.name}...`;
 
       try {
         const rawTemplate = textarea?.value || templateText;
         const processedMessage = resolveSpintax(rawTemplate);
+        const strategyToUse = isApiConnected ? 'evolution_api' : 'wa.me';
 
         const dispatchRes = await executeDispatch({
           contactId: contact.id,
@@ -437,16 +492,11 @@ export function renderDispatchView(container, currentUser, onNavigate) {
           contactCompany: contact.city,
           contactPhone: contact.phone,
           user: currentUser,
-          strategy: selectedStrategy,
+          strategy: strategyToUse,
           templateBody: processedMessage
         });
 
-        if (selectedStrategy === 'evolution_api') {
-          await confirmUserDispatch({
-            contactId: contact.id,
-            messageId: dispatchRes.messageId,
-            user: currentUser
-          });
+        if (strategyToUse === 'evolution_api') {
           contact.status = 'user_confirmed';
         } else {
           contact.status = 'opened';
