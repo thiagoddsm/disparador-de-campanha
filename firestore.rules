@@ -72,17 +72,23 @@ service cloud.firestore {
         resource.data.assigned_to == request.auth.uid
       );
       
-      allow create: if isAdmin() || (isCoordinator() && isSameTeam(request.resource.data.team_id));
+      allow create: if signedIn() && (
+        isAdmin() || 
+        (isCoordinator() && isSameTeam(request.resource.data.team_id)) ||
+        request.resource.data.assigned_to == request.auth.uid
+      );
       
-      allow update: if isAdmin() || 
+      allow update: if signedIn() && (
+        isAdmin() || 
         (isCoordinator() && isSameTeam(resource.data.team_id)) ||
-        (
-          signedIn() && 
-          resource.data.assigned_to == request.auth.uid &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'last_opened_at', 'confirmed_at', 'updated_at'])
-        );
+        resource.data.assigned_to == request.auth.uid
+      );
         
-      allow delete: if isAdmin() || (isCoordinator() && isSameTeam(resource.data.team_id));
+      allow delete: if signedIn() && (
+        isAdmin() || 
+        (isCoordinator() && isSameTeam(resource.data.team_id)) ||
+        resource.data.assigned_to == request.auth.uid
+      );
     }
 
     // Regras de Mensagens e Disparos
