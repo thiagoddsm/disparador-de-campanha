@@ -24,14 +24,14 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
   let activeSubTab = 'templates'; // 'templates' | 'campanhas'
 
   container.innerHTML = `
-    <!-- Top Sub-Tabs Bar (WhatsApp Style) -->
-    <div style="background: #008069; color: #FFFFFF; display: flex; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.1); padding: 0 1rem; width: 100%; box-sizing: border-box;">
-      <button id="tab-sub-templates" style="flex: 1; text-align: center; padding: 0.75rem 0.5rem; background: none; border: none; color: #FFFFFF; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #25D366; cursor: pointer; letter-spacing: 0.5px;">
+    <!-- Top Header Bar (WhatsApp Style) -->
+    <div style="background: #008069; color: #FFFFFF; display: flex; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.1); padding: 0 0.5rem; width: 100%; box-sizing: border-box;">
+      <div style="padding: 0.75rem 1rem; color: rgba(255,255,255,0.7); display: flex; align-items: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+      </div>
+      <div style="flex: 1; text-align: center; padding: 0.75rem 0.5rem; color: #FFFFFF; font-size: 0.88rem; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #25D366; letter-spacing: 0.5px;">
         TEMPLATES
-      </button>
-      <button id="tab-sub-campanhas" style="flex: 1; text-align: center; padding: 0.75rem 0.5rem; background: none; border: none; color: rgba(255,255,255,0.7); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; border-bottom: 3px solid transparent; cursor: pointer; letter-spacing: 0.5px;">
-        CAMPANHAS
-      </button>
+      </div>
     </div>
 
     <div class="page-content" style="padding: 1rem 0.85rem 5.5rem; max-width: 520px; margin: 0 auto; box-sizing: border-box;">
@@ -136,24 +136,6 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
     </div>
   `;
 
-  // Sub-tabs listeners
-  container.querySelector('#tab-sub-templates')?.addEventListener('click', () => {
-    activeSubTab = 'templates';
-    container.querySelector('#tab-sub-templates').style.borderBottom = '3px solid #25D366';
-    container.querySelector('#tab-sub-templates').style.color = '#FFFFFF';
-    container.querySelector('#tab-sub-campanhas').style.borderBottom = '3px solid transparent';
-    container.querySelector('#tab-sub-campanhas').style.color = 'rgba(255,255,255,0.7)';
-    renderTemplates();
-  });
-
-  container.querySelector('#tab-sub-campanhas')?.addEventListener('click', () => {
-    activeSubTab = 'campanhas';
-    container.querySelector('#tab-sub-campanhas').style.borderBottom = '3px solid #25D366';
-    container.querySelector('#tab-sub-campanhas').style.color = '#FFFFFF';
-    container.querySelector('#tab-sub-templates').style.borderBottom = '3px solid transparent';
-    container.querySelector('#tab-sub-templates').style.color = 'rgba(255,255,255,0.7)';
-    if (onNavigate) onNavigate('dispatch');
-  });
 
   function renderTemplates() {
     const grid = container.querySelector('#templates-grid-mount');
