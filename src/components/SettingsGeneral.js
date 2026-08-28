@@ -11,11 +11,36 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
   container.innerHTML = `
     <div class="page-content" style="max-width: 1200px;">
       <!-- Title -->
-      <div style="margin-bottom: 2rem;">
-        <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px;">Configurações Gerais</h1>
+      <div style="margin-bottom: 1.5rem;">
+        <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.5px;">Configurações do Sistema</h1>
         <p style="font-size: 0.95rem; color: var(--text-muted); margin-top: 0.25rem;">
-          Gerencie suas informações de perfil, preferências de conta e segurança.
+          Gerencie a conexão do seu WhatsApp, perfil, preferências e segurança da conta.
         </p>
+      </div>
+
+      <!-- 1. PRIMEIRO DESTAQUE: Conexão WhatsApp (QR Code & Status do Chip) -->
+      <div class="main-panel-card" style="padding: 1.75rem; border-radius: var(--radius-lg); background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border: 2px solid #86EFAC; box-shadow: 0 4px 16px rgba(34, 197, 94, 0.12); margin-bottom: 1.75rem; cursor: pointer;" id="card-whatsapp-connection-hero">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 1rem; min-width: 260px;">
+            <div style="width: 52px; height: 52px; border-radius: 14px; background: #22C55E; color: #FFFFFF; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.35); flex-shrink: 0;">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <h3 style="font-size: 1.25rem; font-weight: 800; color: #14532D; margin: 0;">Conexão WhatsApp</h3>
+                <span class="pill-btn" style="background: #BBF7D0; color: #15803D; font-weight: 800; font-size: 0.72rem; padding: 2px 8px;">QR CODE & STATUS</span>
+              </div>
+              <p style="font-size: 0.88rem; color: #166534; margin: 0.25rem 0 0; line-height: 1.4;">
+                Conecte ou desconecte seu número de WhatsApp, leia o QR Code e acompanhe a saúde do chip em tempo real.
+              </p>
+            </div>
+          </div>
+
+          <button id="btn-goto-evolution" class="btn-wa-action" style="font-size: 0.95rem; font-weight: 800; padding: 0.75rem 1.4rem; border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35); display: flex; align-items: center; gap: 0.5rem;">
+            <span>📱 Conectar / Ler QR Code</span>
+            <span style="font-size: 1.1rem;">→</span>
+          </button>
+        </div>
       </div>
 
       <!-- Settings Layout Grid -->
@@ -102,25 +127,28 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
           </div>
         </div>
 
-        <!-- Right Column: WhatsApp Connection, Password & Account Security -->
+        <!-- Right Column: Password & Account Security -->
         <div style="display: flex; flex-direction: column; gap: 1.5rem;">
           
-          <!-- WhatsApp Evolution API Highlighted Card (Configuração & Conexão de Chip) -->
-          <div class="main-panel-card" style="padding: 1.5rem; border-radius: var(--radius-lg); background: #F0FDF4; border: 1.5px solid #86EFAC; box-shadow: 0 2px 10px rgba(34, 197, 94, 0.08);">
-            <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;">
-              <div style="width: 36px; height: 36px; border-radius: var(--radius-md); background: #DCFCE7; color: #16A34A; display: flex; align-items: center; justify-content: center;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-              </div>
-              <div>
-                <h4 style="font-size: 1rem; font-weight: 800; color: #14532D; margin: 0;">Conexão WhatsApp</h4>
-                <span style="font-size: 0.75rem; color: #16A34A; font-weight: 600;">QR Code & Status do Chip</span>
-              </div>
+          <div class="main-panel-card" style="padding: 1.75rem; border-radius: var(--radius-lg);">
+            <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Segurança da Senha</h3>
             </div>
-            <p style="font-size: 0.82rem; color: #166534; margin-bottom: 1.15rem; line-height: 1.4;">
-              Conecte ou desconecte seu número de WhatsApp para envio automático de mensagens.
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.4;">
+              Redefina sua senha de acesso ao sistema com link seguro enviado para o seu e-mail.
             </p>
-            <button id="btn-goto-evolution" class="btn-wa-action" style="width: 100%; justify-content: center; font-size: 0.9rem; padding: 0.65rem 1rem; min-height: 44px;">
-              📱 Conectar / Gerenciar WhatsApp
+
+            <div style="background: #F8FAFC; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+              <div style="font-size: 0.82rem; color: var(--text-main); font-weight: 600;">E-mail Cadastrado:</div>
+              <div style="font-size: 0.85rem; color: var(--primary-blue); word-break: break-all; margin-top: 0.2rem;">${email}</div>
+            </div>
+
+            <button id="btn-reset-password" class="btn-outline-white" style="width: 100%; justify-content: center; padding: 0.65rem 1rem; font-weight: 600; font-size: 0.85rem;">
+              🔑 Enviar Link de Redefinição
             </button>
           </div>
 
@@ -146,32 +174,16 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
             </div>
           ` : ''}
 
-          <div class="main-panel-card" style="padding: 1.75rem; border-radius: var(--radius-lg);">
-            <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-              </svg>
-              <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Segurança da Senha</h3>
-            </div>
-            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.4;">
-              Redefina sua senha de acesso ao sistema com link seguro enviado para o seu e-mail.
-            </p>
-
-            <div style="background: #F8FAFC; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
-              <div style="font-size: 0.82rem; color: var(--text-main); font-weight: 600;">E-mail Cadastrado:</div>
-              <div style="font-size: 0.85rem; color: var(--primary-blue); word-break: break-all; margin-top: 0.2rem;">${email}</div>
-            </div>
-
-            <button id="btn-reset-password" class="btn-outline-white" style="width: 100%; justify-content: center; padding: 0.65rem 1rem; font-weight: 600; font-size: 0.85rem;">
-              🔑 Enviar Link de Redefinição
-            </button>
-          </div>
         </div>
 
       </div>
     </div>
   `;
+
+  // Clique no Card Hero ou no Botão de WhatsApp leva para a tela Evolution
+  container.querySelector('#card-whatsapp-connection-hero')?.addEventListener('click', (e) => {
+    onNavigate('evolution');
+  });
 
   // Alterar Foto de Perfil
   container.querySelector('#btn-change-avatar')?.addEventListener('click', () => {
