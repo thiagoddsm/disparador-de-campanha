@@ -9,6 +9,7 @@ import {
   resetTeamContactsStatus 
 } from '../firebase/realtime.js';
 import { getEvolutionConnectionState, resolveSpintax, sanitizeInstanceSlug } from '../firebase/evolutionApi.js';
+import { logoutUser } from '../firebase/auth.js';
 
 export function renderDispatchView(container, currentUser) {
   let contacts = [];
@@ -33,32 +34,32 @@ export function renderDispatchView(container, currentUser) {
   // Renderiza layout de conversa estilo WhatsApp
   container.innerHTML = `
     <div class="wa-chat-container">
-      <!-- WhatsApp Chat Header -->
+      
+      <!-- WhatsApp Authentic Top Bar -->
       <div class="wa-chat-header">
-        <div class="wa-chat-header-left">
-          <button id="btn-chat-menu-toggle" style="background: none; border: none; color: #FFFFFF; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Menu">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-          </button>
-
-          <img src="${currentUser?.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" class="wa-chat-avatar" alt="Avatar">
-
-          <div class="wa-chat-header-info">
-            <h3 class="wa-chat-header-title">
-              Lista: Equipe ${currentUser?.team_name || 'Jussara'}
-            </h3>
-            <span class="wa-chat-header-sub" id="wa-chat-sub-count">
+        <div class="wa-chat-header-user">
+          <div class="wa-chat-avatar">
+            <img src="${currentUser?.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" alt="Avatar">
+          </div>
+          <div class="wa-chat-user-info">
+            <h3>Disparos - ${teamLabel}</h3>
+            <span class="wa-chat-status">
+              <span class="wa-chat-status-dot"></span>
               <span id="queue-header-count">0</span> contatos atribuídos
             </span>
           </div>
         </div>
 
-        <div class="wa-chat-header-icons">
-          <button style="background: none; border: none; color: #FFFFFF; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Chamada de Vídeo">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+        <div class="wa-chat-header-icons" style="display: flex; align-items: center; gap: 0.65rem;">
+          <!-- Botão Sair / Logout -->
+          <button id="btn-wa-header-logout" style="background: rgba(239, 68, 68, 0.4); border: 1px solid rgba(255, 255, 255, 0.35); color: #FFFFFF; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; padding: 0;" title="Sair do Sistema (Logout)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
           </button>
-          <button style="background: none; border: none; color: #FFFFFF; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Chamada">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-          </button>
+          
           <button id="btn-toggle-options-drawer" style="background: none; border: none; color: #FFFFFF; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Mais Opções">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
           </button>
@@ -250,6 +251,13 @@ export function renderDispatchView(container, currentUser) {
     const drawer = container.querySelector('#drawer-options-menu');
     if (drawer) {
       drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+    }
+  });
+
+  // Botão Sair no cabeçalho da conversa
+  container.querySelector('#btn-wa-header-logout')?.addEventListener('click', async () => {
+    if (confirm('Deseja realmente sair do sistema?')) {
+      await logoutUser();
     }
   });
 
