@@ -8,6 +8,7 @@ import { renderAdminPanel } from './components/AdminPanel.js';
 import { renderManagerialDashboard } from './components/ManagerialDashboard.js';
 import { renderContactsView } from './components/ContactsView.js';
 import { renderDispatchView } from './components/DispatchView.js';
+import { renderDispatchHistoryView } from './components/DispatchHistoryView.js';
 import { renderCsvImportWizard } from './components/CsvImportWizard.js';
 import { renderEvolutionManager } from './components/EvolutionManager.js';
 import { renderTemplatesManager } from './components/TemplatesManager.js';
@@ -249,6 +250,11 @@ function renderProtectedApp(currentUser) {
     });
   } else if (currentView === 'dispatch') {
     activeCleanup = renderDispatchView(mainMount, currentUserState, (newView) => {
+      currentView = newView;
+      renderProtectedApp(currentUserState);
+    });
+  } else if (currentView === 'history') {
+    activeCleanup = renderDispatchHistoryView(mainMount, currentUserState, (newView) => {
       currentView = newView;
       renderProtectedApp(currentUserState);
     });
