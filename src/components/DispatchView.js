@@ -562,8 +562,18 @@ export function renderDispatchView(container, currentUser, onNavigate) {
   // Checagem de Conexão Evolution API
   async function checkApiConnection() {
     try {
-      const slug = sanitizeInstanceSlug(activeInstance);
-      const res = await getEvolutionConnectionState(slug);
+      let slug = sanitizeInstanceSlug(activeInstance);
+      let res = await getEvolutionConnectionState(slug);
+      
+      // Se a instância individual não estiver conectada, verifica a instância principal 'IBM' do servidor
+      if (res.state !== 'open' && slug.toLowerCase() !== 'ibm') {
+        const globalRes = await getEvolutionConnectionState('IBM');
+        if (globalRes.state === 'open') {
+          slug = 'IBM';
+          res = globalRes;
+        }
+      }
+
       const indicator = container.querySelector('#wa-connection-indicator');
       const apiBtn = container.querySelector('#strategy-btn-api');
 
