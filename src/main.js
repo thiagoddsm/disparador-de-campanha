@@ -319,14 +319,20 @@ function renderProtectedApp(currentUser) {
       renderProtectedApp(currentUserState);
     });
   } else if (currentView === 'dispatch') {
-    activeCleanup = renderDispatchView(mainMount, currentUserState);
+    activeCleanup = renderDispatchView(mainMount, currentUserState, (newView) => {
+      currentView = newView;
+      renderProtectedApp(currentUserState);
+    });
   } else if (currentView === 'import') {
     activeCleanup = renderCsvImportWizard(mainMount, currentUserState, (newView) => {
       currentView = newView;
       renderProtectedApp(currentUserState);
     });
   } else if (currentView === 'evolution') {
-    activeCleanup = renderEvolutionManager(mainMount, currentUserState);
+    activeCleanup = renderEvolutionManager(mainMount, currentUserState, (newView) => {
+      currentView = newView;
+      renderProtectedApp(currentUserState);
+    });
   } else if (currentView === 'templates') {
     activeCleanup = renderTemplatesManager(mainMount, currentUserState, (newView) => {
       currentView = newView;

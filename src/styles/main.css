@@ -1320,13 +1320,21 @@ table.panel-table tr:hover td {
     flex: 1;
   }
 
-  .wa-chat-avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1.5px solid rgba(255,255,255,0.4);
-    flex-shrink: 0;
+  .wa-chat-avatar,
+  .wa-chat-avatar img,
+  img.wa-chat-avatar {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    overflow: hidden !important;
+    border: 1.5px solid rgba(255,255,255,0.6) !important;
+    flex-shrink: 0 !important;
+    display: block !important;
   }
 
   .wa-chat-header-info {

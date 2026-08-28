@@ -102,9 +102,28 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
           </div>
         </div>
 
-        <!-- Right Column: Password & Account Security -->
+        <!-- Right Column: WhatsApp Connection, Password & Account Security -->
         <div style="display: flex; flex-direction: column; gap: 1.5rem;">
           
+          <!-- WhatsApp Evolution API Highlighted Card (Configuração & Conexão de Chip) -->
+          <div class="main-panel-card" style="padding: 1.5rem; border-radius: var(--radius-lg); background: #F0FDF4; border: 1.5px solid #86EFAC; box-shadow: 0 2px 10px rgba(34, 197, 94, 0.08);">
+            <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;">
+              <div style="width: 36px; height: 36px; border-radius: var(--radius-md); background: #DCFCE7; color: #16A34A; display: flex; align-items: center; justify-content: center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+              </div>
+              <div>
+                <h4 style="font-size: 1rem; font-weight: 800; color: #14532D; margin: 0;">Conexão WhatsApp</h4>
+                <span style="font-size: 0.75rem; color: #16A34A; font-weight: 600;">QR Code & Status do Chip</span>
+              </div>
+            </div>
+            <p style="font-size: 0.82rem; color: #166534; margin-bottom: 1.15rem; line-height: 1.4;">
+              Conecte ou desconecte seu número de WhatsApp para envio automático de mensagens.
+            </p>
+            <button id="btn-goto-evolution" class="btn-wa-action" style="width: 100%; justify-content: center; font-size: 0.9rem; padding: 0.65rem 1rem; min-height: 44px;">
+              📱 Conectar / Gerenciar WhatsApp
+            </button>
+          </div>
+
           ${(currentUser.role === 'admin' || currentUser.role === 'coordinator') ? `
             <!-- Card: Versão do Sistema (/ ou /admin) -->
             <div class="main-panel-card" style="padding: 1.5rem; border-radius: var(--radius-lg); background: #F8FAFC; border: 1px solid var(--border-color);">
@@ -112,17 +131,13 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
                 <div style="width: 32px; height: 32px; border-radius: var(--radius-md); background: #EFF6FF; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">
                   🌐
                 </div>
-                <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin: 0;">Versões do Sistema</h4>
+                <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin: 0;">Painel de Gestão</h4>
               </div>
               <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.4;">
-                Acesse a versão para celular ou o painel de gestão desktop através dos endereços diretos:
+                Acesse o painel gerencial desktop exclusivo da coordenação e administração:
               </p>
               
               <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                <a href="/" id="link-goto-mobile" style="display: flex; align-items: center; justify-content: space-between; text-decoration: none; font-size: 0.82rem; padding: 0.6rem 0.85rem; font-weight: 700; background: #FFFFFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); color: #059669;">
-                  <span>📱 Versão Celular (Rota /)</span>
-                  <span>Acessar →</span>
-                </a>
                 <a href="/admin" id="link-goto-admin" style="display: flex; align-items: center; justify-content: space-between; text-decoration: none; font-size: 0.82rem; padding: 0.6rem 0.85rem; font-weight: 700; background: #FFFFFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); color: #1D4ED8;">
                   <span>🖥️ Painel Gestão (Rota /admin)</span>
                   <span>Acessar →</span>
@@ -150,22 +165,6 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
 
             <button id="btn-reset-password" class="btn-outline-white" style="width: 100%; justify-content: center; padding: 0.65rem 1rem; font-weight: 600; font-size: 0.85rem;">
               🔑 Enviar Link de Redefinição
-            </button>
-          </div>
-
-          <!-- WhatsApp Evolution API Shortcut -->
-          <div class="main-panel-card" style="padding: 1.5rem; border-radius: var(--radius-lg);">
-            <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;">
-              <div style="width: 32px; height: 32px; border-radius: var(--radius-md); background: #DCFCE7; color: #16A34A; display: flex; align-items: center; justify-content: center;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-              </div>
-              <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin: 0;">WhatsApp (Evolution API)</h4>
-            </div>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.4;">
-              Configure suas instâncias de disparo e conexão de chips de WhatsApp.
-            </p>
-            <button id="btn-goto-evolution" class="btn-primary-blue" style="width: 100%; justify-content: center; font-size: 0.82rem; padding: 0.5rem 1rem;">
-              Acessar Painel WhatsApp
             </button>
           </div>
         </div>

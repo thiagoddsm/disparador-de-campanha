@@ -11,7 +11,7 @@ import {
 import { getEvolutionConnectionState, resolveSpintax, sanitizeInstanceSlug } from '../firebase/evolutionApi.js';
 import { logoutUser } from '../firebase/auth.js';
 
-export function renderDispatchView(container, currentUser) {
+export function renderDispatchView(container, currentUser, onNavigate) {
   let contacts = [];
   let historyMessages = [];
   let availableTemplates = [];
@@ -31,37 +31,43 @@ export function renderDispatchView(container, currentUser) {
   let batchMaxDelay = 70; // segundos
   let enableComposing = true;
 
-  // Renderiza layout de conversa estilo WhatsApp
+  // Renderiza layout de conversa estilo WhatsApp (Fiel à imagem de referência)
   container.innerHTML = `
     <div class="wa-chat-container">
       
       <!-- WhatsApp Authentic Top Bar -->
-      <div class="wa-chat-header">
-        <div class="wa-chat-header-user">
-          <div class="wa-chat-avatar">
-            <img src="${currentUser?.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" alt="Avatar">
+      <div class="wa-chat-header" style="background: #008069; color: #FFFFFF; padding: 0.65rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1;">
+          <!-- Seta Voltar / Menu Lateral -->
+          <button id="btn-chat-back-arrow" style="background: none; border: none; color: #FFFFFF; font-size: 1.25rem; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Voltar">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+          </button>
+
+          <!-- Foto Avatar com dimensões estritas 40x40 (Fixa o Bug de Tamanho) -->
+          <div style="width: 40px; height: 40px; min-width: 40px; min-height: 40px; max-width: 40px; max-height: 40px; border-radius: 50%; overflow: hidden; border: 1.5px solid rgba(255,255,255,0.7); flex-shrink: 0; background: #E2E8F0;">
+            <img src="${currentUser?.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; display: block;">
           </div>
-          <div class="wa-chat-user-info">
-            <h3>Disparos - ${teamLabel}</h3>
-            <span class="wa-chat-status">
-              <span class="wa-chat-status-dot"></span>
-              <span id="queue-header-count">0</span> contatos atribuídos
+
+          <div style="min-width: 0; display: flex; flex-direction: column;">
+            <h3 style="margin: 0; font-size: 1.02rem; font-weight: 800; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">
+              Lista: Equipe ${teamLabel}
+            </h3>
+            <span style="font-size: 0.75rem; color: rgba(255,255,255,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;">
+              <span id="queue-header-count">0</span> contatos
             </span>
           </div>
         </div>
 
-        <div class="wa-chat-header-icons" style="display: flex; align-items: center; gap: 0.65rem;">
-          <!-- Botão Sair / Logout -->
-          <button id="btn-wa-header-logout" style="background: rgba(239, 68, 68, 0.4); border: 1px solid rgba(255, 255, 255, 0.35); color: #FFFFFF; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; padding: 0;" title="Sair do Sistema (Logout)">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
+        <!-- Engrenagem de Configurações (Conexão WhatsApp & Ajustes) -->
+        <div style="display: flex; align-items: center; gap: 0.4rem;">
+          <button id="btn-chat-settings-gear" style="background: none; border: none; color: #FFFFFF; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; padding: 0;" title="Configurações & Conexão WhatsApp">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
-          </button>
-          
-          <button id="btn-toggle-options-drawer" style="background: none; border: none; color: #FFFFFF; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Mais Opções">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
           </button>
         </div>
       </div>
@@ -247,17 +253,20 @@ export function renderDispatchView(container, currentUser) {
     }
   });
 
-  container.querySelector('#btn-toggle-options-drawer')?.addEventListener('click', () => {
-    const drawer = container.querySelector('#drawer-options-menu');
-    if (drawer) {
-      drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+  // Botão Engrenagem (Abre Configurações & Conexão WhatsApp)
+  container.querySelector('#btn-chat-settings-gear')?.addEventListener('click', () => {
+    if (onNavigate) {
+      onNavigate('settings');
     }
   });
 
-  // Botão Sair no cabeçalho da conversa
-  container.querySelector('#btn-wa-header-logout')?.addEventListener('click', async () => {
-    if (confirm('Deseja realmente sair do sistema?')) {
-      await logoutUser();
+  // Botão Seta Voltar (Alterna menu ou vai para contatos)
+  container.querySelector('#btn-chat-back-arrow')?.addEventListener('click', () => {
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+      sidebar.classList.toggle('mobile-open');
+    } else if (onNavigate) {
+      onNavigate('contacts');
     }
   });
 
