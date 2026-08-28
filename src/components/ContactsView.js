@@ -354,7 +354,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
     options += `<option value="mine" ${selectedTeamId === 'mine' ? 'selected' : ''}>⭐ Minha Base Pessoal (${allContacts.filter(c => c.assigned_to === currentUser.uid).length})</option>`;
 
     if (isAdmin) {
-      allTeams.forEach(t => {
+            allTeams.forEach(t => {
         const teamContactsCount = allContacts.filter(c => c.team_id === t.id).length;
         options += `<option value="${t.id}" ${selectedTeamId === t.id ? 'selected' : ''}>👥 ${t.name} (${teamContactsCount})</option>`;
       });
@@ -373,14 +373,15 @@ export function renderContactsView(container, currentUser, onNavigate) {
     if (selectedTeamId !== 'all' && selectedTeamId !== 'mine') {
       targetUsers = allUsers.filter(u => u.team_id === selectedTeamId);
     } else if (isCoordinator) {
-      targetUsers = allUsers.filter(u => u.team_id === currentUser.team_id || u.coordinator_id === currentUser.uid);
+      targetUsers = teamMembers.length > 0 ? teamMembers : allUsers.filter(u => u.team_id === currentUser.team_id || u.coordinator_id === currentUser.uid);
     }
 
     let options = '<option value="all">👥 Todos os Membros</option>';
-    options += `<option value="${currentUser.uid}" ${selectedMemberUid === currentUser.uid ? 'selected' : ''}>⭐ Atribuídos a Mim</option>`;
+    const myCount = allContacts.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name)).length;
+    options += `<option value="${currentUser.uid}" ${selectedMemberUid === currentUser.uid ? 'selected' : ''}>⭐ Atribuídos a Mim (${myCount})</option>`;
 
     targetUsers.filter(u => u.uid !== currentUser.uid).forEach(u => {
-      const count = allContacts.filter(c => c.assigned_to === u.uid).length;
+      const count = allContacts.filter(c => c.assigned_to === u.uid || c.assigned_to === u.email || (u.name && c.assigned_to_name === u.name)).length;
       options += `<option value="${u.uid}" ${selectedMemberUid === u.uid ? 'selected' : ''}>👤 ${u.name || u.email} (${count})</option>`;
     });
 
@@ -408,14 +409,10 @@ export function renderContactsView(container, currentUser, onNavigate) {
         <div class="team-breakdown-pill" data-team-id="${t.id}" style="background: #FFFFFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem 1rem; cursor: pointer; transition: all 0.15s ease;" title="Filtrar por esta equipe">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
             <strong style="font-size: 0.85rem; color: var(--text-main);">👥 ${t.name}</strong>
-            <span style="font-size: 0.75rem; font-weight: 700; color: ${rate === 100 ? '#059669' : '#1D4ED8'};">${rate}%</span>
+            <span class="pill-btn" style="font-size: 0.72rem; font-weight: 700; background: #ECFDF5; color: #059669;">${rate}%</span>
           </div>
-          <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between;">
-            <span>${total} contatos</span>
-            <span><strong>${sent}</strong> enviados</span>
-          </div>
-          <div style="width: 100%; height: 4px; background: #F1F5F9; border-radius: 9999px; margin-top: 0.45rem; overflow: hidden;">
-            <div style="width: ${rate}%; height: 100%; background: ${rate === 100 ? '#10B981' : '#3B82F6'};"></div>
+          <div style="font-size: 0.78rem; color: var(--text-muted);">
+            ${sent} de ${total} concluídos
           </div>
         </div>
       `;
@@ -425,6 +422,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
       card.addEventListener('click', () => {
         const teamId = card.getAttribute('data-team-id');
         selectedTeamId = teamId;
+        selectedMemberUid = 'all';
         const teamSel = container.querySelector('#filter-team-select');
         if (teamSel) teamSel.value = teamId;
         populateMemberDropdown();
@@ -452,9 +450,22 @@ export function renderContactsView(container, currentUser, onNavigate) {
 
     // Filtro por Equipe
     if (selectedTeamId === 'mine') {
-      filtered = filtered.filter(c => c.assigned_to === currentUser.uid);
+      filtered = filtered.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name));
     } else if (selectedTeamId !== 'all') {
       filtered = filtered.filter(c => c.team_id === selectedTeamId);
+    }
+
+    // Filtro por Líder / Operador (Membro)
+    if (selectedMemberUid !== 'all') {
+      const targetUser = allUsers.find(u => u.uid === selectedMemberUid);
+      filtered = filtered.filter(c => 
+        c.assigned_to === selectedMemberUid || 
+        (targetUser && (
+          c.assigned_to === targetUser.email || 
+          (targetUser.name && c.assigned_to_name === targetUser.name) || 
+          (targetUser.email && c.assigned_to_name === targetUser.email)
+        ))
+      );
     }
 
     // Filtro de Busca por Localização (Cidade / Bairro do RJ)
