@@ -362,18 +362,22 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
                   <th>USUÁRIO</th>
                   <th>CARGO ATUAL</th>
                   <th>EQUIPE</th>
+                  <th>INSTÂNCIA WHATSAPP</th>
                   <th>STATUS</th>
                   <th style="text-align: right;">AÇÕES</th>
                 </tr>
               </thead>
               <tbody>
                 ${validUsers.length === 0 ? `
-                  <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum usuário cadastrado.</td></tr>
+                  <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum usuário cadastrado.</td></tr>
                 ` : validUsers.map(u => {
                   const initials = ((u.name || u.email || 'U')).substring(0, 2).toUpperCase();
                   const isActive = u.is_active !== false;
                   const isSuperAdmin = (u.email || '').toLowerCase() === 'thiagoddsm@gmail.com';
                   const currentRole = isSuperAdmin ? 'admin' : (u.role || 'member');
+                  const isConnected = u.whatsapp?.status === 'CONNECTED' || u.whatsapp_connected === true;
+                  const instanceName = u.whatsapp?.instanceName || u.whatsapp_instance || null;
+                  const phone = u.whatsapp?.phoneNumber || u.whatsapp_phone || null;
 
                   const roleLabel = currentRole === 'admin' 
                     ? '👑 Administrador' 
@@ -417,6 +421,31 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
                             <option value="${t.id}" ${u.team_id === t.id ? 'selected' : ''}>👥 ${t.name}</option>
                           `).join('')}
                         </select>
+                      </td>
+                      <td>
+                        ${isConnected ? `
+                          <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <span class="pill-btn" style="background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 4px; width: fit-content;">
+                              <span style="width: 7px; height: 7px; border-radius: 50%; background: #22C55E; display: inline-block;"></span>
+                              Conectada
+                            </span>
+                            ${instanceName ? `<span style="font-size: 0.72rem; color: #64748B; font-family: monospace;">${instanceName}</span>` : ''}
+                            ${phone ? `<span style="font-size: 0.7rem; color: #059669; font-weight: 600;">📱 ${phone}</span>` : ''}
+                          </div>
+                        ` : instanceName ? `
+                          <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-weight: 700; font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 4px; width: fit-content;">
+                              <span style="width: 7px; height: 7px; border-radius: 50%; background: #F59E0B; display: inline-block;"></span>
+                              Criada (Desconectada)
+                            </span>
+                            <span style="font-size: 0.72rem; color: #64748B; font-family: monospace;">${instanceName}</span>
+                          </div>
+                        ` : `
+                          <span class="pill-btn" style="background: #F1F5F9; color: #94A3B8; font-weight: 600; font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 4px; width: fit-content;">
+                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #CBD5E1; display: inline-block;"></span>
+                            Não criada
+                          </span>
+                        `}
                       </td>
                       <td>
                         <span class="status-pill ${isActive ? 'ativo' : 'inativo'}">

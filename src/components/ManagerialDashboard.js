@@ -340,6 +340,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
               <thead>
                 <tr>
                   <th>MEMBRO DA EQUIPE</th>
+                  <th>INSTÂNCIA WHATSAPP</th>
                   <th>PROGRESSO DA META</th>
                   <th>DISPAROS / META</th>
                   <th>CONCLUÍDOS</th>
@@ -349,11 +350,14 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
               </thead>
               <tbody id="coord-table-body">
                 ${teamMembers.length === 0 ? `
-                  <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum membro na equipe ainda. Clique em <strong>+ Adicionar Membro da Equipe</strong>.</td></tr>
+                  <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum membro na equipe ainda. Clique em <strong>+ Adicionar Membro da Equipe</strong>.</td></tr>
                 ` : sortedByAbordados.map(m => {
                   const initials = (m.name || 'M').substring(0, 2).toUpperCase();
                   const isActive = m.is_active !== false;
                   const completionRate = m.memberContacts.length > 0 ? Math.round((m.abordados / m.memberContacts.length) * 100) : 0;
+                  const isConnected = m.whatsapp?.status === 'CONNECTED' || m.whatsapp_connected === true;
+                  const instanceName = m.whatsapp?.instanceName || m.whatsapp_instance || null;
+                  const phone = m.whatsapp?.phoneNumber || m.whatsapp_phone || null;
 
                   return `
                     <tr class="member-row">
@@ -366,7 +370,32 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
                           </div>
                         </div>
                       </td>
-                      <td style="width: 25%;">
+                      <td>
+                        ${isConnected ? `
+                          <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <span class="pill-btn" style="background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 4px; width: fit-content;">
+                              <span style="width: 7px; height: 7px; border-radius: 50%; background: #22C55E; display: inline-block;"></span>
+                              Conectada
+                            </span>
+                            ${instanceName ? `<span style="font-size: 0.72rem; color: #64748B; font-family: monospace;">${instanceName}</span>` : ''}
+                            ${phone ? `<span style="font-size: 0.7rem; color: #059669; font-weight: 600;">📱 ${phone}</span>` : ''}
+                          </div>
+                        ` : instanceName ? `
+                          <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-weight: 700; font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 4px; width: fit-content;">
+                              <span style="width: 7px; height: 7px; border-radius: 50%; background: #F59E0B; display: inline-block;"></span>
+                              Criada (Desconectada)
+                            </span>
+                            <span style="font-size: 0.72rem; color: #64748B; font-family: monospace;">${instanceName}</span>
+                          </div>
+                        ` : `
+                          <span class="pill-btn" style="background: #F1F5F9; color: #94A3B8; font-weight: 600; font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 4px; width: fit-content;">
+                            <span style="width: 7px; height: 7px; border-radius: 50%; background: #CBD5E1; display: inline-block;"></span>
+                            Não criada
+                          </span>
+                        `}
+                      </td>
+                      <td style="width: 22%;">
                         <div class="table-progress-wrap">
                           <div class="table-progress-track">
                             <div class="table-progress-bar" style="width: ${m.pct}%; background: ${m.pct >= 100 ? 'var(--whatsapp-green)' : 'var(--primary-blue)'};"></div>
@@ -411,6 +440,8 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
             ` : sortedByAbordados.map(m => {
               const initials = (m.name || 'M').substring(0, 2).toUpperCase();
               const isActive = m.is_active !== false;
+              const isConnected = m.whatsapp?.status === 'CONNECTED' || m.whatsapp_connected === true;
+              const instanceName = m.whatsapp?.instanceName || m.whatsapp_instance || null;
 
               return `
                 <div class="team-mobile-card member-mobile-item">
@@ -423,6 +454,23 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
                       </div>
                     </div>
                     <span class="status-pill ${isActive ? 'ativo' : 'pendente'}">${isActive ? 'ATIVO' : 'INATIVO'}</span>
+                  </div>
+
+                  <div style="margin-bottom: 0.75rem;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Instância WhatsApp:</span>
+                    ${isConnected ? `
+                      <span class="pill-btn" style="background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; margin-left: 4px;">
+                        🟢 Conectada (${instanceName || 'Ativa'})
+                      </span>
+                    ` : instanceName ? `
+                      <span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-weight: 700; font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; margin-left: 4px;">
+                        🟡 Criada (${instanceName})
+                      </span>
+                    ` : `
+                      <span class="pill-btn" style="background: #F1F5F9; color: #94A3B8; font-weight: 600; font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; margin-left: 4px;">
+                        ⚪ Não criada
+                      </span>
+                    `}
                   </div>
 
                   <div class="team-mobile-card-progress">
