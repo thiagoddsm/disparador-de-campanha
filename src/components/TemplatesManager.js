@@ -25,7 +25,7 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
 
   container.innerHTML = `
     <!-- Top Sub-Tabs Bar (WhatsApp Style) -->
-    <div style="background: #008069; color: #FFFFFF; display: flex; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.1); margin: -1rem -1rem 1rem -1rem; padding: 0 1rem;">
+    <div style="background: #008069; color: #FFFFFF; display: flex; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.1); padding: 0 1rem; width: 100%; box-sizing: border-box;">
       <button id="tab-sub-templates" style="flex: 1; text-align: center; padding: 0.75rem 0.5rem; background: none; border: none; color: #FFFFFF; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #25D366; cursor: pointer; letter-spacing: 0.5px;">
         TEMPLATES
       </button>
@@ -34,7 +34,7 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
       </button>
     </div>
 
-    <div class="page-content" style="padding-top: 0;">
+    <div class="page-content" style="padding: 1rem 0.85rem 5.5rem; max-width: 520px; margin: 0 auto; box-sizing: border-box;">
       <!-- Search + Scope Filters -->
       <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.25rem;">
         <div style="position: relative; width: 100%;">
@@ -63,7 +63,7 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
 
       <!-- Floating Plus FAB -->
       ${canManage ? `
-        <button class="fab-button" id="fab-add-template" title="Criar Novo Template" style="position: fixed; right: 20px; bottom: 84px; width: 56px; height: 56px; border-radius: 50%; background: #25D366; color: #FFFFFF; border: none; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 90;">
+        <button class="fab-button" id="fab-add-template" title="Criar Novo Template">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>

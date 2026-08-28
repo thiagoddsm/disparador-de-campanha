@@ -624,8 +624,8 @@ export function renderContactsView(container, currentUser, onNavigate) {
           }).join('')}
         </div>
 
-        <!-- Floating Green Plus FAB (Matching Image 3) -->
-        <button id="btn-fab-add-contact" title="Adicionar Contato" style="position: fixed; right: 20px; bottom: 84px; width: 56px; height: 56px; border-radius: 50%; background: #25D366; color: #FFFFFF; border: none; box-shadow: 0 4px 14px rgba(37, 211, 102, 0.45); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 90;">
+        <!-- Floating Green Plus FAB -->
+        <button id="btn-fab-add-contact" class="fab-button" title="Adicionar Contato">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
