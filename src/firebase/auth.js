@@ -100,27 +100,72 @@ export async function syncUserProfile(
 }
 
 /**
+ * Comprime e redimensiona a imagem do avatar no navegador (max 256x256).
+ */
+function compressAvatarImage(file, maxSize = 256, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxSize) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error('Falha ao processar arquivo de imagem.'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('Falha ao ler arquivo de imagem.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Faz upload da foto de perfil no Firebase Storage e retorna o link público.
+ * Em caso de indisponibilidade do Storage, usa Base64 otimizado com segurança.
  * @param {File} file Arquivo de imagem selecionado pelo usuário
  * @param {string} userUid UID do usuário
- * @returns {Promise<string>} Download URL do arquivo
+ * @returns {Promise<string>} Download URL ou Base64 Data URL
  */
 export async function uploadUserAvatarFile(file, userUid) {
   if (!file) throw new Error('Nenhum arquivo selecionado.');
   if (!file.type.startsWith('image/')) throw new Error('Por favor, selecione um arquivo de imagem válido (PNG, JPG, JPEG, WEBP).');
   
-  // Limite de 5MB
   if (file.size > 5 * 1024 * 1024) {
     throw new Error('A imagem deve ter no máximo 5MB.');
   }
 
-  const ext = file.name.split('.').pop() || 'jpg';
-  const filePath = `avatars/${userUid || auth.currentUser?.uid || 'user'}_${Date.now()}.${ext}`;
-  const storageRef = ref(storage, filePath);
+  // Comprime a imagem para tamanho leve de avatar (~15KB)
+  const compressedBase64 = await compressAvatarImage(file, 256, 0.85);
 
-  await uploadBytes(storageRef, file, { contentType: file.type });
-  const downloadUrl = await getDownloadURL(storageRef);
-  return downloadUrl;
+  try {
+    const ext = file.name.split('.').pop() || 'jpg';
+    const filePath = `avatars/${userUid || auth.currentUser?.uid || 'user'}_${Date.now()}.${ext}`;
+    const storageRef = ref(storage, filePath);
+    await uploadBytes(storageRef, file, { contentType: file.type });
+    const downloadUrl = await getDownloadURL(storageRef);
+    return downloadUrl;
+  } catch (storageErr) {
+    console.warn('Firebase Storage indisponível, usando avatar otimizado:', storageErr);
+    return compressedBase64;
+  }
 }
 
 /**

@@ -150,11 +150,21 @@ export function renderEvolutionManager(container, currentUser) {
                 <label style="display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">Identificador da Instância (Slug)</label>
                 <input type="text" id="input-instance-slug" class="topbar-search-input" style="width: 100%; margin-bottom: 0.65rem; background: white;" value="${activeInstanceName}">
                 
-                <label style="display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">Chave da Instância (Token)</label>
-                <input type="password" id="input-api-key" class="topbar-search-input" style="width: 100%; margin-bottom: 0.65rem; background: white;" value="${localStorage.getItem('evolution_api_key') || EVOLUTION_CONFIG.apiKey}">
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">Chave Global da API (AUTHENTICATION_API_KEY)</label>
+                <div style="position: relative; display: flex; align-items: center; margin-bottom: 0.65rem;">
+                  <input type="password" id="input-api-key" class="topbar-search-input" style="width: 100%; background: white; padding-right: 36px;" value="${localStorage.getItem('evolution_api_key') || EVOLUTION_CONFIG.apiKey}" placeholder="Cole sua Global API Key aqui">
+                  <button type="button" id="btn-toggle-key-visibility" style="position: absolute; right: 8px; background: none; border: none; cursor: pointer; color: #64748B; font-size: 1rem; padding: 2px;" title="Mostrar/Ocultar Chave">
+                    👁️
+                  </button>
+                </div>
                 
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">URL do Servidor Evolution API</label>
                 <input type="text" id="input-api-url" class="topbar-search-input" style="width: 100%; margin-bottom: 0.65rem; background: white; font-size: 0.75rem;" value="${localStorage.getItem('evolution_api_url') || EVOLUTION_CONFIG.baseUrl}">
-                <button id="btn-save-api-config" class="btn-outline-white" style="width: 100%; font-size: 0.75rem; padding: 0.4rem; font-weight: 700;">Salvar Configuração</button>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                  <button id="btn-save-api-config" class="btn-outline-white" style="font-size: 0.75rem; padding: 0.5rem; font-weight: 700; background: #008069; color: #FFFFFF; border: none;">💾 Salvar Configuração</button>
+                  <button id="btn-test-api-config" class="btn-outline-white" style="font-size: 0.75rem; padding: 0.5rem; font-weight: 700; background: #FFFFFF; color: #1E293B;">🔍 Testar Conexão</button>
+                </div>
               </div>
             </details>
           ` : ''}
@@ -457,6 +467,53 @@ export function renderEvolutionManager(container, currentUser) {
     } catch (err) {
       console.error('Erro ao salvar config:', err);
       showToast('Erro ao salvar configuração no servidor.', 'error');
+    }
+  });
+
+  // Alternar visibilidade da senha/chave
+  container.querySelector('#btn-toggle-key-visibility')?.addEventListener('click', () => {
+    const keyInput = container.querySelector('#input-api-key');
+    if (keyInput) {
+      keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
+    }
+  });
+
+  // Testar conexão da API
+  const testApiConfigBtn = container.querySelector('#btn-test-api-config');
+  testApiConfigBtn?.addEventListener('click', async () => {
+    const url = container.querySelector('#input-api-url')?.value.trim();
+    const key = container.querySelector('#input-api-key')?.value.trim();
+    
+    if (!url || !key) {
+      showToast('Preencha a URL e a Chave da API para testar.', 'warning');
+      return;
+    }
+
+    testApiConfigBtn.disabled = true;
+    testApiConfigBtn.textContent = 'Testando...';
+
+    try {
+      const res = await fetch(`${url.replace(/\/$/, '')}/instance/fetchInstances`, {
+        method: 'GET',
+        headers: {
+          'apikey': key,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (res.ok) {
+        showToast('✅ Conexão bem-sucedida! Chave de API Global autorizada.', 'success');
+      } else if (res.status === 401) {
+        showToast('❌ Erro 401: Chave de API Global incorreta ou não autorizada no servidor Evolution.', 'error');
+      } else {
+        showToast(`⚠️ Resposta do servidor Evolution: HTTP ${res.status}`, 'warning');
+      }
+    } catch (err) {
+      console.error('Erro no teste de conexão:', err);
+      showToast(`❌ Erro ao conectar ao servidor: ${err.message}`, 'error');
+    } finally {
+      testApiConfigBtn.disabled = false;
+      testApiConfigBtn.textContent = '🔍 Testar Conexão';
     }
   });
 
