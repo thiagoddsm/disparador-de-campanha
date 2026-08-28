@@ -9,7 +9,12 @@ import {
   resetContactStatus, 
   resetTeamContactsStatus 
 } from '../firebase/realtime.js';
-import { getEvolutionConnectionState, resolveSpintax, sanitizeInstanceSlug } from '../firebase/evolutionApi.js';
+import { 
+  getEvolutionConnectionState, 
+  resolveSpintax, 
+  sanitizeInstanceSlug,
+  generateHierarchicalInstanceName 
+} from '../firebase/evolutionApi.js';
 import { logoutUser } from '../firebase/auth.js';
 import { showToast } from '../utils/feedback.js';
 
@@ -26,11 +31,18 @@ export function renderDispatchView(container, currentUser, onNavigate) {
   const isAdmin = currentUser?.role === 'admin';
   const isCoordinator = currentUser?.role === 'coordinator';
   const teamLabel = currentUser?.team_name || (currentUser?.team_id ? 'Equipe Vinculada' : 'Minha Equipe');
-  let selectedStrategy = 'wa.me';
+  
+  const hierarchicalInstance = (currentUser?.team_name)
+    ? generateHierarchicalInstanceName(currentUser.team_name, currentUser.role, currentUser.name)
+    : null;
+  const activeInstance = currentUser?.whatsapp?.instanceName ||
+    localStorage.getItem('evolution_active_instance') ||
+    hierarchicalInstance ||
+    'IBM';
 
-  const activeInstance = localStorage.getItem('evolution_active_instance') || 'alpha_coordenador_thiago';
   let isApiConnected = false;
   let connectedPhone = null;
+  let selectedStrategy = 'wa.me';
 
   // Anti-Ban state (Padrão: 1 mensagem a cada 1 minuto com Jitter humano de 50s a 70s)
   let isBatchRunning = false;
@@ -62,9 +74,14 @@ export function renderDispatchView(container, currentUser, onNavigate) {
             <h3 style="margin: 0; font-size: 1.02rem; font-weight: 800; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">
               ${isMember ? `Olá, ${currentUser?.name || 'Membro'}` : `Fila: Equipe ${teamLabel}`}
             </h3>
-            <span style="font-size: 0.75rem; color: rgba(255,255,255,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;">
-              <span id="queue-header-count">0</span> contatos na fila
-            </span>
+            <div style="display: flex; align-items: center; gap: 0.4rem; margin-top: 1px;">
+              <span style="font-size: 0.75rem; color: rgba(255,255,255,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <span id="queue-header-count">0</span> contatos na fila
+              </span>
+              <span id="wa-connection-indicator" style="font-size: 0.65rem; padding: 1px 6px; border-radius: 99px; background: rgba(255,255,255,0.2); color: #FFFFFF; font-weight: 700; white-space: nowrap;">
+                Verificando...
+              </span>
+            </div>
           </div>
         </div>
 
@@ -286,6 +303,8 @@ export function renderDispatchView(container, currentUser, onNavigate) {
         btn.disabled = true;
         btn.textContent = 'Enviando...';
 
+        const strategyToUse = isApiConnected ? 'evolution_api' : 'wa.me';
+
         try {
           const dispatchRes = await executeDispatch({
             contactId,
@@ -293,17 +312,24 @@ export function renderDispatchView(container, currentUser, onNavigate) {
             contactCompany: contactCity,
             contactPhone,
             user: currentUser,
-            strategy: 'wa.me',
+            strategy: strategyToUse,
             templateBody: processedMessage
           });
 
           const targetContact = rawContacts.find(c => c.id === contactId);
-          if (targetContact) targetContact.status = 'opened';
+          if (targetContact) {
+            targetContact.status = strategyToUse === 'evolution_api' ? 'user_confirmed' : 'opened';
+          }
           applyFilterAndRender();
-          showToast(`Mensagem gerada para ${contactName}!`, 'success');
+          
+          if (strategyToUse === 'evolution_api') {
+            showToast(`Mensagem enviada com sucesso via WhatsApp API para ${contactName}!`, 'success');
+          } else {
+            showToast(`Conversa aberta no WhatsApp para ${contactName}!`, 'success');
+          }
         } catch (err) {
           console.warn('Erro ao enviar contato:', err);
-          showToast('Erro ao abrir conversa: ' + err.message, 'error');
+          showToast('Erro no envio: ' + err.message, 'error');
         } finally {
           btn.disabled = false;
         }
@@ -556,20 +582,41 @@ export function renderDispatchView(container, currentUser, onNavigate) {
     try {
       const slug = sanitizeInstanceSlug(activeInstance);
       const res = await getEvolutionConnectionState(slug);
+      const indicator = container.querySelector('#wa-connection-indicator');
       const apiBtn = container.querySelector('#strategy-btn-api');
 
-      if (res.connected) {
+      if (res.state === 'open') {
         isApiConnected = true;
-        connectedPhone = res.phone;
+        connectedPhone = res.phoneNumber;
+        selectedStrategy = 'evolution_api';
+
+        if (indicator) {
+          indicator.innerHTML = '⚡ Envio Automático (API Ativa)';
+          indicator.style.background = '#22C55E';
+          indicator.style.color = '#FFFFFF';
+        }
+
         if (apiBtn) {
           apiBtn.disabled = false;
           apiBtn.style.cursor = 'pointer';
           apiBtn.style.opacity = '1';
           apiBtn.innerHTML = `⚡ Evolution API (${connectedPhone || 'Online'})`;
+          apiBtn.style.background = '#DCFCE7';
+          apiBtn.style.color = '#15803D';
+          apiBtn.style.border = '1.5px solid #22C55E';
+        }
+      } else {
+        isApiConnected = false;
+        selectedStrategy = 'wa.me';
+        if (indicator) {
+          indicator.innerHTML = '📱 WhatsApp Web (wa.me)';
+          indicator.style.background = 'rgba(255,255,255,0.18)';
         }
       }
     } catch (e) {
       console.warn('Evolution check err:', e);
+      isApiConnected = false;
+      selectedStrategy = 'wa.me';
     }
   }
   checkApiConnection();

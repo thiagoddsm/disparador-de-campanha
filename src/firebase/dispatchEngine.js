@@ -57,19 +57,19 @@ export const WaMeStrategy = {
 };
 
 /**
- * Estratégia de Disparo Automatizado via Evolution API (Exclusivo para Admin e Coordinator).
+ * Estratégia de Disparo Automatizado via Evolution API (Disponível quando houver WhatsApp conectado).
  */
 export const EvolutionStrategy = {
   name: 'evolution_api',
   async execute({ contact, user, formattedPhone, personalizedMessage, messageId }) {
-    if (user.role === 'member') {
-      throw new Error('PERMISSAO_NEGADA: O motor de disparo via Evolution API é exclusivo para Coordenadores e Administradores.');
-    }
-
     const activeStored = typeof localStorage !== 'undefined' ? localStorage.getItem('evolution_active_instance') : null;
-    const instanceName = activeStored || (user.team_id ? `instancia_${user.team_id}` : (DispatchConfig.evolutionApi.instanceName || 'IBM'));
+    const userInstance = user?.whatsapp?.instanceName ||
+      activeStored ||
+      (user?.team_name && user?.role && user?.name ? `${user.team_name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${user.role}_${user.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}` : null) ||
+      (user?.team_id ? `instancia_${user.team_id}` : (DispatchConfig.evolutionApi.instanceName || 'IBM'));
+
     const result = await sendEvolutionTextMessage({
-      instanceName,
+      instanceName: userInstance,
       to: formattedPhone,
       text: personalizedMessage
     });
@@ -184,13 +184,21 @@ export async function executeDispatch({
 
   // 4. Execução da estratégia selecionada
   if (strategy === 'evolution_api') {
-    return await EvolutionStrategy.execute({
+    const apiResult = await EvolutionStrategy.execute({
       contact: { id: contactId, name: contactName, phone: formattedPhone },
       user,
       formattedPhone,
       personalizedMessage,
       messageId
     });
+
+    try {
+      await confirmUserDispatch({ contactId, messageId, user });
+    } catch (e) {
+      console.warn('Erro ao auto-confirmar status do contato após API:', e);
+    }
+
+    return apiResult;
   }
 
   return await WaMeStrategy.execute({
