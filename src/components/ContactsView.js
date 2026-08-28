@@ -351,11 +351,24 @@ export function renderContactsView(container, currentUser, onNavigate) {
     if (!teamSel) return;
 
     let options = '<option value="all">🌐 Todas as Equipes (Geral)</option>';
-    options += `<option value="mine" ${selectedTeamId === 'mine' ? 'selected' : ''}>⭐ Minha Base Pessoal (${allContacts.filter(c => c.assigned_to === currentUser.uid).length})</option>`;
+    const myTotalCount = allContacts.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name)).length;
+    options += `<option value="mine" ${selectedTeamId === 'mine' ? 'selected' : ''}>⭐ Minha Base Pessoal (${myTotalCount})</option>`;
 
     if (isAdmin) {
-            allTeams.forEach(t => {
-        const teamContactsCount = allContacts.filter(c => c.team_id === t.id).length;
+      allTeams.forEach(t => {
+        const teamUserUids = new Set(allUsers.filter(u => u.team_id === t.id || u.team_name === t.name).map(u => u.uid));
+        const teamUserEmails = new Set(allUsers.filter(u => u.team_id === t.id || u.team_name === t.name).map(u => u.email?.toLowerCase()).filter(Boolean));
+        const teamUserNames = new Set(allUsers.filter(u => u.team_id === t.id || u.team_name === t.name).map(u => u.name?.toLowerCase()).filter(Boolean));
+
+        const teamContactsCount = allContacts.filter(c => 
+          c.team_id === t.id || 
+          c.team_id === t.name || 
+          c.team_name === t.name ||
+          teamUserUids.has(c.assigned_to) || 
+          (c.assigned_to && teamUserEmails.has(c.assigned_to.toLowerCase())) ||
+          (c.assigned_to_name && teamUserNames.has(c.assigned_to_name.toLowerCase()))
+        ).length;
+
         options += `<option value="${t.id}" ${selectedTeamId === t.id ? 'selected' : ''}>👥 ${t.name} (${teamContactsCount})</option>`;
       });
     } else if (isCoordinator) {
@@ -370,18 +383,41 @@ export function renderContactsView(container, currentUser, onNavigate) {
     if (!memberSel) return;
 
     let targetUsers = allUsers;
-    if (selectedTeamId !== 'all' && selectedTeamId !== 'mine') {
-      targetUsers = allUsers.filter(u => u.team_id === selectedTeamId);
+    let targetContacts = allContacts;
+
+    if (selectedTeamId === 'mine') {
+      targetContacts = allContacts.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name));
+    } else if (selectedTeamId !== 'all') {
+      const team = allTeams.find(t => t.id === selectedTeamId);
+      const teamUserUids = new Set(allUsers.filter(u => u.team_id === selectedTeamId || (team && (u.team_id === team.id || u.team_name === team.name))).map(u => u.uid));
+      const teamUserEmails = new Set(allUsers.filter(u => u.team_id === selectedTeamId || (team && (u.team_id === team.id || u.team_name === team.name))).map(u => u.email?.toLowerCase()).filter(Boolean));
+      const teamUserNames = new Set(allUsers.filter(u => u.team_id === selectedTeamId || (team && (u.team_id === team.id || u.team_name === team.name))).map(u => u.name?.toLowerCase()).filter(Boolean));
+
+      targetUsers = allUsers.filter(u => u.team_id === selectedTeamId || (team && (u.team_id === team.id || u.team_name === team.name)));
+      targetContacts = allContacts.filter(c => 
+        c.team_id === selectedTeamId || 
+        (team && (c.team_id === team.name || c.team_name === team.name)) ||
+        teamUserUids.has(c.assigned_to) || 
+        (c.assigned_to && teamUserEmails.has(c.assigned_to.toLowerCase())) ||
+        (c.assigned_to_name && teamUserNames.has(c.assigned_to_name.toLowerCase()))
+      );
     } else if (isCoordinator) {
       targetUsers = teamMembers.length > 0 ? teamMembers : allUsers.filter(u => u.team_id === currentUser.team_id || u.coordinator_id === currentUser.uid);
+      targetContacts = allContacts.filter(c => c.team_id === currentUser.team_id);
     }
 
     let options = '<option value="all">👥 Todos os Membros</option>';
-    const myCount = allContacts.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name)).length;
+    const myCount = targetContacts.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name)).length;
     options += `<option value="${currentUser.uid}" ${selectedMemberUid === currentUser.uid ? 'selected' : ''}>⭐ Atribuídos a Mim (${myCount})</option>`;
 
     targetUsers.filter(u => u.uid !== currentUser.uid).forEach(u => {
-      const count = allContacts.filter(c => c.assigned_to === u.uid || c.assigned_to === u.email || (u.name && c.assigned_to_name === u.name)).length;
+      const count = targetContacts.filter(c => {
+        if (c.assigned_to === u.uid) return true;
+        if (c.assigned_to && c.assigned_to === u.email) return true;
+        if (c.assigned_to_name && u.name && c.assigned_to_name.trim().toLowerCase() === u.name.trim().toLowerCase()) return true;
+        if (c.assigned_to_name && u.email && c.assigned_to_name.trim().toLowerCase() === u.email.trim().toLowerCase()) return true;
+        return false;
+      }).length;
       options += `<option value="${u.uid}" ${selectedMemberUid === u.uid ? 'selected' : ''}>👤 ${u.name || u.email} (${count})</option>`;
     });
 
@@ -452,20 +488,32 @@ export function renderContactsView(container, currentUser, onNavigate) {
     if (selectedTeamId === 'mine') {
       filtered = filtered.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name));
     } else if (selectedTeamId !== 'all') {
-      filtered = filtered.filter(c => c.team_id === selectedTeamId);
+      const team = allTeams.find(t => t.id === selectedTeamId);
+      const teamUserUids = new Set(allUsers.filter(u => u.team_id === selectedTeamId || (team && (u.team_id === team.id || u.team_name === team.name))).map(u => u.uid));
+      const teamUserEmails = new Set(allUsers.filter(u => u.team_id === selectedTeamId || (team && (u.team_id === team.id || u.team_name === team.name))).map(u => u.email?.toLowerCase()).filter(Boolean));
+      const teamUserNames = new Set(allUsers.filter(u => u.team_id === selectedTeamId || (team && (u.team_id === team.id || u.team_name === team.name))).map(u => u.name?.toLowerCase()).filter(Boolean));
+
+      filtered = filtered.filter(c => 
+        c.team_id === selectedTeamId || 
+        (team && (c.team_id === team.name || c.team_name === team.name)) ||
+        teamUserUids.has(c.assigned_to) || 
+        (c.assigned_to && teamUserEmails.has(c.assigned_to.toLowerCase())) ||
+        (c.assigned_to_name && teamUserNames.has(c.assigned_to_name.toLowerCase()))
+      );
     }
 
     // Filtro por Líder / Operador (Membro)
     if (selectedMemberUid !== 'all') {
       const targetUser = allUsers.find(u => u.uid === selectedMemberUid);
-      filtered = filtered.filter(c => 
-        c.assigned_to === selectedMemberUid || 
-        (targetUser && (
-          c.assigned_to === targetUser.email || 
-          (targetUser.name && c.assigned_to_name === targetUser.name) || 
-          (targetUser.email && c.assigned_to_name === targetUser.email)
-        ))
-      );
+      filtered = filtered.filter(c => {
+        if (c.assigned_to === selectedMemberUid) return true;
+        if (targetUser) {
+          if (c.assigned_to && (c.assigned_to === targetUser.email || c.assigned_to === targetUser.uid)) return true;
+          if (c.assigned_to_name && targetUser.name && c.assigned_to_name.trim().toLowerCase() === targetUser.name.trim().toLowerCase()) return true;
+          if (c.assigned_to_name && targetUser.email && c.assigned_to_name.trim().toLowerCase() === targetUser.email.trim().toLowerCase()) return true;
+        }
+        return false;
+      });
     }
 
     // Filtro de Busca por Localização (Cidade / Bairro do RJ)
