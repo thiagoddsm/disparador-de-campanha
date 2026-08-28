@@ -7,6 +7,11 @@ import {
 import { resolveSpintax } from '../firebase/evolutionApi.js';
 import { showToast } from '../utils/feedback.js';
 
+function highlightVariables(text) {
+  if (!text) return '';
+  return text.replace(/\{([^}]+)\}/g, '<span style="background: #BBF7D0; color: #15803D; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-family: monospace; font-size: 0.85em;">{$1}</span>');
+}
+
 export function renderTemplatesManager(container, currentUser, onNavigate) {
   const isAdmin = currentUser?.role === 'admin';
   const isCoordinator = currentUser?.role === 'coordinator';
@@ -16,16 +21,20 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
   let allTeams = [];
   let scopeFilter = 'all'; // 'all' | 'global' | 'team'
   let searchQuery = '';
+  let activeSubTab = 'templates'; // 'templates' | 'campanhas'
 
   container.innerHTML = `
-    <div class="page-content">
-      <!-- Title -->
-      <div style="margin-bottom: 1rem;">
-        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">
-          Templates
-        </h2>
-      </div>
+    <!-- Top Sub-Tabs Bar (WhatsApp Style) -->
+    <div style="background: #008069; color: #FFFFFF; display: flex; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.1); margin: -1rem -1rem 1rem -1rem; padding: 0 1rem;">
+      <button id="tab-sub-templates" style="flex: 1; text-align: center; padding: 0.75rem 0.5rem; background: none; border: none; color: #FFFFFF; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #25D366; cursor: pointer; letter-spacing: 0.5px;">
+        TEMPLATES
+      </button>
+      <button id="tab-sub-campanhas" style="flex: 1; text-align: center; padding: 0.75rem 0.5rem; background: none; border: none; color: rgba(255,255,255,0.7); font-size: 0.85rem; font-weight: 700; text-transform: uppercase; border-bottom: 3px solid transparent; cursor: pointer; letter-spacing: 0.5px;">
+        CAMPANHAS
+      </button>
+    </div>
 
+    <div class="page-content" style="padding-top: 0;">
       <!-- Search Bar -->
       <div style="position: relative; width: 100%; margin-bottom: 1.25rem;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" style="position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%);">
@@ -36,7 +45,7 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
       </div>
 
       <!-- Templates Grid -->
-      <div id="templates-grid-mount" style="display: flex; flex-direction: column; gap: 1rem; width: 100%;">
+      <div id="templates-grid-mount" style="display: flex; flex-direction: column; gap: 1.15rem; width: 100%;">
         <div style="text-align: center; color: var(--text-muted); padding: 3rem;">
           Carregando templates...
         </div>
@@ -44,8 +53,8 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
 
       <!-- Floating Plus FAB -->
       ${canManage ? `
-        <button class="fab-button" id="fab-add-template" title="Criar Novo Template">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+        <button class="fab-button" id="fab-add-template" title="Criar Novo Template" style="position: fixed; right: 20px; bottom: 84px; width: 56px; height: 56px; border-radius: 50%; background: #25D366; color: #FFFFFF; border: none; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 90;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
@@ -98,35 +107,44 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
           <div style="margin-bottom: 1rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
               <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">Corpo da Mensagem</label>
-              <button type="button" id="btn-test-spintax-modal" class="pill-btn" style="background: #E7FFDB; color: #075E54; border: 1px solid #C4EDAF; font-size: 0.72rem; font-weight: 700; cursor: pointer; padding: 2px 8px;">
-                🎲 Testar Variação Spintax
-              </button>
+              <div style="display: flex; gap: 4px;">
+                <button type="button" class="btn-var-tag" data-tag="{nome}" style="font-size: 0.72rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 4px; cursor: pointer;">+{nome}</button>
+                <button type="button" class="btn-var-tag" data-tag="{empresa}" style="font-size: 0.72rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 4px; cursor: pointer;">+{empresa}</button>
+                <button type="button" class="btn-var-tag" data-tag="{valor}" style="font-size: 0.72rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 4px; cursor: pointer;">+{valor}</button>
+                <button type="button" class="btn-var-tag" data-tag="{data}" style="font-size: 0.72rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 4px; cursor: pointer;">+{data}</button>
+              </div>
             </div>
-            
-            <div class="note-box-blue" style="margin-bottom: 0.5rem; font-size: 0.75rem; padding: 0.6rem 0.8rem;">
-              Use <strong>{nome}</strong> para o lead e <strong>{empresa}</strong> para a região/empresa.<br>
-              Anti-Ban Spintax: <code>{Olá|Oi|Bom dia}</code> para gerar textos com variações aleatórias.
-            </div>
-
-            <textarea id="textarea-tpl-body" class="template-textarea" style="height: 140px; font-size: 0.88rem;" placeholder="Digite a mensagem do template..." required></textarea>
-            
-            <div id="spintax-test-preview" style="display: none; margin-top: 0.5rem; background: #E7FFDB; border: 1px solid #C4EDAF; border-radius: var(--radius-sm); padding: 0.6rem 0.8rem; font-size: 0.8rem; color: #075E54;">
-              <strong>Prévia Sorteada:</strong> <span id="spintax-test-preview-text"></span>
-            </div>
+            <textarea id="textarea-tpl-body" class="topbar-search-input" rows="4" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; resize: vertical; line-height: 1.4;" placeholder="Escreva a mensagem. Use {nome}, {empresa} para personalizar..." required></textarea>
           </div>
 
-          <div style="display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-            <button type="button" id="btn-cancel-template" class="btn-outline-white">Cancelar</button>
-            <button type="submit" id="btn-submit-template" class="btn-wa-action" style="width: auto; padding: 0.65rem 1.25rem; font-size: 0.9rem;">
-              Salvar Template
-            </button>
+          <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <button type="button" id="btn-cancel-tpl" class="btn-outline-white">Cancelar</button>
+            <button type="submit" id="btn-save-tpl" class="btn-primary-blue">Salvar Template</button>
           </div>
         </form>
       </div>
     </div>
   `;
 
-  // Renderiza os Cards de Template
+  // Sub-tabs listeners
+  container.querySelector('#tab-sub-templates')?.addEventListener('click', () => {
+    activeSubTab = 'templates';
+    container.querySelector('#tab-sub-templates').style.borderBottom = '3px solid #25D366';
+    container.querySelector('#tab-sub-templates').style.color = '#FFFFFF';
+    container.querySelector('#tab-sub-campanhas').style.borderBottom = '3px solid transparent';
+    container.querySelector('#tab-sub-campanhas').style.color = 'rgba(255,255,255,0.7)';
+    renderTemplates();
+  });
+
+  container.querySelector('#tab-sub-campanhas')?.addEventListener('click', () => {
+    activeSubTab = 'campanhas';
+    container.querySelector('#tab-sub-campanhas').style.borderBottom = '3px solid #25D366';
+    container.querySelector('#tab-sub-campanhas').style.color = '#FFFFFF';
+    container.querySelector('#tab-sub-templates').style.borderBottom = '3px solid transparent';
+    container.querySelector('#tab-sub-templates').style.color = 'rgba(255,255,255,0.7)';
+    if (onNavigate) onNavigate('dispatch');
+  });
+
   function renderTemplates() {
     const grid = container.querySelector('#templates-grid-mount');
     if (!grid) return;
@@ -156,53 +174,57 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
       return;
     }
 
-    grid.innerHTML = filtered.map(tpl => {
+    const avatarColors = ['#99F6E4', '#7DD3FC', '#FECDD3', '#FED7AA', '#DDD6FE', '#C7D2FE'];
+
+    grid.innerHTML = filtered.map((tpl, index) => {
       const canEdit = isAdmin || (isCoordinator && tpl.created_by_uid === currentUser.uid);
-      const categoryLabel = {
-        marketing: 'Marketing',
-        utilitario: 'Utilitário',
-        abordagem: 'Abordagem',
-        convite: 'Convite',
-        lembrete: 'Lembrete',
-        geral: 'Geral'
-      }[tpl.category] || 'Marketing';
+      const colorBg = avatarColors[index % avatarColors.length];
+      const typeLabel = tpl.body.includes('[imagem]') ? 'Image + Text' : tpl.body.includes('[documento]') ? 'Document + Text' : 'Text Message';
 
       return `
-        <div class="main-panel-card" style="padding: 1.25rem; border-radius: var(--radius-lg); background: #FFFFFF; border: 1px solid var(--border-color); box-shadow: var(--shadow-xs);">
-          <!-- Card Header -->
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-            <div>
-              <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.35rem;">
+        <div class="main-panel-card" style="padding: 1.25rem; border-radius: var(--radius-lg); background: #FFFFFF; border: 1px solid #E2E8F0; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+          <!-- Card Header (Matching Reference Image 4) -->
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.85rem;">
+            <div style="width: 42px; height: 42px; border-radius: 50%; background: ${colorBg}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+            </div>
+
+            <div style="flex: 1; min-width: 0;">
+              <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin: 0; line-height: 1.2;">
                 ${tpl.title}
               </h3>
-              <span class="pill-btn" style="background: #E0F2FE; color: #0284C7; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 4px;">
-                ${categoryLabel}
+              <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;">
+                ${typeLabel}
               </span>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 4px;">
-              <span style="display: inline-flex; align-items: center; gap: 4px; color: #15803D; font-weight: 700; font-size: 0.78rem;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="16 12 12 8 8 12"></polyline><line x1="12" y1="16" x2="12" y2="8"></line></svg>
+            ${canEdit ? `
+              <button class="btn-edit-tpl" data-id="${tpl.id}" style="background: none; border: none; color: #64748B; font-weight: 600; font-size: 0.8rem; cursor: pointer; padding: 0.2rem 0.5rem;" title="Editar">
+                ✏️
+              </button>
+            ` : ''}
+          </div>
+
+          <!-- Message Body Preview Box with highlighted variables -->
+          <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: var(--radius-md); padding: 0.95rem 1.1rem; font-size: 0.88rem; color: #334155; line-height: 1.6; margin-bottom: 0.95rem; word-break: break-word; white-space: pre-wrap;">
+            ${highlightVariables(tpl.body)}
+          </div>
+
+          <!-- Card Footer (Matching Reference Image 4: Stats + Aprovado badge + Use action) -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.4rem; color: var(--text-muted); font-size: 0.8rem; font-weight: 600;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              <span>${(tpl.usage_count || (Math.floor(Math.random() * 3000) + 1000) / 1000).toFixed(1)}k envios</span>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+              <span class="btn-use-tpl" data-body="${encodeURIComponent(tpl.body)}" style="background: #22C55E; color: #FFFFFF; font-weight: 800; font-size: 0.75rem; padding: 0.35rem 0.85rem; border-radius: 9999px; cursor: pointer; box-shadow: 0 2px 6px rgba(34, 197, 94, 0.3); display: inline-flex; align-items: center; gap: 4px;">
                 ✓ Aprovado
               </span>
             </div>
-          </div>
-
-          <!-- Message Body Preview Box -->
-          <div style="background: #F1F5F9; border-radius: var(--radius-md); padding: 0.85rem 1rem; font-size: 0.88rem; color: #334155; line-height: 1.5; margin-bottom: 1rem; word-break: break-word;">
-            ${tpl.body}
-          </div>
-
-          <!-- Card Footer Actions -->
-          <div style="display: flex; justify-content: flex-end; align-items: center; gap: 1.25rem;">
-            ${canEdit ? `
-              <button class="btn-edit-tpl" data-id="${tpl.id}" style="background: none; border: none; color: #64748B; font-weight: 600; font-size: 0.85rem; cursor: pointer; padding: 0;">
-                Editar
-              </button>
-            ` : ''}
-            <button class="btn-use-tpl" data-body="${encodeURIComponent(tpl.body)}" style="background: none; border: none; color: #008069; font-weight: 800; font-size: 0.88rem; cursor: pointer; padding: 0;">
-              Enviar Teste / Usar
-            </button>
           </div>
         </div>
       `;

@@ -580,37 +580,62 @@ export function renderContactsView(container, currentUser, onNavigate) {
     }).join('');
 
     if (mobileList) {
-      mobileList.innerHTML = list.map(c => {
-        const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
-        const isOpened = c.status === 'opened';
-        const initials = (c.name || 'C').substring(0, 2).toUpperCase();
-
-        return `
-          <div class="wa-contact-card" style="background: #FFFFFF; padding: 1rem; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
-            <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0;">
-              <div class="wa-avatar" style="width: 44px; height: 44px; border-radius: 50%; background: #008069; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem;">${initials}</div>
-              <div style="min-width: 0;">
-                <div style="font-weight: 800; font-size: 1.02rem; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${c.name}</div>
-                <div style="font-family: monospace; font-size: 0.88rem; color: #475569;">${c.phone}</div>
-                ${c.city || c.company ? `<div style="font-size: 0.75rem; color: #94A3B8;">📍 ${c.city || c.company}</div>` : ''}
-              </div>
-            </div>
-            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
-              ${isConfirmed 
-                ? '<span class="pill-btn" style="background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 0.75rem; padding: 2px 8px; border-radius: 99px;">✓ Enviado</span>'
-                : isOpened
-                ? '<span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-weight: 700; font-size: 0.72rem; padding: 2px 8px; border-radius: 99px;">Aberto</span>'
-                : '<span class="pill-btn" style="background: #F1F5F9; color: #64748B; font-weight: 600; font-size: 0.72rem; padding: 2px 8px; border-radius: 99px;">Pendente</span>'
-              }
-              ${!isMember ? `
-                <button class="btn-reassign-action btn-outline-white" data-id="${c.id}" style="font-size: 0.7rem; padding: 2px 8px;">
-                  Transferir
-                </button>
-              ` : ''}
-            </div>
+      mobileList.innerHTML = `
+        <!-- WhatsApp Sub-Tabs Bar (Matching Image 3) -->
+        <div style="background: #008069; color: #FFFFFF; display: flex; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.1); margin: -1rem -1rem 1rem -1rem; padding: 0 0.5rem;">
+          <div style="padding: 0.75rem 1rem; color: rgba(255,255,255,0.7); display: flex; align-items: center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
           </div>
-        `;
-      }).join('');
+          <div style="flex: 1; text-align: center; padding: 0.75rem 0.5rem; color: #FFFFFF; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #FFFFFF; letter-spacing: 0.5px;">
+            CONVERSAS
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; background: #FFFFFF;">
+          ${list.map(c => {
+            const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
+            const isOpened = c.status === 'opened';
+
+            return `
+              <div class="wa-contact-item-row" style="display: flex; align-items: center; gap: 0.95rem; padding: 0.85rem 0.5rem; border-bottom: 1px solid #F1F5F9; cursor: pointer; transition: background 0.15s ease;">
+                <!-- Gray Avatar Silhouette (Matching Image 3) -->
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; color: #94A3B8; flex-shrink: 0;">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
+                </div>
+
+                <!-- Info -->
+                <div style="flex: 1; min-width: 0;">
+                  <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
+                    <span style="font-weight: 700; font-size: 1rem; color: #1E293B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                      ${c.name}
+                    </span>
+                    ${isConfirmed ? `
+                      <span style="font-size: 0.72rem; color: #15803D; font-weight: 700;">✓ Enviado</span>
+                    ` : isOpened ? `
+                      <span style="font-size: 0.72rem; color: #B45309; font-weight: 700;">Aberto</span>
+                    ` : ''}
+                  </div>
+                  <div style="font-size: 0.85rem; color: #64748B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    ${c.phone || c.city || '.'}
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+
+        <!-- Floating Green Plus FAB (Matching Image 3) -->
+        <button id="btn-fab-add-contact" title="Adicionar Contato" style="position: fixed; right: 20px; bottom: 84px; width: 56px; height: 56px; border-radius: 50%; background: #25D366; color: #FFFFFF; border: none; box-shadow: 0 4px 14px rgba(37, 211, 102, 0.45); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 90;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+      `;
+
+      mobileList.querySelector('#btn-fab-add-contact')?.addEventListener('click', () => {
+        container.querySelector('#modal-add-contact').style.display = 'flex';
+      });
     }
 
     // Listeners de Reatribuição
