@@ -28,32 +28,84 @@ export function renderContactsView(container, currentUser, onNavigate) {
   const isAdmin = currentUser?.role === 'admin';
   const teamLabel = currentUser?.team_name || (currentUser?.team_id ? 'Equipe Vinculada' : '');
 
-  container.innerHTML = `
-    <div class="page-content">
-      <!-- Title & Actions Row -->
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-        <div>
-          <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-            <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">
-              ${isMember ? 'Meus Contatos' : isCoordinator ? 'Banco de Contatos da Equipe' : 'Banco Global de Contatos'}
-            </h2>
-            ${currentUser?.team_id ? `
-              <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem;">
-                👥 Equipe: <strong class="current-user-team-name">${currentUser?.team_name || 'Minha Equipe'}</strong>
-              </span>
-            ` : ''}
+  const isDesktopMode = document.body.classList.contains('view-mode-desktop') && !isMember;
+
+  if (!isDesktopMode) {
+    // LAYOUT ULTRA-SIMPLES CELULAR (EXATAMENTE COMO NA IMAGEM DE REFERÊNCIA DO WHATSAPP)
+    container.innerHTML = `
+      <!-- WhatsApp Sub-Tabs Bar -->
+      <div style="background: #008069; color: #FFFFFF; display: flex; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.1); padding: 0 0.5rem; width: 100%; box-sizing: border-box;">
+        <div style="padding: 0.75rem 1rem; color: rgba(255,255,255,0.7); display: flex; align-items: center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </div>
+        <div style="flex: 1; text-align: center; padding: 0.75rem 0.5rem; color: #FFFFFF; font-size: 0.88rem; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #25D366; letter-spacing: 0.5px;">
+          CONVERSAS
+        </div>
+      </div>
+
+      <!-- Lista Simples de Contatos WhatsApp -->
+      <div style="background: #FFFFFF; min-height: calc(100vh - 130px); padding-bottom: 5.5rem; max-width: 520px; margin: 0 auto; width: 100%; box-sizing: border-box;">
+        <div id="contacts-mobile-list" style="display: flex; flex-direction: column;">
+          <div style="text-align: center; color: var(--text-muted); padding: 3rem;">
+            Carregando contatos...
           </div>
-          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
-            ${isMember 
-              ? 'Visualize sua lista individual de contatos para envio e acompanhe o status de cada um.' 
-              : isCoordinator 
-              ? 'Acompanhe a base de contatos dividida por cada Líder/Membro da sua equipe em abas dedicadas.' 
-              : 'Supervisão hierárquica: navegue entre Coordenadores e acompanhe a distribuição por Líder.'}
-          </p>
         </div>
 
-        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-          ${!isMember ? `
+        <!-- Floating Green Plus FAB -->
+        <button id="btn-fab-add-contact" class="fab-button" title="Adicionar Contato">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Adicionar Contato -->
+      <div id="add-contact-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+          <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Adicionar Novo Contato</h3>
+            <button id="btn-close-contact-modal" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);">✕</button>
+          </div>
+          <form id="add-contact-form" style="padding: 1.5rem;">
+            <div style="margin-bottom: 1rem;">
+              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Nome Completo</label>
+              <input type="text" id="input-contact-name" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: João da Silva" required>
+            </div>
+            <div style="margin-bottom: 1rem;">
+              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">WhatsApp / Telefone (DDD + Número)</label>
+              <input type="tel" inputmode="tel" id="input-contact-phone" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: 5511999998888" required>
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Cidade / Região (Opcional)</label>
+              <input type="text" id="input-contact-company" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: São Paulo - SP">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+              <button type="button" id="btn-cancel-contact-modal" class="btn-outline-white">Cancelar</button>
+              <button type="submit" id="btn-save-contact-submit" class="btn-green-action">Salvar Contato</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+  } else {
+    // LAYOUT GERENCIAL DESKTOP COMPLETO (Rota /admin)
+    container.innerHTML = `
+      <div class="page-content" style="max-width: 1300px;">
+        <!-- Title & Actions Row -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+              <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">
+                ${isCoordinator ? 'Banco de Contatos da Equipe' : 'Banco Global de Contatos'}
+              </h2>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">
+              Supervisão hierárquica: navegue entre Coordenadores e acompanhe a distribuição por Líder.
+            </p>
+          </div>
+
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
             <button id="btn-goto-import" class="btn-outline-white">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -62,209 +114,150 @@ export function renderContactsView(container, currentUser, onNavigate) {
               </svg>
               Importar CSV
             </button>
-          ` : ''}
 
-          <button id="btn-open-add-contact" class="btn-green-action">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            + Adicionar Contato
-          </button>
+            <button id="btn-open-add-contact" class="btn-green-action">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              + Adicionar Contato
+            </button>
+          </div>
         </div>
-      </div>
 
-      <!-- Quick Switcher: Minha Base Pessoal vs Visão Geral -->
-      ${!isMember ? `
+        <!-- Quick Switcher -->
         <div style="display: flex; gap: 0.6rem; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap;">
-          <button id="btn-quick-my-contacts" class="pill-btn" style="cursor: pointer; padding: 0.55rem 1.15rem; font-size: 0.85rem; font-weight: 700; border-radius: var(--radius-md); transition: all 0.2s; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.5rem;">
+          <button id="btn-quick-my-contacts" class="pill-btn" style="cursor: pointer; padding: 0.55rem 1.15rem; font-size: 0.85rem; font-weight: 700; border-radius: var(--radius-md); background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.5rem;">
             <span>⭐ Minha Base Pessoal</span>
             <span id="quick-my-contacts-count" style="background: #E5E7EB; color: var(--text-main); padding: 2px 7px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">0</span>
           </button>
           
-          <button id="btn-quick-all-contacts" class="pill-btn" style="cursor: pointer; padding: 0.55rem 1.15rem; font-size: 0.85rem; font-weight: 700; border-radius: var(--radius-md); transition: all 0.2s; background: #1D4ED8; color: #FFFFFF; border: 1.5px solid #1D4ED8; display: flex; align-items: center; gap: 0.5rem;">
+          <button id="btn-quick-all-contacts" class="pill-btn" style="cursor: pointer; padding: 0.55rem 1.15rem; font-size: 0.85rem; font-weight: 700; border-radius: var(--radius-md); background: #1D4ED8; color: #FFFFFF; border: 1.5px solid #1D4ED8; display: flex; align-items: center; gap: 0.5rem;">
             <span>🌐 ${isAdmin ? 'Visão Geral da Campanha' : 'Visão Geral da Equipe'}</span>
             <span id="quick-all-contacts-count" style="background: rgba(255,255,255,0.25); color: #FFFFFF; padding: 2px 7px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">0</span>
           </button>
         </div>
-      ` : ''}
 
-      <!-- Level 1 Tabs (Admin: Coordenadores) -->
-      ${isAdmin ? `
-        <div id="admin-coord-section" style="margin-bottom: 1rem;">
-          <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
-            👔 Coordenadores / Equipes:
+        <!-- Level 1 Tabs (Admin: Coordenadores) -->
+        ${isAdmin ? `
+          <div id="admin-coord-section" style="margin-bottom: 1rem;">
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
+              👔 Coordenadores / Equipes:
+            </div>
+            <div id="admin-coord-tabs" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.4rem; scrollbar-width: thin;"></div>
           </div>
-          <div id="admin-coord-tabs" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.4rem; scrollbar-width: thin;">
-            <!-- Renderizado dinamicamente -->
-          </div>
-        </div>
-      ` : ''}
+        ` : ''}
 
-      <!-- Level 2 Tabs (Admin & Coordinator: Líderes / Membros da Equipe) -->
-      ${!isMember ? `
+        <!-- Level 2 Tabs (Líderes / Membros) -->
         <div id="admin-leader-section" style="margin-bottom: 1.25rem;">
           <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
             👤 Acompanhar por Líder / Membro:
           </div>
-          <div id="leader-tabs-mount" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.4rem; scrollbar-width: thin;">
-            <!-- Renderizado dinamicamente -->
-          </div>
-        </div>
-      ` : ''}
-
-      <!-- 3 Dynamic KPI Cards -->
-      <div class="metrics-row" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 1.5rem;">
-        <div class="metric-box">
-          <div class="metric-info">
-            <div style="display: flex; align-items: center; gap: 0.4rem; color: var(--primary-blue); font-size: 0.8rem; font-weight: 700; margin-bottom: 0.4rem;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="4" width="20" height="16" rx="2"></rect></svg>
-              <span>Total na Seleção</span>
-            </div>
-            <span class="metric-big-num" id="kpi-contacts-total">0</span>
-            <span style="font-size: 0.78rem; color: var(--whatsapp-green); font-weight: 600; margin-top: 0.4rem;" id="kpi-contacts-sublabel">
-              Contatos mapeados
-            </span>
-          </div>
-          <div class="metric-icon-bubble">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
-          </div>
+          <div id="leader-tabs-mount" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.4rem; scrollbar-width: thin;"></div>
         </div>
 
-        <div class="metric-box">
-          <div class="metric-info">
-            <div style="display: flex; align-items: center; gap: 0.4rem; color: var(--whatsapp-green); font-size: 0.8rem; font-weight: 700; margin-bottom: 0.4rem;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              <span>Disparos Confirmados</span>
+        <!-- 3 Dynamic KPI Cards -->
+        <div class="metrics-row" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 1.5rem;">
+          <div class="metric-box">
+            <div class="metric-info">
+              <div style="display: flex; align-items: center; gap: 0.4rem; color: var(--primary-blue); font-size: 0.8rem; font-weight: 700; margin-bottom: 0.4rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="4" width="20" height="16" rx="2"></rect></svg>
+                <span>Total na Seleção</span>
+              </div>
+              <span class="metric-big-num" id="kpi-contacts-total">0</span>
+              <span style="font-size: 0.78rem; color: var(--whatsapp-green); font-weight: 600; margin-top: 0.4rem;" id="kpi-contacts-sublabel">
+                Contatos mapeados
+              </span>
             </div>
-            <span class="metric-big-num" id="kpi-contacts-sent">0</span>
-            <span style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem;">
-              Envios confirmados
-            </span>
           </div>
-          <div class="metric-icon-bubble" style="background: #F0FDF4; color: var(--whatsapp-green);">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+
+          <div class="metric-box">
+            <div class="metric-info">
+              <div style="display: flex; align-items: center; gap: 0.4rem; color: var(--whatsapp-green); font-size: 0.8rem; font-weight: 700; margin-bottom: 0.4rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Disparos Confirmados</span>
+              </div>
+              <span class="metric-big-num" id="kpi-contacts-sent">0</span>
+              <span style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem;">Envios confirmados</span>
+            </div>
+          </div>
+
+          <div class="metric-box">
+            <div class="metric-info" style="width: 100%;">
+              <div style="display: flex; align-items: center; gap: 0.4rem; color: #B45309; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.4rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>Taxa de Conclusão</span>
+              </div>
+              <span class="metric-big-num" id="kpi-contacts-rate">0%</span>
+              <div class="table-progress-track" style="margin-top: 0.75rem; height: 5px;">
+                <div class="table-progress-bar" id="kpi-contacts-prog-bar" style="width: 0%; background: #1D4ED8;"></div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="metric-box">
-          <div class="metric-info" style="width: 100%;">
-            <div style="display: flex; align-items: center; gap: 0.4rem; color: #B45309; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.4rem;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-              <span>Taxa de Conclusão</span>
+        <!-- Contacts Table Panel -->
+        <div class="main-panel-card">
+          <div style="padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 1rem;">
+            <div style="position: relative; width: 320px; max-width: 100%;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%);">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="contacts-search" class="topbar-search-input" placeholder="Buscar por nome ou telefone..." style="width: 100%; border-radius: var(--radius-md); padding-left: 2.3rem; background: #FFFFFF; font-size: 0.82rem;">
             </div>
-            <span class="metric-big-num" id="kpi-contacts-rate">0%</span>
-            <div class="table-progress-track" style="margin-top: 0.75rem; height: 5px;">
-              <div class="table-progress-bar" id="kpi-contacts-prog-bar" style="width: 0%; background: #1D4ED8;"></div>
-            </div>
+          </div>
+
+          <!-- Tabela Desktop -->
+          <div class="table-container">
+            <table class="panel-table">
+              <thead>
+                <tr>
+                  <th>NOME</th>
+                  <th>TELEFONE</th>
+                  <th>CIDADE / REGIÃO</th>
+                  <th>LÍDER ATRIBUÍDO</th>
+                  <th>STATUS</th>
+                  <th style="text-align: right;">AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody id="contacts-tbody">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem;">Carregando contatos...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
 
-      <!-- Contacts Table Panel -->
-      <div class="main-panel-card">
-        <div style="padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 1rem;">
-          <div style="position: relative; width: 320px; max-width: 100%;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%);">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input type="text" id="contacts-search" class="topbar-search-input" placeholder="Buscar por nome ou telefone..." style="width: 100%; border-radius: var(--radius-md); padding-left: 2.3rem; background: #FFFFFF; font-size: 0.82rem;">
+      <!-- Modal Adicionar Contato -->
+      <div id="add-contact-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+          <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Adicionar Novo Contato</h3>
+            <button id="btn-close-contact-modal" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);">✕</button>
           </div>
-
-          <div style="display: flex; gap: 0.5rem;" id="status-filter-buttons">
-            <button class="status-btn pill-btn" data-status="all" style="cursor: pointer; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 700; background: #1D4ED8; color: #FFFFFF; border: none;">Todos</button>
-            <button class="status-btn pill-btn" data-status="pending" style="cursor: pointer; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color);">Pendentes</button>
-            <button class="status-btn pill-btn" data-status="opened" style="cursor: pointer; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color);">Abertos</button>
-            <button class="status-btn pill-btn" data-status="confirmed" style="cursor: pointer; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color);">Confirmados</button>
-          </div>
-        </div>
-
-        <!-- Tabela Desktop -->
-        <div class="table-container desktop-only">
-          <table class="panel-table">
-            <thead>
-              <tr>
-                <th>NOME</th>
-                <th>TELEFONE</th>
-                <th>CIDADE / REGIÃO</th>
-                ${!isMember ? '<th>LÍDER ATRIBUÍDO</th>' : ''}
-                <th>STATUS</th>
-                ${!isMember ? '<th style="text-align: right;">AÇÕES</th>' : ''}
-              </tr>
-            </thead>
-            <tbody id="contacts-tbody">
-              <tr><td colspan="${isMember ? 4 : 6}" style="text-align: center; color: var(--text-muted); padding: 3rem;">Carregando contatos...</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Lista Mobile Estilo WhatsApp -->
-        <div class="mobile-only" id="contacts-mobile-list" style="display: flex; flex-direction: column; gap: 0.75rem; padding: 0.75rem;">
-          <div style="text-align: center; color: var(--text-muted); padding: 2rem;">Carregando contatos...</div>
-        </div>
-
-        <div style="padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); font-size: 0.82rem; color: var(--text-muted);">
-          <span id="contacts-count-label">Mostrando 0 contatos</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal Adicionar Contato -->
-    <div id="add-contact-modal" class="modal-overlay" style="display: none;">
-      <div class="modal-content" style="max-width: 480px;">
-        <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="font-size: 1.05rem; font-weight: 700;">Adicionar Contato</h3>
-          <button id="btn-close-contact-modal" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);">✕</button>
-        </div>
-        <form id="add-contact-form" style="padding: 1.5rem;">
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.3rem;">Nome Completo</label>
-            <input type="text" id="input-contact-name" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; padding: 0.5rem 0.75rem;" placeholder="Ex: Roberto Carlos" required>
-          </div>
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.3rem;">Telefone / WhatsApp</label>
-            <input type="tel" inputmode="tel" id="input-contact-phone" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; padding: 0.5rem 0.75rem;" placeholder="(11) 98765-4321" required>
-          </div>
-          <div style="margin-bottom: 1rem;">
-            <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.3rem;">Cidade / Região</label>
-            <input type="text" id="input-contact-company" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; padding: 0.5rem 0.75rem;" placeholder="Ex: Bairro Centro">
-          </div>
-          ${!isMember ? `
+          <form id="add-contact-form" style="padding: 1.5rem;">
+            <div style="margin-bottom: 1rem;">
+              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Nome Completo</label>
+              <input type="text" id="input-contact-name" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: João da Silva" required>
+            </div>
+            <div style="margin-bottom: 1rem;">
+              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">WhatsApp / Telefone (DDD + Número)</label>
+              <input type="tel" inputmode="tel" id="input-contact-phone" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: 5511999998888" required>
+            </div>
             <div style="margin-bottom: 1.5rem;">
-              <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.3rem;">Atribuir para Líder / Membro</label>
-              <select id="select-contact-assignee" class="form-control"></select>
+              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Cidade / Região (Opcional)</label>
+              <input type="text" id="input-contact-company" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: São Paulo - SP">
             </div>
-          ` : ''}
-          <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-            <button type="button" id="btn-cancel-contact-modal" class="btn-outline-white">Cancelar</button>
-            <button type="submit" id="btn-save-contact-submit" class="btn-green-action">Salvar Contato</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Modal Reatribuir Contato -->
-    <div id="modal-reassign" class="modal-overlay" style="display: none;">
-      <div class="modal-content" style="max-width: 400px;">
-        <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="font-size: 1.05rem; font-weight: 700;">Reatribuir Contato</h3>
-          <button id="btn-close-reassign" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);">✕</button>
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+              <button type="button" id="btn-cancel-contact-modal" class="btn-outline-white">Cancelar</button>
+              <button type="submit" id="btn-save-contact-submit" class="btn-green-action">Salvar Contato</button>
+            </div>
+          </form>
         </div>
-        <form id="form-reassign" style="padding: 1.5rem;">
-          <input type="hidden" id="reassign-contact-id">
-          <div style="margin-bottom: 1.5rem;">
-            <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.35rem;">Transferir para o Líder / Membro:</label>
-            <select id="select-reassign-member" class="form-control" required></select>
-          </div>
-          <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-            <button type="button" id="btn-cancel-reassign" class="btn-outline-white">Cancelar</button>
-            <button type="submit" class="btn-primary-blue">Confirmar Transferência</button>
-          </div>
-        </form>
       </div>
-    </div>
-  `;
+    `;
+  }
 
   // Renderiza as abas de Coordenador (Nível 1 para Admin)
   function renderAdminCoordinatorTabs() {
@@ -505,8 +498,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
     const rateEl = container.querySelector('#kpi-contacts-rate');
     const progBar = container.querySelector('#kpi-contacts-prog-bar');
     const countLabel = container.querySelector('#contacts-count-label');
-
-    if (!tbody) return;
+    const mobileList = container.querySelector('#contacts-mobile-list');
 
     const total = list.length;
     const confirmedCount = list.filter(c => c.status === 'user_confirmed' || c.status === 'confirmed').length;
@@ -519,123 +511,105 @@ export function renderContactsView(container, currentUser, onNavigate) {
     if (progBar) progBar.style.width = `${rate}%`;
     if (countLabel) countLabel.textContent = `Mostrando ${list.length} contato(s) nesta seleção`;
 
-    const mobileList = container.querySelector('#contacts-mobile-list');
-
-    if (list.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="${isMember ? 4 : 6}" style="text-align: center; color: var(--text-muted); padding: 3rem;">
-            Nenhum contato encontrado nesta aba ou filtro. Clique em <strong>Adicionar Contato</strong> ou selecione outra aba.
-          </td>
-        </tr>
-      `;
-      if (mobileList) {
-        mobileList.innerHTML = `
-          <div style="text-align: center; background: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 12px; padding: 2rem 1rem; color: var(--text-muted);">
-            <div style="font-size: 2rem; margin-bottom: 0.4rem;">👥</div>
-            <strong>Nenhum contato encontrado.</strong>
-            <p style="font-size: 0.8rem; margin-top: 0.25rem;">Toque no botão verde acima para adicionar uma pessoa.</p>
-          </div>
+    if (tbody) {
+      if (list.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${isMember ? 4 : 6}" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+              Nenhum contato encontrado nesta seleção. Clique em <strong>Adicionar Contato</strong> para cadastrar.
+            </td>
+          </tr>
         `;
+      } else {
+        tbody.innerHTML = list.map(c => {
+          const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
+          const isOpened = c.status === 'opened';
+          const initials = (c.name || 'C').substring(0, 2).toUpperCase();
+
+          const statusBadge = isConfirmed
+            ? '<span class="status-pill ativo">CONFIRMADO</span>'
+            : isOpened
+            ? '<span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-size: 0.72rem;">ABERTO (WA)</span>'
+            : '<span class="status-pill inativo">PENDENTE</span>';
+
+          return `
+            <tr>
+              <td>
+                <div class="user-identity-cell">
+                  <div class="user-identity-initials">${initials}</div>
+                  <span class="user-identity-name">${c.name}</span>
+                </div>
+              </td>
+              <td style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem;">${c.phone}</td>
+              <td style="color: var(--text-muted); font-size: 0.85rem;">${c.city || c.company || '—'}</td>
+              ${!isMember ? `
+                <td style="font-size: 0.82rem; color: var(--text-main); font-weight: 600;">
+                  👤 ${c.assigned_to_name || (c.assigned_to === currentUser.uid ? 'Você' : 'Não Atribuído')}
+                </td>
+              ` : ''}
+              <td>${statusBadge}</td>
+              ${!isMember ? `
+                <td style="text-align: right;">
+                  <button class="btn-reassign-action btn-outline-white" data-id="${c.id}" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
+                    Reatribuir
+                  </button>
+                </td>
+              ` : ''}
+            </tr>
+          `;
+        }).join('');
       }
-      return;
     }
 
-    tbody.innerHTML = list.map(c => {
-      const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
-      const isOpened = c.status === 'opened';
-      const initials = (c.name || 'C').substring(0, 2).toUpperCase();
-
-      const statusBadge = isConfirmed
-        ? '<span class="status-pill ativo">CONFIRMADO</span>'
-        : isOpened
-        ? '<span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-size: 0.72rem;">ABERTO (WA)</span>'
-        : '<span class="status-pill inativo">PENDENTE</span>';
-
-      return `
-        <tr>
-          <td>
-            <div class="user-identity-cell">
-              <div class="user-identity-initials">${initials}</div>
-              <span class="user-identity-name">${c.name}</span>
-            </div>
-          </td>
-          <td style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem;">${c.phone}</td>
-          <td style="color: var(--text-muted); font-size: 0.85rem;">${c.city || c.company || '—'}</td>
-          ${!isMember ? `
-            <td style="font-size: 0.82rem; color: var(--text-main); font-weight: 600;">
-              👤 ${c.assigned_to_name || (c.assigned_to === currentUser.uid ? 'Você' : 'Não Atribuído')}
-            </td>
-          ` : ''}
-          <td>${statusBadge}</td>
-          ${!isMember ? `
-            <td style="text-align: right;">
-              <button class="btn-reassign-action btn-outline-white" data-id="${c.id}" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
-                Reatribuir
-              </button>
-            </td>
-          ` : ''}
-        </tr>
-      `;
-    }).join('');
-
     if (mobileList) {
-      mobileList.innerHTML = `
-        <!-- WhatsApp Sub-Tabs Bar (Matching Image 3) -->
-        <div style="background: #008069; color: #FFFFFF; display: flex; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.1); margin: -1rem -1rem 1rem -1rem; padding: 0 0.5rem;">
-          <div style="padding: 0.75rem 1rem; color: rgba(255,255,255,0.7); display: flex; align-items: center;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      if (list.length === 0) {
+        mobileList.innerHTML = `
+          <div style="text-align: center; background: #FFFFFF; padding: 3.5rem 1rem; color: var(--text-muted);">
+            <div style="width: 56px; height: 56px; border-radius: 50%; background: #F1F5F9; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.75rem; color: #94A3B8;">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
+            </div>
+            <strong style="color: #1E293B; font-size: 0.95rem;">Nenhum contato cadastrado ainda</strong>
+            <p style="font-size: 0.82rem; margin-top: 0.35rem; color: #64748B;">Toque no botão verde <strong>(+)</strong> abaixo para adicionar o seu primeiro contato.</p>
           </div>
-          <div style="flex: 1; text-align: center; padding: 0.75rem 0.5rem; color: #FFFFFF; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #FFFFFF; letter-spacing: 0.5px;">
-            CONVERSAS
-          </div>
-        </div>
+        `;
+      } else {
+        mobileList.innerHTML = list.map(c => {
+          const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
+          const isOpened = c.status === 'opened';
 
-        <div style="display: flex; flex-direction: column; background: #FFFFFF;">
-          ${list.map(c => {
-            const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
-            const isOpened = c.status === 'opened';
+          return `
+            <div class="wa-contact-item-row" data-id="${c.id}" style="display: flex; align-items: center; gap: 0.95rem; padding: 0.85rem 1rem; border-bottom: 1px solid #F1F5F9; cursor: pointer; transition: background 0.15s ease;">
+              <!-- Gray Avatar Silhouette (Exatamente como na imagem de referência) -->
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; color: #94A3B8; flex-shrink: 0;">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
+              </div>
 
-            return `
-              <div class="wa-contact-item-row" style="display: flex; align-items: center; gap: 0.95rem; padding: 0.85rem 0.5rem; border-bottom: 1px solid #F1F5F9; cursor: pointer; transition: background 0.15s ease;">
-                <!-- Gray Avatar Silhouette (Matching Image 3) -->
-                <div style="width: 48px; height: 48px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; color: #94A3B8; flex-shrink: 0;">
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
+              <!-- Info -->
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
+                  <span style="font-weight: 700; font-size: 1rem; color: #1E293B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    ${c.name}
+                  </span>
+                  ${isConfirmed ? `
+                    <span style="font-size: 0.72rem; color: #15803D; font-weight: 700;">✓ Enviado</span>
+                  ` : isOpened ? `
+                    <span style="font-size: 0.72rem; color: #B45309; font-weight: 700;">Aberto</span>
+                  ` : ''}
                 </div>
-
-                <!-- Info -->
-                <div style="flex: 1; min-width: 0;">
-                  <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
-                    <span style="font-weight: 700; font-size: 1rem; color: #1E293B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                      ${c.name}
-                    </span>
-                    ${isConfirmed ? `
-                      <span style="font-size: 0.72rem; color: #15803D; font-weight: 700;">✓ Enviado</span>
-                    ` : isOpened ? `
-                      <span style="font-size: 0.72rem; color: #B45309; font-weight: 700;">Aberto</span>
-                    ` : ''}
-                  </div>
-                  <div style="font-size: 0.85rem; color: #64748B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                    ${c.phone || c.city || '.'}
-                  </div>
+                <div style="font-size: 0.85rem; color: #64748B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  ${c.phone || c.city || '.'}
                 </div>
               </div>
-            `;
-          }).join('')}
-        </div>
+            </div>
+          `;
+        }).join('');
 
-        <!-- Floating Green Plus FAB -->
-        <button id="btn-fab-add-contact" class="fab-button" title="Adicionar Contato">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-        </button>
-      `;
-
-      mobileList.querySelector('#btn-fab-add-contact')?.addEventListener('click', () => {
-        container.querySelector('#add-contact-modal').style.display = 'flex';
-      });
+        mobileList.querySelectorAll('.wa-contact-item-row').forEach(row => {
+          row.addEventListener('click', () => {
+            if (onNavigate) onNavigate('dispatch');
+          });
+        });
+      }
     }
 
     // Listeners de Reatribuição
@@ -680,6 +654,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
   // Modais Handlers
   const modal = container.querySelector('#add-contact-modal');
   container.querySelector('#btn-open-add-contact')?.addEventListener('click', () => { modal.style.display = 'flex'; });
+  container.querySelector('#btn-fab-add-contact')?.addEventListener('click', () => { modal.style.display = 'flex'; });
   container.querySelector('#btn-close-contact-modal')?.addEventListener('click', () => { modal.style.display = 'none'; });
   container.querySelector('#btn-cancel-contact-modal')?.addEventListener('click', () => { modal.style.display = 'none'; });
 
