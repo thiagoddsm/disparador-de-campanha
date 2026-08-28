@@ -139,22 +139,24 @@ export function renderEvolutionManager(container, currentUser) {
             </button>
           </div>
 
-          <!-- Advanced Config (Collapsible) -->
-          <details style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.65rem 0.85rem; background: #F8FAFC; font-size: 0.8rem;">
-            <summary style="cursor: pointer; font-weight: 700; color: var(--text-muted);">
-              ⚙️ Configurações Avançadas de Servidor
-            </summary>
-            <div style="margin-top: 0.85rem;">
-              <label style="display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">Identificador da Instância (Slug)</label>
-              <input type="text" id="input-instance-slug" class="topbar-search-input" style="width: 100%; margin-bottom: 0.65rem; background: white;" value="${activeInstanceName}">
-              
-              <label style="display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">Chave da Instância (Token)</label>
-              <input type="password" id="input-api-key" class="topbar-search-input" style="width: 100%; margin-bottom: 0.65rem; background: white;" value="${localStorage.getItem('evolution_api_key') || EVOLUTION_CONFIG.apiKey}">
-              
-              <input type="text" id="input-api-url" class="topbar-search-input" style="width: 100%; margin-bottom: 0.65rem; background: white; font-size: 0.75rem;" value="${localStorage.getItem('evolution_api_url') || EVOLUTION_CONFIG.baseUrl}">
-              <button id="btn-save-api-config" class="btn-outline-white" style="width: 100%; font-size: 0.75rem; padding: 0.4rem; font-weight: 700;">Salvar Configuração</button>
-            </div>
-          </details>
+          ${isAdmin ? `
+            <!-- Advanced Config (Collapsible) -->
+            <details style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.65rem 0.85rem; background: #F8FAFC; font-size: 0.8rem;">
+              <summary style="cursor: pointer; font-weight: 700; color: var(--text-muted);">
+                ⚙️ Configurações Avançadas de Servidor
+              </summary>
+              <div style="margin-top: 0.85rem;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">Identificador da Instância (Slug)</label>
+                <input type="text" id="input-instance-slug" class="topbar-search-input" style="width: 100%; margin-bottom: 0.65rem; background: white;" value="${activeInstanceName}">
+                
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem;">Chave da Instância (Token)</label>
+                <input type="password" id="input-api-key" class="topbar-search-input" style="width: 100%; margin-bottom: 0.65rem; background: white;" value="${localStorage.getItem('evolution_api_key') || EVOLUTION_CONFIG.apiKey}">
+                
+                <input type="text" id="input-api-url" class="topbar-search-input" style="width: 100%; margin-bottom: 0.65rem; background: white; font-size: 0.75rem;" value="${localStorage.getItem('evolution_api_url') || EVOLUTION_CONFIG.baseUrl}">
+                <button id="btn-save-api-config" class="btn-outline-white" style="width: 100%; font-size: 0.75rem; padding: 0.4rem; font-weight: 700;">Salvar Configuração</button>
+              </div>
+            </details>
+          ` : ''}
         </div>
       </div>
 
@@ -212,46 +214,46 @@ export function renderEvolutionManager(container, currentUser) {
 
           <div class="team-mobile-card-list mobile-only" id="server-instances-mobile"></div>
         </div>
+
+        <!-- Anti-Ban Rules Card (Padrão Oiko / FestaPay) -->
+        <div class="main-panel-card" style="padding: 1.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Regras Anti-Ban & Proteção de Chip (Padrão Oiko)</h3>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem;">
+            <div style="background: #F8FAFC; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+              <strong style="font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 0.4rem;">
+                ⏳ Human Jitter (Intervalo Randômico)
+              </strong>
+              <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+                Variação automática entre <strong>4s a 12s</strong> por disparo para evitar padrões repetitivos de bot.
+              </p>
+            </div>
+
+            <div style="background: #F8FAFC; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+              <strong style="font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 0.4rem;">
+                ✍️ Presença "Digitando..."
+              </strong>
+              <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+                Simula digitação real no WhatsApp durante 2.5s antes de despachar a mensagem.
+              </p>
+            </div>
+
+            <div style="background: #F8FAFC; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+              <strong style="font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 0.4rem;">
+                🔀 Spintax Dinâmico
+              </strong>
+              <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+                Suporte a variações como <code>{Olá|Oi|Bom dia}</code> gerando textos com hashes únicos.
+              </p>
+            </div>
+          </div>
+        </div>
       ` : ''}
-
-      <!-- Anti-Ban Rules Card (Padrão Oiko / FestaPay) -->
-      <div class="main-panel-card" style="padding: 1.5rem;">
-        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-          </svg>
-          <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">Regras Anti-Ban & Proteção de Chip (Padrão Oiko)</h3>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem;">
-          <div style="background: #F8FAFC; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-            <strong style="font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 0.4rem;">
-              ⏳ Human Jitter (Intervalo Randômico)
-            </strong>
-            <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-              Variação automática entre <strong>4s a 12s</strong> por disparo para evitar padrões repetitivos de bot.
-            </p>
-          </div>
-
-          <div style="background: #F8FAFC; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-            <strong style="font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 0.4rem;">
-              ✍️ Presença "Digitando..."
-            </strong>
-            <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-              Simula digitação real no WhatsApp durante 2.5s antes de despachar a mensagem.
-            </p>
-          </div>
-
-          <div style="background: #F8FAFC; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-            <strong style="font-size: 0.85rem; color: var(--text-main); display: block; margin-bottom: 0.4rem;">
-              🔀 Spintax Dinâmico
-            </strong>
-            <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
-              Suporte a variações como <code>{Olá|Oi|Bom dia}</code> gerando textos com hashes únicos.
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   `;
 
@@ -264,7 +266,7 @@ export function renderEvolutionManager(container, currentUser) {
   let lastSavedState = null;
 
   async function checkStatus() {
-    activeInstanceName = sanitizeInstanceSlug(slugInput.value || activeInstanceName);
+    activeInstanceName = sanitizeInstanceSlug(slugInput?.value || activeInstanceName);
     const instanceNameDisplay = container.querySelector('#instance-name-display');
     if (instanceNameDisplay) {
       instanceNameDisplay.innerHTML = `Instância: <strong>${activeInstanceName}</strong>`;
