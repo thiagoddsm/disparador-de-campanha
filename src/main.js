@@ -121,112 +121,104 @@ function renderProtectedApp(currentUser) {
 
       <!-- Main Content Area -->
       <div class="main-wrapper">
-        <!-- Topbar WhatsApp Business Style -->
-        <header class="topbar">
-          <div class="topbar-left" style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1;">
-            <button id="btn-mobile-sidebar-toggle" style="background: none; border: none; color: #FFFFFF; font-size: 1.25rem; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Menu">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-            </button>
+        ${currentView === 'dispatch' ? '' : `
+          <!-- Topbar WhatsApp Business Style -->
+          <header class="topbar">
+            <div class="topbar-left" style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1;">
+              <button id="btn-mobile-sidebar-toggle" style="background: none; border: none; color: #FFFFFF; font-size: 1.25rem; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+              </button>
 
-            <div style="min-width: 0; display: flex; flex-direction: column;">
-              <h2 style="margin: 0; font-size: 1.05rem; font-weight: 800; line-height: 1.2; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                ${currentUser.name || 'Alex Amarante'}
-              </h2>
-              ${teamDisplayName ? `
-                <span style="font-size: 0.72rem; opacity: 0.9; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; margin-top: 1px;">
-                  👥 Equipe: <strong>${teamDisplayName}</strong>
-                </span>
+              <div style="min-width: 0; display: flex; flex-direction: column;">
+                <h2 style="margin: 0; font-size: 1.05rem; font-weight: 800; line-height: 1.2; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  ${currentUser.name || 'Alex Amarante'}
+                </h2>
+                ${teamDisplayName ? `
+                  <span style="font-size: 0.72rem; opacity: 0.9; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; margin-top: 1px;">
+                    👥 Equipe: <strong>${teamDisplayName}</strong>
+                  </span>
+                ` : ''}
+              </div>
+              
+              ${role === 'admin' && isManagerView ? `
+                <select id="topbar-team-select" class="team-selector-pill" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; font-weight: 700; border-radius: 9999px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: #FFFFFF; cursor: pointer; outline: none;">
+                  ${tenantTeams.length === 0 ? `
+                    <option value="" style="color: black;">Nenhuma equipe</option>
+                  ` : tenantTeams.map(t => `
+                    <option value="${t.id}" ${currentTeamId === t.id ? 'selected' : ''} style="color: black;">👥 ${t.name}</option>
+                  `).join('')}
+                </select>
               ` : ''}
-            </div>
-            
-            ${role === 'admin' && isManagerView ? `
-              <select id="topbar-team-select" class="team-selector-pill" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; font-weight: 700; border-radius: 9999px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: #FFFFFF; cursor: pointer; outline: none;">
-                ${tenantTeams.length === 0 ? `
-                  <option value="" style="color: black;">Nenhuma equipe</option>
-                ` : tenantTeams.map(t => `
-                  <option value="${t.id}" ${currentTeamId === t.id ? 'selected' : ''} style="color: black;">👥 ${t.name}</option>
-                `).join('')}
-              </select>
-            ` : ''}
-          </div>
+            <div class="topbar-right" style="position: relative;">
+              <!-- Notificações -->
+              <button id="btn-topbar-notifications" class="topbar-icon-btn" title="Notificações" style="position: relative;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+                <div class="topbar-badge-dot"></div>
+              </button>
 
-          <div class="topbar-right" style="position: relative;">
-            <!-- Notificações -->
-            <button id="btn-topbar-notifications" class="topbar-icon-btn" title="Notificações" style="position: relative;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-              </svg>
-              <div class="topbar-badge-dot"></div>
-            </button>
+              <!-- Configurações -->
+              <button id="btn-topbar-settings" class="topbar-icon-btn" title="Configurações">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+              </button>
 
-            <!-- Configurações -->
-            <button id="btn-topbar-settings" class="topbar-icon-btn" title="Configurações">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-              </svg>
-            </button>
+              <!-- Avatar -->
+              <button id="btn-topbar-avatar" style="background: none; border: none; padding: 0; cursor: pointer;">
+                <img src="${currentUser.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" class="topbar-avatar" alt="Avatar Usuário">
+              </button>
 
-            <!-- Avatar -->
-            <button id="btn-topbar-avatar" style="background: none; border: none; padding: 0; cursor: pointer;">
-              <img src="${currentUser.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" class="topbar-avatar" alt="Avatar Usuário">
-            </button>
-
-            <!-- Dropdown Notificações -->
-            <div id="dropdown-notifications" class="topbar-dropdown" style="display: none;">
-              <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-                <strong style="font-size: 0.9rem; color: var(--text-main);">Notificações da Campanha</strong>
-                <span class="pill-btn" style="font-size: 0.65rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8;">2 Novas</span>
-              </div>
-              <div style="max-height: 260px; overflow-y: auto;">
-                <div style="padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-color); font-size: 0.82rem; background: #F8FAFC;">
-                  <div style="font-weight: 600; color: var(--text-main);">🔥 Meta de Disparos Ativa</div>
-                  <div style="color: var(--text-muted); margin-top: 0.15rem;">Meta individual configurada: ${currentUser.daily_goal || 30} contatos.</div>
-                  <div style="font-size: 0.7rem; color: #9CA3AF; margin-top: 0.35rem;">Hoje</div>
+              <!-- Dropdown Notificações -->
+              <div id="dropdown-notifications" class="topbar-dropdown" style="display: none;">
+                <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                  <strong style="font-size: 0.9rem; color: var(--text-main);">Notificações da Campanha</strong>
+                  <span class="pill-btn" style="font-size: 0.65rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8;">2 Novas</span>
                 </div>
-                <div style="padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-color); font-size: 0.82rem;">
-                  <div style="font-weight: 600; color: #15803D;">✓ Plataforma Multi-Tenant Conectada</div>
-                  <div style="color: var(--text-muted); margin-top: 0.15rem;">Segurança RBAC e isolamento de tenancy ativos.</div>
-                  <div style="font-size: 0.7rem; color: #9CA3AF; margin-top: 0.35rem;">Ativo</div>
+                <div style="max-height: 260px; overflow-y: auto;">
+                  <div style="padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-color); font-size: 0.82rem; background: #F8FAFC;">
+                    <div style="font-weight: 600; color: var(--text-main);">🔥 Meta de Disparos Ativa</div>
+                    <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 2px;">Envie mensagens para os leads pendentes da sua lista.</div>
+                  </div>
+                  <div style="padding: 0.85rem 1rem; font-size: 0.82rem;">
+                    <div style="font-weight: 600; color: var(--text-main);">🛡️ Proteção Anti-Ban Ativada</div>
+                    <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 2px;">Intervalo de 1 minuto entre mensagens em execução.</div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Dropdown Perfil -->
-            <div id="dropdown-profile" class="topbar-dropdown" style="display: none; width: 280px;">
-              <div style="padding: 1.25rem 1rem; text-align: center; border-bottom: 1px solid var(--border-color); background: #F8FAFC;">
-                <img src="${currentUser.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" style="width: 52px; height: 52px; border-radius: 50%; margin-bottom: 0.5rem; object-fit: cover; border: 2px solid #FFFFFF; box-shadow: var(--shadow-sm);" alt="Avatar">
-                <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${currentUser.name || 'Jane Doe'}</div>
-                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.1rem;">${currentUser.email}</div>
-                <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 4px; align-items: center;">
-                  <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-size: 0.72rem;">${roleLabel}</span>
-                  ${teamDisplayName ? `
-                    <span class="pill-btn" style="background: #F0FDF4; color: #15803D; font-size: 0.72rem; font-weight: 600;">👥 Equipe: ${teamDisplayName}</span>
-                  ` : ''}
+              <!-- Dropdown Perfil / Configurações -->
+              <div id="dropdown-profile" class="topbar-dropdown" style="display: none; width: 220px;">
+                <div style="padding: 1rem; border-bottom: 1px solid var(--border-color);">
+                  <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main);">${currentUser.name || 'Usuário'}</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">${currentUser.email}</div>
+                  <span class="pill-btn" style="font-size: 0.68rem; margin-top: 0.4rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8;">${roleLabel}</span>
+                </div>
+                <div style="padding: 0.5rem 0;">
+                  <a href="#" id="menu-topbar-profile" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1rem; color: var(--text-main); text-decoration: none; font-size: 0.85rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    Meu Perfil
+                  </a>
+                  <a href="#" id="menu-topbar-security" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1rem; color: var(--text-main); text-decoration: none; font-size: 0.85rem;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    Security Settings
+                  </a>
+                  <a href="#" id="menu-topbar-logout" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1rem; color: #DC2626; text-decoration: none; font-size: 0.85rem; font-weight: 500; border-top: 1px solid var(--border-color);">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    Logout
+                  </a>
                 </div>
               </div>
-              <div style="padding: 0.5rem 0;">
-                <a href="#" id="menu-goto-settings" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1rem; color: var(--text-main); text-decoration: none; font-size: 0.85rem; font-weight: 500;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                  General Settings
-                </a>
-                <a href="#" id="menu-goto-security" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1rem; color: var(--text-main); text-decoration: none; font-size: 0.85rem; font-weight: 500;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                  Security Settings
-                </a>
-                <a href="#" id="menu-topbar-logout" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1rem; color: #DC2626; text-decoration: none; font-size: 0.85rem; font-weight: 500; border-top: 1px solid var(--border-color);">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                  Logout
-                </a>
-              </div>
             </div>
-          </div>
-        </header>
+          </header>
+        `}
 
         <!-- Dynamic Main Content Screen -->
         <main id="main-view-mount"></main>

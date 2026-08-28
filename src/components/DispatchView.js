@@ -15,10 +15,9 @@ export function renderDispatchView(container, currentUser) {
   let historyMessages = [];
   let availableTemplates = [];
   let templateText = localStorage.getItem('dispatch_active_template') || 'Olá {nome}, temos uma novidade especial para {empresa}!';
-  let activeTab = 'queue'; // 'queue' | 'history'
   
   const isMember = currentUser?.role === 'member';
-  const teamLabel = currentUser?.team_name || (currentUser?.team_id ? 'Equipe Vinculada' : '');
+  const teamLabel = currentUser?.team_name || (currentUser?.team_id ? 'Equipe Vinculada' : 'Jussara');
   let selectedStrategy = 'wa.me';
 
   const activeInstance = localStorage.getItem('evolution_active_instance') || 'alpha_coordenador_thiago';
@@ -31,926 +30,403 @@ export function renderDispatchView(container, currentUser) {
   let batchMaxDelay = 70; // segundos
   let enableComposing = true;
 
+  // Renderiza layout de conversa estilo WhatsApp
   container.innerHTML = `
-    <div class="page-content">
-      <!-- Top Title & Navigation Row -->
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem; width: 100%;">
-        <div style="min-width: 0; max-width: 100%;">
-          <h2 style="font-size: 1.45rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px; margin-bottom: 0.4rem;">
-            Envio de Mensagens
-          </h2>
-          <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.4rem;">
-            <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem; padding: 3px 9px;">
-              👤 Lista de Contatos: <span id="queue-header-count">0</span> contatos
+    <div class="wa-chat-container">
+      <!-- WhatsApp Chat Header -->
+      <div class="wa-chat-header">
+        <div class="wa-chat-header-left">
+          <button id="btn-chat-menu-toggle" style="background: none; border: none; color: #FFFFFF; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          </button>
+
+          <img src="${currentUser?.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" class="wa-chat-avatar" alt="Avatar">
+
+          <div class="wa-chat-header-info">
+            <h3 class="wa-chat-header-title">
+              Lista: Equipe ${currentUser?.team_name || 'Jussara'}
+            </h3>
+            <span class="wa-chat-header-sub" id="wa-chat-sub-count">
+              <span id="queue-header-count">0</span> contatos atribuídos
             </span>
-            ${currentUser?.team_id ? `
-              <span class="pill-btn" style="background: #F1F5F9; color: #475569; font-weight: 600; font-size: 0.75rem; border: 1px solid var(--border-color); padding: 3px 9px;">
-                👥 Equipe: <strong class="current-user-team-name">${currentUser?.team_name || 'Minha Equipe'}</strong>
-              </span>
-            ` : ''}
           </div>
-          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
-            Cada líder visualiza e dispara exclusivamente a sua própria lista de contatos atribuídos.
-          </p>
         </div>
 
-        <div style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
-          <button id="tab-btn-queue" class="pill-btn" style="flex: 1; justify-content: center; cursor: pointer; padding: 0.5rem 0.75rem; font-weight: 700; font-size: 0.82rem; background: #008069; color: #FFFFFF; border: none; transition: all 0.2s; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">
-            🎯 Fila de Envios
+        <div class="wa-chat-header-icons">
+          <button style="background: none; border: none; color: #FFFFFF; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Chamada de Vídeo">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
           </button>
-          <button id="tab-btn-history" class="pill-btn" style="flex: 1; justify-content: center; cursor: pointer; padding: 0.5rem 0.75rem; font-weight: 700; font-size: 0.82rem; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color); transition: all 0.2s; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">
-            📜 Histórico (<span id="history-badge-count">0</span>)
+          <button style="background: none; border: none; color: #FFFFFF; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Chamada">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
           </button>
-        </div>
-      </div>
-
-      <!-- Strategy Selector Card -->
-      <div class="main-panel-card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; background: #FFFFFF;">
-        <div style="min-width: 0; max-width: 100%;">
-          <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 0.2rem;">
-            Método de Envio:
-          </label>
-          <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;" id="strategy-explanation">
-            Modo Assistido: O WhatsApp Web abrirá em nova aba para você revisar e enviar.
-          </p>
-        </div>
-
-        <div style="display: flex; gap: 0.5rem; align-items: center; width: 100%;" id="strategy-selector-mount">
-          <button type="button" id="strategy-btn-wame" class="pill-btn" style="flex: 1; justify-content: center; cursor: pointer; padding: 0.5rem 0.75rem; font-size: 0.78rem; font-weight: 700; background: #EFF6FF; color: #1D4ED8; border: 1.5px solid #3B82F6; transition: all 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-            📱 WhatsApp Web (wa.me)
-          </button>
-          <button type="button" id="strategy-btn-api" class="pill-btn" style="flex: 1; justify-content: center; cursor: not-allowed; padding: 0.5rem 0.75rem; font-size: 0.78rem; font-weight: 700; background: #F3F4F6; color: #9CA3AF; border: 1.5px solid var(--border-color); opacity: 0.7; transition: all 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" disabled>
-            ⚡ Evolution API
+          <button id="btn-toggle-options-drawer" style="background: none; border: none; color: #FFFFFF; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Mais Opções">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
           </button>
         </div>
       </div>
 
-      <!-- Content Container (Tabs) -->
-      <div id="dispatch-view-main-content" style="width: 100%; max-width: 100%; overflow-x: hidden;">
-        <!-- Renders Queue or History below -->
+      <!-- WhatsApp Chat Body -->
+      <div class="wa-chat-body" id="wa-chat-body">
+        
+        <!-- Yellow Security Notice Pill -->
+        <div class="wa-security-notice">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span>As mensagens enviadas aqui serão disparadas para toda a sua lista de contatos.</span>
+        </div>
+
+        <!-- Quick Controls Top Bar inside Chat -->
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+          <div style="display: flex; gap: 0.4rem; align-items: center; flex: 1; min-width: 0;">
+            <select id="select-quick-template" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: var(--text-main); font-size: 0.78rem; font-weight: 700; padding: 0.35rem 0.65rem; border-radius: 9999px; outline: none; cursor: pointer; flex: 1; min-width: 140px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+              <option value="">📄 Modelo: Escolher template... ⌵</option>
+            </select>
+            <button id="btn-preview-spintax" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: var(--text-main); font-size: 0.75rem; font-weight: 700; padding: 0.35rem 0.65rem; cursor: pointer;">
+              🎲 Variação
+            </button>
+          </div>
+
+          <button id="btn-toggle-queue-list" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: #008069; font-size: 0.75rem; font-weight: 800; padding: 0.35rem 0.75rem; cursor: pointer;">
+            👥 Fila (<span id="queue-badge-count">0</span>) ⌵
+          </button>
+        </div>
+
+        <!-- Collapsible Queue Drawer / Card -->
+        <div id="drawer-contacts-queue" style="display: none; background: #FFFFFF; border-radius: 12px; border: 1px solid var(--border-color); padding: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); max-height: 240px; overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border-light);">
+            <strong style="font-size: 0.85rem; color: var(--text-main);">Fila de Contatos da Equipe</strong>
+            <button id="btn-reset-all-contacts" style="background: none; border: none; color: #DC2626; font-size: 0.75rem; font-weight: 700; cursor: pointer;">🔁 Resetar Status</button>
+          </div>
+          <div id="wa-queue-list-items" style="display: flex; flex-direction: column; gap: 0.4rem;">
+            <!-- Contacts items -->
+          </div>
+        </div>
+
+        <!-- Strategy Options Drawer -->
+        <div id="drawer-options-menu" style="display: none; background: #FFFFFF; border-radius: 12px; border: 1px solid var(--border-color); padding: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+          <div style="font-size: 0.82rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--text-main);">Método de Envio:</div>
+          <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;" id="strategy-selector-mount">
+            <button type="button" id="strategy-btn-wame" class="pill-btn" style="flex: 1; justify-content: center; cursor: pointer; padding: 0.4rem 0.75rem; font-size: 0.75rem; font-weight: 700; background: #EFF6FF; color: #1D4ED8; border: 1.5px solid #3B82F6;">
+              📱 WhatsApp Web (wa.me)
+            </button>
+            <button type="button" id="strategy-btn-api" class="pill-btn" style="flex: 1; justify-content: center; cursor: not-allowed; padding: 0.4rem 0.75rem; font-size: 0.75rem; font-weight: 700; background: #F3F4F6; color: #9CA3AF; border: 1.5px solid var(--border-color);" disabled>
+              ⚡ Evolution API
+            </button>
+          </div>
+        </div>
+
+        <!-- Batch Progress Card (Live sending state) -->
+        <div id="batch-progress-container" style="display: none; background: #FFFFFF; border-radius: 12px; padding: 0.85rem 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid #008069;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+            <strong id="batch-status-text" style="font-size: 0.82rem; color: #008069;">Enviando mensagens...</strong>
+            <span id="batch-counter-text" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">0 / 0</span>
+          </div>
+          <div style="width: 100%; height: 6px; background: #E2E8F0; border-radius: 9999px; overflow: hidden;">
+            <div id="batch-progress-bar" style="width: 0%; height: 100%; background: #00A884; transition: width 0.3s ease;"></div>
+          </div>
+        </div>
+
+        <!-- WhatsApp Sent Speech Bubble Preview -->
+        <div class="wa-speech-bubble-sent">
+          <div class="wa-speech-bubble-label">
+            Visualização do Template:
+          </div>
+          <div id="wa-live-message-preview" style="white-space: pre-wrap;">${templateText}</div>
+          <div class="wa-speech-bubble-time">
+            <span id="wa-bubble-clock">14:02</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#53BDEB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline><polyline points="20 12 14 18"></polyline></svg>
+          </div>
+        </div>
+
       </div>
 
-      <!-- Floating Rocket FAB -->
-      <button class="fab-button fab-button-rocket" id="fab-rocket-dispatch" title="Iniciar Envios">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
-          <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
-          <path d="M9 12H4s.55-3.03 2-4.5c1.62-1.63 5-2 5-2"></path>
-          <path d="M12 15v5s3.03-.55 4.5-2c1.63-1.62 2-5 2-5"></path>
-        </svg>
-      </button>
+      <!-- WhatsApp Bottom Message Input Bar -->
+      <div class="wa-chat-input-bar">
+        <div class="wa-input-capsule">
+          <button type="button" id="btn-chat-emoji" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: #8696A0; padding: 0; display: flex; align-items: center;">
+            😊
+          </button>
+          
+          <textarea id="dispatch-template-input" class="wa-input-textarea" rows="1" placeholder="Digite uma mensagem...">${templateText}</textarea>
+          
+          <button type="button" id="btn-chat-attach" style="background: none; border: none; color: #8696A0; cursor: pointer; padding: 0; display: flex; align-items: center;" title="Anexo">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+          </button>
+          <button type="button" style="background: none; border: none; color: #8696A0; cursor: pointer; padding: 0; display: flex; align-items: center;" title="Câmera">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+          </button>
+        </div>
+
+        <button type="button" class="wa-send-btn-round" id="btn-start-batch-dispatch" title="Disparar para Toda a Lista">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg); margin-left: -2px;"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+      </div>
     </div>
   `;
 
-  // Renderiza Aba Fila de Disparos
-  function renderQueueTab() {
-    const mainContent = container.querySelector('#dispatch-view-main-content');
-    if (!mainContent) return;
-
-    mainContent.innerHTML = `
-      <div class="dispatch-split-grid">
-        <!-- Left Column: Template Editor & Anti-Ban Controls -->
-        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-          
-          <!-- Template Editor Card -->
-          <div class="template-editor-card" style="background: #FFFFFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.25rem; box-shadow: var(--shadow-xs);">
-            <div style="display: flex; align-items: center; justify-content: space-between; font-weight: 800; color: var(--text-main); font-size: 1.05rem; margin-bottom: 0.85rem;">
-              <div style="display: flex; align-items: center; gap: 0.45rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#008069" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                </svg>
-                Mensagem
-              </div>
-              <button id="btn-preview-spintax" class="btn-outline-white" style="font-size: 0.72rem; padding: 0.25rem 0.55rem; font-weight: 600;">
-                🎲 Gerar Variação
-              </button>
-            </div>
-
-            <!-- Seletor Rápido de Template -->
-            <div style="margin-bottom: 0.85rem; background: #F8FAFC; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.5rem 0.75rem;">
-              <label for="select-quick-template" style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">
-                📄 Escolher Modelo de Mensagem (Template):
-              </label>
-              <select id="select-quick-template" class="form-control" style="font-size: 0.82rem; background: #FFFFFF; cursor: pointer; width: 100%;">
-                <option value="">-- Carregando Templates... --</option>
-              </select>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-              <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">Digite aqui...</label>
-              <span style="font-size: 0.72rem; color: var(--text-light);" id="char-counter">Máx 1024 char</span>
-            </div>
-
-            <textarea id="dispatch-template-input" class="template-textarea" style="height: 180px; font-size: 0.95rem; line-height: 1.45; border-radius: var(--radius-md);" placeholder="Digite a mensagem...">${templateText}</textarea>
-
-            <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
-              <button id="btn-start-batch-dispatch-card" class="btn-start-send-pill">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                ➤ Iniciar Envios
-              </button>
-            </div>
-          </div>
-
-          <!-- Anti-Ban Controls Card -->
-          <div class="main-panel-card" style="padding: 1.25rem; border-radius: var(--radius-lg); background: #FFFFFF;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
-              <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                </svg>
-                <strong style="font-size: 0.9rem; color: var(--text-main);">Cadência Anti-Ban</strong>
-              </div>
-              <span class="pill-btn" style="background: #DCFCE7; color: #15803D; font-size: 0.7rem; font-weight: 700;">Seguro</span>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 0.85rem; font-size: 0.82rem;">
-              <div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.35rem;">
-                  <span style="color: var(--text-main); font-weight: 600;">Intervalo entre Mensagens:</span>
-                  <span id="delay-label" style="font-weight: 700; color: var(--primary-blue);">${batchMinDelay}s - ${batchMaxDelay}s (~1 min)</span>
-                </div>
-                
-                <!-- Cadence Presets -->
-                <div style="display: flex; gap: 0.4rem; margin-bottom: 0.6rem; flex-wrap: wrap;">
-                  <button type="button" class="btn-cadence-preset pill-btn" data-sec="60" style="background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; font-size: 0.72rem; font-weight: 700; padding: 3px 8px; cursor: pointer;">
-                    ☕ 1 min / msg (Padrão)
-                  </button>
-                  <button type="button" class="btn-cadence-preset pill-btn" data-sec="30" style="background: #F8FAFC; color: var(--text-main); border: 1px solid var(--border-color); font-size: 0.72rem; font-weight: 600; padding: 3px 8px; cursor: pointer;">
-                    ⏱️ 30s / msg
-                  </button>
-                  <button type="button" class="btn-cadence-preset pill-btn" data-sec="120" style="background: #F8FAFC; color: var(--text-main); border: 1px solid var(--border-color); font-size: 0.72rem; font-weight: 600; padding: 3px 8px; cursor: pointer;">
-                    🛡️ 2 min / msg
-                  </button>
-                </div>
-
-                <input type="range" id="slider-jitter-delay" min="15" max="180" step="5" value="60" style="width: 100%; accent-color: var(--primary-blue); cursor: pointer;">
-                <span style="font-size: 0.72rem; color: var(--text-muted);">Disparo suave e pausado para proteger o chip de qualquer restrição.</span>
-              </div>
-
-              <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-light); padding-top: 0.6rem;">
-                <div>
-                  <div style="font-weight: 600; color: var(--text-main);">Simular Digitação (Composing)</div>
-                  <div style="font-size: 0.72rem; color: var(--text-muted);">Mostra "digitando..." por 2.5s antes de cada envio</div>
-                </div>
-                <input type="checkbox" id="check-composing" ${enableComposing ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: var(--primary-blue); cursor: pointer;">
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Right Column: Fila de Leads & Ações de Disparo -->
-        <div class="main-panel-card" style="margin-bottom: 0; display: flex; flex-direction: column;">
-          
-          <!-- Header Fila -->
-          <div style="padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 0.75rem;">
-            <div>
-              <div style="display: flex; align-items: center; gap: 0.4rem; font-weight: 700; color: var(--text-main); font-size: 0.95rem;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-                Fila de Leads (${isMember ? 'Meus Leads' : 'Leads da Equipe'})
-              </div>
-            </div>
-
-            <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
-              <div style="position: relative; width: 180px;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <input type="text" id="dispatch-search-input" class="topbar-search-input" placeholder="Buscar..." style="width: 100%; border-radius: var(--radius-md); padding-left: 2rem; background: #FFFFFF; font-size: 0.8rem;">
-              </div>
-
-              <button id="btn-reset-all-contacts" class="btn-outline-white" style="font-size: 0.78rem; padding: 0.4rem 0.75rem; font-weight: 600;" title="Permite enviar novas mensagens para toda a lista">
-                🔁 Resetar Fila
-              </button>
-            </div>
-          </div>
-
-          <!-- Batch Progress Bar (Visible during batch dispatch) -->
-          <div id="batch-progress-container" style="display: none; padding: 1rem 1.5rem; background: #F8FAFC; border-bottom: 1px solid var(--border-color);">
-            <div style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.4rem;">
-              <span id="batch-status-text" style="color: var(--primary-blue);">Disparando lote...</span>
-              <span id="batch-counter-text" style="color: var(--text-muted);">0 / 0</span>
-            </div>
-            <div style="width: 100%; height: 8px; background: #E2E8F0; border-radius: 99px; overflow: hidden;">
-              <div id="batch-progress-bar" style="width: 0%; height: 100%; background: #10B981; transition: width 0.3s ease;"></div>
-            </div>
-          </div>
-
-          <!-- Tabela de Fila Desktop -->
-          <div class="table-container desktop-only" style="flex: 1;">
-            <table class="panel-table">
-              <thead>
-                <tr>
-                  <th>NOME</th>
-                  <th>TELEFONE</th>
-                  <th style="text-align: right;">AÇÃO / STATUS</th>
-                </tr>
-              </thead>
-              <tbody id="dispatch-tbody">
-                <tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 3rem;">Carregando contatos...</td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Lista Mobile Estilo WhatsApp (Contatos com Toque Fácil) -->
-          <div class="mobile-only" id="dispatch-mobile-list" style="display: flex; flex-direction: column; gap: 0.75rem; padding: 0.75rem;">
-            <div style="text-align: center; color: var(--text-muted); padding: 2rem;">Carregando pessoas para envio...</div>
-          </div>
-
-          <!-- Footer com Ação em Lote -->
-          <div style="padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-muted); flex-wrap: wrap; gap: 0.75rem; background: #FAFAFA;">
-            <span id="dispatch-count-label" style="font-weight: 600;">Mostrando 0 contato(s)</span>
-            
-            <button id="btn-start-batch-dispatch" class="btn-wa-action" style="font-size: 0.95rem; padding: 0.75rem 1.25rem; min-height: 48px; width: auto;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-              🚀 Disparar para Todos (Automático)
-            </button>
-          </div>
-
-        </div>
-      </div>
-    `;
-
-    bindQueueEvents();
-    renderQueueTable();
+  // Atualiza relógio do balão
+  function updateBubbleClock() {
+    const clockEl = container.querySelector('#wa-bubble-clock');
+    if (clockEl) {
+      const now = new Date();
+      clockEl.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    }
   }
+  updateBubbleClock();
 
-  // Renderiza Aba Histórico de Disparos
-  function renderHistoryTab() {
-    const mainContent = container.querySelector('#dispatch-view-main-content');
-    if (!mainContent) return;
+  // Renderiza Lista na Gaveta de Contatos
+  function renderQueueList() {
+    const listMount = container.querySelector('#wa-queue-list-items');
+    const headerCount = container.querySelector('#queue-header-count');
+    const badgeCount = container.querySelector('#queue-badge-count');
 
-    const isMember = currentUser?.role === 'member';
-    const isCoordinator = currentUser?.role === 'coordinator';
-    const isAdmin = currentUser?.role === 'admin';
+    if (headerCount) headerCount.textContent = contacts.length;
+    if (badgeCount) badgeCount.textContent = contacts.length;
 
-    const historyTitle = isAdmin 
-      ? 'Histórico Geral de Mensagens Enviadas (Toda a Organização)'
-      : isCoordinator
-      ? `Histórico de Mensagens da Equipe (${currentUser?.team_name || 'Minha Equipe'})`
-      : 'Meu Histórico Individual de Mensagens Enviadas';
+    if (!listMount) return;
 
-    const historySubtitle = isAdmin
-      ? 'Acompanhe todos os disparos executados por todos os coordenadores e líderes da campanha.'
-      : isCoordinator
-      ? 'Acompanhe todos os disparos executados por você e pelos líderes da sua equipe.'
-      : 'Acompanhe o registro cronológico de todos os disparos efetuados pelo seu usuário.';
-
-    mainContent.innerHTML = `
-      <div class="main-panel-card" style="border-radius: var(--radius-lg); background: #FFFFFF;">
-        <!-- Header Histórico -->
-        <div style="padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 1rem;">
-          <div>
-            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">${historyTitle}</h3>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
-              ${historySubtitle}
-            </p>
-          </div>
-
-          <div style="display: flex; gap: 0.75rem; align-items: center;">
-            <div style="position: relative; width: 220px;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%);">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-              <input type="text" id="history-search-input" class="topbar-search-input" placeholder="Filtrar histórico..." style="width: 100%; border-radius: var(--radius-md); padding-left: 2rem; background: #FFFFFF; font-size: 0.8rem;">
-            </div>
-          </div>
+    if (contacts.length === 0) {
+      listMount.innerHTML = `
+        <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 1rem;">
+          Nenhum contato atribuído nesta equipe.
         </div>
-
-        <!-- Tabela do Histórico -->
-        <div class="table-container">
-          <table class="panel-table">
-            <thead>
-              <tr>
-                <th style="width: 16%;">DATA / HORA</th>
-                <th style="width: 18%;">DESTINATÁRIO</th>
-                <th style="width: 14%;">MÉTODO</th>
-                <th style="width: 14%;">STATUS</th>
-                <th style="width: 26%;">PRÉVIA DO TEXTO</th>
-                <th style="width: 12%; text-align: right;">AÇÕES</th>
-              </tr>
-            </thead>
-            <tbody id="history-tbody">
-              ${historyMessages.length === 0 ? `
-                <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum disparo registrado no histórico ainda.</td></tr>
-              ` : historyMessages.map(msg => {
-                const dateStr = msg.created_at?.toDate ? msg.created_at.toDate().toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR');
-                const isEvolution = msg.strategy === 'evolution_api';
-                return `
-                  <tr>
-                    <td style="font-size: 0.78rem; color: var(--text-muted);">${dateStr}</td>
-                    <td>
-                      <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main);">${msg.contact_name || msg.phone || 'Destinatário'}</div>
-                      <div style="font-family: monospace; font-size: 0.78rem; color: var(--text-muted);">${msg.phone || ''}</div>
-                      ${msg.user_name ? `<div style="font-size: 0.7rem; color: var(--primary-blue);">👤 ${msg.user_name}</div>` : ''}
-                    </td>
-                    <td>
-                      <span class="pill-btn" style="font-size: 0.72rem; padding: 0.2rem 0.5rem; background: ${isEvolution ? '#ECFDF5' : '#EFF6FF'}; color: ${isEvolution ? '#059669' : '#1D4ED8'}; font-weight: 600;">
-                        ${isEvolution ? '⚡ Evolution API' : '📱 WhatsApp Web'}
-                      </span>
-                    </td>
-                    <td>
-                      <span class="pill-btn" style="font-size: 0.72rem; padding: 0.2rem 0.55rem; background: #DCFCE7; color: #16A34A; font-weight: 700;">
-                        ✓ Enviado
-                      </span>
-                    </td>
-                    <td style="font-size: 0.8rem; color: #475569; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                      ${msg.message_body || 'Mensagem enviada'}
-                    </td>
-                    <td style="text-align: right;">
-                      <button class="btn-resend-single btn-outline-white" data-contact-id="${msg.contact_id || ''}" style="font-size: 0.75rem; padding: 0.3rem 0.6rem; font-weight: 600;" title="Permite enviar nova mensagem para este contato">
-                        🔁 Novo Envio
-                      </button>
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-
-        <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); font-size: 0.82rem; color: var(--text-muted);">
-          Total de ${historyMessages.length} registro(s) no histórico
-        </div>
-      </div>
-    `;
-
-    // Filtro no Histórico
-    container.querySelector('#history-search-input')?.addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase();
-      const rows = container.querySelectorAll('#history-tbody tr');
-      rows.forEach(tr => {
-        const text = tr.innerText.toLowerCase();
-        tr.style.display = text.includes(q) ? '' : 'none';
-      });
-    });
-
-    // Reenviar a partir do Histórico
-    container.querySelectorAll('.btn-resend-single').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const cId = btn.getAttribute('data-contact-id');
-        if (cId) {
-          await resetContactStatus(cId);
-          switchTab('queue');
-        }
-      });
-    });
-  }
-
-  function renderQueueTable(filterQuery = '') {
-    const tbody = container.querySelector('#dispatch-tbody');
-    const mobileList = container.querySelector('#dispatch-mobile-list');
-    const countLabel = container.querySelector('#dispatch-count-label');
-    if (!tbody) return;
-
-    const filtered = contacts.filter(c => !filterQuery || (c.name && c.name.toLowerCase().includes(filterQuery.toLowerCase())) || (c.phone && c.phone.includes(filterQuery)));
-
-    if (countLabel) countLabel.textContent = `Mostrando ${filtered.length} contato(s)`;
-
-    if (filtered.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 3rem;">
-            🎉 Todos os seus contatos foram disparados ou lista vazia! Clique em <strong>🔁 Resetar Fila</strong> para novo lote.
-          </td>
-        </tr>
       `;
-      if (mobileList) {
-        mobileList.innerHTML = `
-          <div style="text-align: center; background: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 12px; padding: 2rem 1rem; color: var(--text-muted);">
-            <div style="font-size: 2rem; margin-bottom: 0.4rem;">🎉</div>
-            <strong>Todos os contatos foram disparados!</strong>
-            <p style="font-size: 0.8rem; margin-top: 0.25rem;">Nenhum contato pendente na sua fila no momento.</p>
-          </div>
-        `;
-      }
       return;
     }
 
-    tbody.innerHTML = filtered.map(c => {
-      const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
-      const isOpened = c.status === 'opened';
+    listMount.innerHTML = contacts.map(c => {
+      const isConfirmed = c.status === 'user_confirmed' || c.status === 'sent' || c.status === 'delivered';
       const initial = (c.name || 'C').charAt(0).toUpperCase();
 
-      let actionHtml = '';
-      if (isConfirmed) {
-        actionHtml = `
-          <div style="display: inline-flex; align-items: center; gap: 6px;">
-            <button class="btn-outline-white" disabled style="background: #F3F4F6; color: #6B7280; font-size: 0.78rem; padding: 0.35rem 0.65rem;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              Enviado ✓
-            </button>
-            <button class="btn-resend-contact btn-outline-white" data-id="${c.id}" style="font-size: 0.75rem; padding: 0.35rem 0.6rem;" title="Disparar nova mensagem para este contato">
-              🔁 Reenviar
-            </button>
-          </div>
-        `;
-      } else if (isOpened && selectedStrategy === 'wa.me') {
-        actionHtml = `
-          <button class="btn-confirm-now" data-id="${c.id}" data-msg-id="${c.last_message_id || ''}" style="background: #1D4ED8; color: white; border: none; border-radius: var(--radius-md); font-size: 0.78rem; padding: 0.45rem 0.85rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            Confirmar Envio
-          </button>
-        `;
-      } else {
-        const isApiMode = selectedStrategy === 'evolution_api';
-        actionHtml = `
-          <button class="btn-green-action btn-send-now" data-id="${c.id}" data-name="${c.name}" data-phone="${c.phone}" data-company="${c.company || ''}" style="${isApiMode ? 'background: #059669;' : ''}">
-            ${isApiMode ? `
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-              Disparo API
-            ` : `
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-              Enviar (wa.me)
-            `}
-          </button>
-        `;
-      }
-
       return `
-        <tr>
-          <td>
-            <div class="user-identity-cell">
-              <div class="user-identity-initials" style="background: ${isConfirmed ? '#DCFCE7' : isOpened ? '#FEF3C7' : '#EFF6FF'}; color: ${isConfirmed ? '#15803D' : isOpened ? '#B45309' : '#1D4ED8'};">${initial}</div>
-              <div>
-                <span class="user-identity-name">${c.name}</span>
-                ${c.company ? `<div style="font-size: 0.72rem; color: var(--text-muted);">${c.company}</div>` : ''}
-              </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; background: #F8FAFC; border-radius: 8px; font-size: 0.8rem;">
+          <div style="display: flex; align-items: center; gap: 0.45rem; min-width: 0; flex: 1;">
+            <div style="width: 26px; height: 26px; border-radius: 50%; background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">${initial}</div>
+            <div style="min-width: 0;">
+              <div style="font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.name}</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted);">${c.phone}</div>
             </div>
-          </td>
-          <td style="font-family: monospace; color: #374151; font-size: 0.85rem;">${c.phone}</td>
-          <td style="text-align: right;">${actionHtml}</td>
-        </tr>
+          </div>
+
+          <div>
+            ${isConfirmed ? `
+              <span style="color: #15803D; font-weight: 700; font-size: 0.72rem;">✓ Enviado</span>
+            ` : `
+              <span style="color: #D97706; font-weight: 700; font-size: 0.72rem;">Pendente</span>
+            `}
+          </div>
+        </div>
       `;
     }).join('');
+  }
 
-    if (mobileList) {
-      mobileList.innerHTML = filtered.map(c => {
-        const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
-        const isOpened = c.status === 'opened';
-        const initial = (c.name || 'C').charAt(0).toUpperCase();
+  // Sincronização em Tempo Real de Digitação
+  const textarea = container.querySelector('#dispatch-template-input');
+  const preview = container.querySelector('#wa-live-message-preview');
 
-        return `
-          <div class="wa-contact-card" style="background: #FFFFFF; padding: 1rem; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
-            <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0;">
-              <div class="wa-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: #EFF6FF; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #1D4ED8;">${initial}</div>
-              <div style="min-width: 0;">
-                <div style="font-weight: 800; font-size: 1rem; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${c.name}</div>
-                <div style="font-family: monospace; font-size: 0.85rem; color: #64748B;">${c.phone}</div>
-                ${c.company ? `<div style="font-size: 0.75rem; color: #94A3B8;">${c.company}</div>` : ''}
-              </div>
-            </div>
-            <div>
-              ${isConfirmed ? `
-                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-                  <span class="pill-btn" style="background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 0.75rem; padding: 2px 8px; border-radius: 99px;">✓ Enviado</span>
-                  <button class="btn-resend-contact btn-outline-white" data-id="${c.id}" style="font-size: 0.72rem; padding: 2px 6px;">🔁</button>
-                </div>
-              ` : isOpened && selectedStrategy === 'wa.me' ? `
-                <button class="btn-confirm-now" data-id="${c.id}" data-msg-id="${c.last_message_id || ''}" style="background: #008069; color: white; border: none; border-radius: 99px; font-size: 0.82rem; padding: 0.6rem 0.9rem; font-weight: 700;">
-                  Confirmar ✓
-                </button>
-              ` : `
-                <button class="btn-send-now" data-id="${c.id}" data-name="${c.name}" data-phone="${c.phone}" data-company="${c.company || ''}" style="background: #25D366; color: white; border: none; border-radius: 99px; font-size: 0.85rem; padding: 0.65rem 1rem; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 5px rgba(37, 211, 102, 0.3);">
-                  🟢 Enviar
-                </button>
-              `}
-            </div>
-          </div>
-        `;
-      }).join('');
+  textarea?.addEventListener('input', (e) => {
+    templateText = e.target.value;
+    localStorage.setItem('dispatch_active_template', templateText);
+    if (preview) {
+      preview.textContent = templateText || 'Digite uma mensagem...';
+    }
+  });
+
+  // Testar Variação Spintax
+  container.querySelector('#btn-preview-spintax')?.addEventListener('click', () => {
+    const raw = textarea?.value || templateText;
+    const sample = resolveSpintax(raw).replace(/\{nome\}/gi, 'Roberto').replace(/\{empresa\}/gi, 'Centro');
+    if (preview) preview.textContent = sample;
+  });
+
+  // Gavetas Interativas
+  container.querySelector('#btn-toggle-queue-list')?.addEventListener('click', () => {
+    const drawer = container.querySelector('#drawer-contacts-queue');
+    if (drawer) {
+      drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+    }
+  });
+
+  container.querySelector('#btn-toggle-options-drawer')?.addEventListener('click', () => {
+    const drawer = container.querySelector('#drawer-options-menu');
+    if (drawer) {
+      drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+    }
+  });
+
+  // Resetar Status de Contatos
+  container.querySelector('#btn-reset-all-contacts')?.addEventListener('click', async () => {
+    if (confirm('Deseja resetar o status de todos os contatos para permitir um novo envio?')) {
+      await resetTeamContactsStatus(currentUser?.team_id);
+      contacts.forEach(c => c.status = 'pending');
+      renderQueueList();
+    }
+  });
+
+  // Disparo em Lote (Ao tocar no botão de envio verde ➤)
+  async function triggerBatchDispatch() {
+    if (isBatchRunning) return;
+
+    const pendingContacts = contacts.filter(c => c.status === 'pending' || !c.status);
+    if (pendingContacts.length === 0) {
+      alert('Não há contatos pendentes para envio na sua fila.');
+      return;
     }
 
-    // Listener de Disparo Individual
-    container.querySelectorAll('.btn-send-now').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.getAttribute('data-id');
-        const name = btn.getAttribute('data-name');
-        const phone = btn.getAttribute('data-phone');
-        const company = btn.getAttribute('data-company');
+    const total = pendingContacts.length;
+    if (!confirm(`Iniciar o envio automático para ${total} contato(s) da lista?`)) return;
 
-        btn.disabled = true;
-        btn.innerHTML = selectedStrategy === 'evolution_api' ? 'Enviando...' : 'Abrindo WhatsApp...';
+    isBatchRunning = true;
+    const progressContainer = container.querySelector('#batch-progress-container');
+    const progressBar = container.querySelector('#batch-progress-bar');
+    const statusText = container.querySelector('#batch-status-text');
+    const counterText = container.querySelector('#batch-counter-text');
+    const sendBtn = container.querySelector('#btn-start-batch-dispatch');
 
-        try {
-          const rawTemplate = container.querySelector('#dispatch-template-input')?.value || templateText;
-          const processedMessage = resolveSpintax(rawTemplate);
+    if (progressContainer) progressContainer.style.display = 'block';
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.style.opacity = '0.6';
+    }
 
-          const dispatchRes = await executeDispatch({
-            contactId: id,
-            contactName: name,
-            contactCompany: company,
-            contactPhone: phone,
-            user: currentUser,
-            strategy: selectedStrategy,
-            templateBody: processedMessage
-          });
+    let sentCount = 0;
+    for (let i = 0; i < pendingContacts.length; i++) {
+      const contact = pendingContacts[i];
+      if (statusText) statusText.textContent = `Enviando para ${contact.name}...`;
 
-          const target = contacts.find(c => c.id === id);
+      try {
+        const rawTemplate = textarea?.value || templateText;
+        const processedMessage = resolveSpintax(rawTemplate);
 
-          if (selectedStrategy === 'evolution_api') {
-            await confirmUserDispatch({
-              contactId: id,
-              messageId: dispatchRes.messageId,
-              user: currentUser
-            });
-            if (target) target.status = 'user_confirmed';
-          } else {
-            if (target) {
-              target.status = 'opened';
-              target.last_message_id = dispatchRes.messageId;
-            }
-          }
+        const dispatchRes = await executeDispatch({
+          contactId: contact.id,
+          contactName: contact.name,
+          contactCompany: contact.company,
+          contactPhone: contact.phone,
+          user: currentUser,
+          strategy: selectedStrategy,
+          templateBody: processedMessage
+        });
 
-          renderQueueTable();
-        } catch (err) {
-          alert(err.message || 'Erro ao processar disparo.');
-          btn.disabled = false;
-          btn.innerHTML = `Tentar Novamente`;
-        }
-      });
-    });
-
-    // Reenviar individual
-    container.querySelectorAll('.btn-resend-contact').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.getAttribute('data-id');
-        await resetContactStatus(id);
-        const target = contacts.find(c => c.id === id);
-        if (target) target.status = 'pending';
-        renderQueueTable();
-      });
-    });
-
-    // Confirmar Envio (wa.me)
-    container.querySelectorAll('.btn-confirm-now').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.getAttribute('data-id');
-        const msgId = btn.getAttribute('data-msg-id');
-
-        btn.disabled = true;
-        btn.innerHTML = 'Confirmando...';
-
-        try {
+        if (selectedStrategy === 'evolution_api') {
           await confirmUserDispatch({
-            contactId: id,
-            messageId: msgId,
+            contactId: contact.id,
+            messageId: dispatchRes.messageId,
             user: currentUser
           });
-
-          const target = contacts.find(c => c.id === id);
-          if (target) target.status = 'user_confirmed';
-          renderQueueTable();
-        } catch (err) {
-          alert(err.message || 'Erro ao confirmar envio.');
-          btn.disabled = false;
-          btn.innerHTML = `Confirmar Envio`;
+          contact.status = 'user_confirmed';
+        } else {
+          contact.status = 'opened';
+          contact.last_message_id = dispatchRes.messageId;
         }
-      });
-    });
-  }
 
-  function bindQueueEvents() {
-    // Template Input & Char Counter
-    const templateInput = container.querySelector('#dispatch-template-input');
-    templateInput?.addEventListener('input', (e) => {
-      templateText = e.target.value;
-      localStorage.setItem('dispatch_active_template', templateText);
-      const counter = container.querySelector('#char-counter');
-      if (counter) counter.textContent = `${templateText.length}/1024 char`;
-    });
+        sentCount++;
+        const pct = Math.round((sentCount / total) * 100);
+        if (progressBar) progressBar.style.width = `${pct}%`;
+        if (counterText) counterText.textContent = `${sentCount} / ${total}`;
+        renderQueueList();
 
-    // Seletor Rápido de Template
-    const templateSelect = container.querySelector('#select-quick-template');
-    if (templateSelect) {
-      const filtered = availableTemplates.filter(t => t.is_global || t.scope === 'global' || t.team_id === currentUser?.team_id || !t.team_id);
-      templateSelect.innerHTML = `
-        <option value="">-- Selecione um Modelo de Mensagem --</option>
-        ${filtered.map(t => `<option value="${t.id}">📄 ${t.title} (${t.is_global || t.scope === 'global' ? 'Global' : 'Equipe'})</option>`).join('')}
-      `;
-      templateSelect.addEventListener('change', (e) => {
-        const chosen = availableTemplates.find(t => t.id === e.target.value);
-        if (chosen) {
-          templateText = chosen.body;
-          if (templateInput) templateInput.value = chosen.body;
-          localStorage.setItem('dispatch_active_template', chosen.body);
-          const counter = container.querySelector('#char-counter');
-          if (counter) counter.textContent = `${templateText.length}/1024 char`;
-        }
-      });
-    }
-
-    // Preview Spintax
-    container.querySelector('#btn-preview-spintax')?.addEventListener('click', () => {
-      const box = container.querySelector('#spintax-preview-box');
-      const textSpan = container.querySelector('#spintax-preview-text');
-      const raw = container.querySelector('#dispatch-template-input')?.value || '';
-      const sample = resolveSpintax(raw).replace(/\{nome\}/gi, 'Marina').replace(/\{empresa\}/gi, 'Acme Corp');
-      if (box && textSpan) {
-        textSpan.textContent = sample;
-        box.style.display = 'block';
-      }
-    });
-
-    // Jitter Slider & Cadence Presets
-    const jitterSlider = container.querySelector('#slider-jitter-delay');
-    const delayLabel = container.querySelector('#delay-label');
-
-    function applyCadence(targetSec) {
-      batchMinDelay = Math.max(10, Math.floor(targetSec * 0.85));
-      batchMaxDelay = Math.max(batchMinDelay + 5, Math.floor(targetSec * 1.15));
-      const minText = targetSec >= 60 ? `~${Math.round(targetSec / 60)} min` : `${targetSec}s`;
-      if (delayLabel) delayLabel.textContent = `${batchMinDelay}s - ${batchMaxDelay}s (${minText} / msg)`;
-      if (jitterSlider) jitterSlider.value = targetSec;
-    }
-
-    jitterSlider?.addEventListener('input', (e) => {
-      const targetSec = parseInt(e.target.value, 10);
-      applyCadence(targetSec);
-    });
-
-    container.querySelectorAll('.btn-cadence-preset').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const sec = parseInt(btn.getAttribute('data-sec'), 10);
-        applyCadence(sec);
-        container.querySelectorAll('.btn-cadence-preset').forEach(b => {
-          b.style.background = '#F8FAFC';
-          b.style.color = 'var(--text-main)';
-          b.style.borderColor = 'var(--border-color)';
-        });
-        btn.style.background = '#EFF6FF';
-        btn.style.color = '#1D4ED8';
-        btn.style.borderColor = '#BFDBFE';
-      });
-    });
-
-    // Search Input
-    container.querySelector('#dispatch-search-input')?.addEventListener('input', (e) => {
-      renderQueueTable(e.target.value);
-    });
-
-    // Resetar Todos
-    container.querySelector('#btn-reset-all-contacts')?.addEventListener('click', async () => {
-      if (confirm('Deseja resetar o status de todos os contatos para permitir um novo disparo de mensagens?')) {
-        await resetTeamContactsStatus(currentUser?.team_id);
-        contacts.forEach(c => c.status = 'pending');
-        renderQueueTable();
-      }
-    });
-
-    // Função de Disparo em Lote
-    async function triggerBatchDispatch() {
-      if (isBatchRunning) return;
-
-      const pendingContacts = contacts.filter(c => c.status === 'pending' || !c.status);
-      if (pendingContacts.length === 0) {
-        alert('Não há contatos pendentes para envio na sua fila.');
-        return;
-      }
-
-      const total = pendingContacts.length;
-      if (!confirm(`Iniciar o envio automático para ${total} contato(s) pendente(s)?`)) return;
-
-      isBatchRunning = true;
-      const progressContainer = container.querySelector('#batch-progress-container');
-      const progressBar = container.querySelector('#batch-progress-bar');
-      const statusText = container.querySelector('#batch-status-text');
-      const counterText = container.querySelector('#batch-counter-text');
-      const batchBtn = container.querySelector('#btn-start-batch-dispatch');
-
-      if (progressContainer) progressContainer.style.display = 'block';
-      if (batchBtn) {
-        batchBtn.disabled = true;
-        batchBtn.innerHTML = 'Enviando fila...';
-      }
-
-      let sentCount = 0;
-      for (let i = 0; i < pendingContacts.length; i++) {
-        const contact = pendingContacts[i];
-        if (statusText) statusText.textContent = `Enviando para ${contact.name}...`;
-
-        try {
-          const rawTemplate = container.querySelector('#dispatch-template-input')?.value || templateText;
-          const processedMessage = resolveSpintax(rawTemplate);
-
-          const dispatchRes = await executeDispatch({
-            contactId: contact.id,
-            contactName: contact.name,
-            contactCompany: contact.company,
-            contactPhone: contact.phone,
-            user: currentUser,
-            strategy: selectedStrategy,
-            templateBody: processedMessage
-          });
-
-          if (selectedStrategy === 'evolution_api') {
-            await confirmUserDispatch({
-              contactId: contact.id,
-              messageId: dispatchRes.messageId,
-              user: currentUser
-            });
-            contact.status = 'user_confirmed';
-          } else {
-            contact.status = 'opened';
-            contact.last_message_id = dispatchRes.messageId;
+        // Aplica Jitter Delay entre envios (1 min)
+        if (i < total - 1) {
+          const delaySec = Math.floor(Math.random() * (batchMaxDelay - batchMinDelay + 1)) + batchMinDelay;
+          for (let s = delaySec; s > 0; s--) {
+            if (statusText) statusText.textContent = `Pausa Anti-Ban de segurança... Próximo em ${s}s`;
+            await new Promise(r => setTimeout(r, 1000));
           }
-
-          sentCount++;
-          const pct = Math.round((sentCount / total) * 100);
-          if (progressBar) progressBar.style.width = `${pct}%`;
-          if (counterText) counterText.textContent = `${sentCount} / ${total}`;
-          renderQueueTable();
-
-          // Aplica Jitter Delay entre envios
-          if (i < total - 1) {
-            const delaySec = Math.floor(Math.random() * (batchMaxDelay - batchMinDelay + 1)) + batchMinDelay;
-            for (let s = delaySec; s > 0; s--) {
-              if (statusText) statusText.textContent = `Pausa Anti-Ban de segurança... Próximo em ${s}s`;
-              await new Promise(r => setTimeout(r, 1000));
-            }
-          }
-        } catch (err) {
-          console.warn(`Erro no disparo para ${contact.phone}:`, err);
         }
+      } catch (err) {
+        console.warn(`Erro no disparo para ${contact.phone}:`, err);
       }
-
-      isBatchRunning = false;
-      if (statusText) statusText.textContent = '🎉 Envio em lote concluído com sucesso!';
-      if (batchBtn) {
-        batchBtn.disabled = false;
-        batchBtn.innerHTML = '🚀 Disparar para Todos (Automático)';
-      }
-      setTimeout(() => {
-        if (progressContainer) progressContainer.style.display = 'none';
-      }, 5000);
     }
 
-    container.querySelector('#btn-start-batch-dispatch')?.addEventListener('click', triggerBatchDispatch);
-    container.querySelector('#btn-start-batch-dispatch-card')?.addEventListener('click', triggerBatchDispatch);
-    container.querySelector('#fab-rocket-dispatch')?.addEventListener('click', triggerBatchDispatch);
-  }
-
-  // Alternador de Abas
-  function switchTab(tab) {
-    activeTab = tab;
-    const btnQueue = container.querySelector('#tab-btn-queue');
-    const btnHist = container.querySelector('#tab-btn-history');
-
-    if (tab === 'queue') {
-      if (btnQueue) {
-        btnQueue.style.background = '#1D4ED8';
-        btnQueue.style.color = '#FFFFFF';
-        btnQueue.style.border = 'none';
-      }
-      if (btnHist) {
-        btnHist.style.background = '#FFFFFF';
-        btnHist.style.color = 'var(--text-main)';
-        btnHist.style.border = '1px solid var(--border-color)';
-      }
-      renderQueueTab();
-    } else {
-      if (btnHist) {
-        btnHist.style.background = '#1D4ED8';
-        btnHist.style.color = '#FFFFFF';
-        btnHist.style.border = 'none';
-      }
-      if (btnQueue) {
-        btnQueue.style.background = '#FFFFFF';
-        btnQueue.style.color = 'var(--text-main)';
-        btnQueue.style.border = '1px solid var(--border-color)';
-      }
-      renderHistoryTab();
+    isBatchRunning = false;
+    if (statusText) statusText.textContent = '🎉 Envio concluído com sucesso!';
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.style.opacity = '1';
     }
+    setTimeout(() => {
+      if (progressContainer) progressContainer.style.display = 'none';
+    }, 5000);
   }
 
-  container.querySelector('#tab-btn-queue')?.addEventListener('click', () => switchTab('queue'));
-  container.querySelector('#tab-btn-history')?.addEventListener('click', () => switchTab('history'));
+  container.querySelector('#btn-start-batch-dispatch')?.addEventListener('click', triggerBatchDispatch);
 
-  // Controle dos Botões de Estratégia
-  const btnWame = container.querySelector('#strategy-btn-wame');
-  const btnApi = container.querySelector('#strategy-btn-api');
-  const expLabel = container.querySelector('#strategy-explanation');
+  // Escuta Contatos no Firestore
+  let unsubscribeContacts = null;
+  if (currentUser?.role === 'admin') {
+    unsubscribeContacts = subscribeToAllContacts((data) => {
+      contacts = data;
+      renderQueueList();
+    });
+  } else if (currentUser?.role === 'coordinator') {
+    unsubscribeContacts = subscribeToTeamContacts(currentUser.team_id, (data) => {
+      contacts = data;
+      renderQueueList();
+    });
+  } else {
+    unsubscribeContacts = subscribeToOperatorContacts(currentUser.uid, (data) => {
+      contacts = data;
+      renderQueueList();
+    });
+  }
 
-  function updateStrategyUI() {
-    if (selectedStrategy === 'wa.me') {
-      btnWame.style.background = '#EFF6FF';
-      btnWame.style.color = '#1D4ED8';
-      btnWame.style.borderColor = '#3B82F6';
-
-      if (isApiConnected) {
-        btnApi.style.background = '#F8FAFC';
-        btnApi.style.color = '#475569';
-        btnApi.style.borderColor = 'var(--border-color)';
-        btnApi.style.opacity = '1';
-        btnApi.disabled = false;
-        btnApi.style.cursor = 'pointer';
-        btnApi.innerHTML = `⚡ Evolution API Automático (● Conectado)`;
+  // Escuta Templates no Firestore
+  const unsubscribeTemplates = subscribeToTemplates(currentUser, (templates) => {
+    availableTemplates = templates;
+    const select = container.querySelector('#select-quick-template');
+    if (select) {
+      if (templates.length === 0) {
+        select.innerHTML = `<option value="">📄 Sem templates cadastrados</option>`;
       } else {
-        btnApi.style.background = '#F3F4F6';
-        btnApi.style.color = '#9CA3AF';
-        btnApi.style.borderColor = 'var(--border-color)';
-        btnApi.style.opacity = '0.7';
-        btnApi.disabled = true;
-        btnApi.style.cursor = 'not-allowed';
-        btnApi.innerHTML = `⚡ Evolution API (Desconectado - usar wa.me)`;
+        select.innerHTML = `
+          <option value="">📄 Escolher Modelo de Mensagem... ⌵</option>
+          ${templates.map(t => `
+            <option value="${encodeURIComponent(t.body)}">
+              ${t.title} (${t.category || 'Geral'})
+            </option>
+          `).join('')}
+        `;
       }
-      expLabel.innerHTML = 'Modo Assistido: O WhatsApp Web abrirá em nova aba para você revisar e enviar.';
-    } else {
-      btnApi.style.background = '#ECFDF5';
-      btnApi.style.color = '#059669';
-      btnApi.style.borderColor = '#10B981';
-
-      btnWame.style.background = '#F8FAFC';
-      btnWame.style.color = '#475569';
-      btnWame.style.borderColor = 'var(--border-color)';
-
-      expLabel.innerHTML = `Modo Automático: As mensagens são enviadas diretamente pela Evolution API (Instância: <strong>${activeInstance}</strong>) com Anti-Ban e Jitter.`;
     }
-    if (activeTab === 'queue') renderQueueTable();
-  }
-
-  btnWame?.addEventListener('click', () => {
-    selectedStrategy = 'wa.me';
-    updateStrategyUI();
   });
 
-  btnApi?.addEventListener('click', () => {
-    if (!isApiConnected) return;
-    selectedStrategy = 'evolution_api';
-    updateStrategyUI();
+  container.querySelector('#select-quick-template')?.addEventListener('change', (e) => {
+    if (e.target.value) {
+      const decodedBody = decodeURIComponent(e.target.value);
+      if (textarea) textarea.value = decodedBody;
+      templateText = decodedBody;
+      localStorage.setItem('dispatch_active_template', decodedBody);
+      if (preview) preview.textContent = decodedBody;
+    }
   });
 
-  // Checa status da API em segundo plano
+  // Checagem de Conexão Evolution API
   async function checkApiConnection() {
     try {
-      const stateRes = await getEvolutionConnectionState(activeInstance);
-      if (stateRes.state === 'open') {
+      const slug = sanitizeInstanceSlug(activeInstance);
+      const res = await getEvolutionConnectionState(slug);
+      const apiBtn = container.querySelector('#strategy-btn-api');
+
+      if (res.connected) {
         isApiConnected = true;
-        connectedPhone = stateRes.phoneNumber || 'Ativo';
-        // Define Evolution API como primário padrão quando o chip estiver conectado
-        selectedStrategy = 'evolution_api';
-      } else {
-        isApiConnected = false;
-        selectedStrategy = 'wa.me';
+        connectedPhone = res.phone;
+        if (apiBtn) {
+          apiBtn.disabled = false;
+          apiBtn.style.cursor = 'pointer';
+          apiBtn.style.opacity = '1';
+          apiBtn.innerHTML = `⚡ Evolution API (${connectedPhone || 'Online'})`;
+        }
       }
     } catch (e) {
-      isApiConnected = false;
-      selectedStrategy = 'wa.me';
+      console.warn('Evolution check err:', e);
     }
-    updateStrategyUI();
   }
   checkApiConnection();
 
-  // Subscriptions em tempo real: Cada líder vê estritamente apenas a sua lista atribuída
-  const unsubContacts = subscribeToOperatorContacts(currentUser?.uid, (list) => {
-    contacts = list;
-    const headerCount = container.querySelector('#queue-header-count');
-    if (headerCount) headerCount.textContent = contacts.length;
-    if (activeTab === 'queue') renderQueueTable();
-  });
-
-  // Subscribe ao Histórico de Mensagens (/messages) respeitando a hierarquia
-  const unsubHistory = subscribeToMessagesHistory({
-    role: currentUser?.role,
-    teamId: currentUser?.team_id,
-    userUid: currentUser?.uid
-  }, (msgs) => {
-    historyMessages = msgs;
-    const badge = container.querySelector('#history-badge-count');
-    if (badge) badge.textContent = historyMessages.length;
-    if (activeTab === 'history') renderHistoryTab();
-  });
-
-  // Subscribe aos Templates de Mensagem em tempo real
-  const unsubTemplates = subscribeToTemplates((list) => {
-    availableTemplates = list;
-    const templateSelect = container.querySelector('#select-quick-template');
-    if (templateSelect) {
-      const filtered = availableTemplates.filter(t => t.is_global || t.scope === 'global' || t.team_id === currentUser?.team_id || !t.team_id);
-      templateSelect.innerHTML = `
-        <option value="">-- Selecione um Modelo de Mensagem --</option>
-        ${filtered.map(t => `<option value="${t.id}">📄 ${t.title} (${t.is_global || t.scope === 'global' ? 'Global' : 'Equipe'})</option>`).join('')}
-      `;
-    }
-  });
-
-  // Render inicial
-  renderQueueTab();
-
+  // Cleanup de listeners
   return () => {
-    if (unsubContacts) unsubContacts();
-    if (unsubHistory) unsubHistory();
-    if (unsubTemplates) unsubTemplates();
+    if (unsubscribeContacts) unsubscribeContacts();
+    if (unsubscribeTemplates) unsubscribeTemplates();
   };
 }
 
