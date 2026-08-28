@@ -279,21 +279,12 @@ export function renderEvolutionManager(container, currentUser) {
   async function checkStatus() {
     activeInstanceName = sanitizeInstanceSlug(slugInput?.value || activeInstanceName);
     
-    let res = await getEvolutionConnectionState(activeInstanceName);
-    if (res.state !== 'open' && activeInstanceName.toLowerCase() !== 'ibm') {
-      const globalRes = await getEvolutionConnectionState('IBM');
-      if (globalRes.state === 'open') {
-        activeInstanceName = 'IBM';
-        if (slugInput) slugInput.value = 'IBM';
-        localStorage.setItem('evolution_active_instance', 'IBM');
-        res = globalRes;
-      }
-    }
-
     const instanceNameDisplay = container.querySelector('#instance-name-display');
     if (instanceNameDisplay) {
       instanceNameDisplay.innerHTML = `Instância: <strong>${activeInstanceName}</strong>`;
     }
+
+    const res = await getEvolutionConnectionState(activeInstanceName);
 
     if (res.state === 'open') {
       statusBadge.innerHTML = `<span class="pill-btn" style="background: #DCFCE7; color: #15803D;">● Conectado (${res.phoneNumber || 'Ativo'})</span>`;

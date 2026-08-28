@@ -63,18 +63,11 @@ export const EvolutionStrategy = {
   name: 'evolution_api',
   async execute({ contact, user, formattedPhone, personalizedMessage, messageId }) {
     const activeStored = typeof localStorage !== 'undefined' ? localStorage.getItem('evolution_active_instance') : null;
-    let userInstance = user?.whatsapp?.instanceName || activeStored || 'IBM';
-
-    try {
-      if (userInstance !== 'IBM') {
-        const check = await getEvolutionConnectionState(userInstance);
-        if (check.state !== 'open') {
-          userInstance = 'IBM';
-        }
-      }
-    } catch (e) {
-      userInstance = 'IBM';
-    }
+    const hierarchicalName = (user?.team_name && user?.role && user?.name)
+      ? `${user.team_name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${user.role}_${user.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
+      : null;
+      
+    const userInstance = user?.whatsapp?.instanceName || activeStored || hierarchicalName || 'instancia_operador';
 
     const result = await sendEvolutionTextMessage({
       instanceName: userInstance,
