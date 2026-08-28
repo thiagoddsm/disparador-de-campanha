@@ -3,6 +3,9 @@
  * Padrão corporativo inspirado na arquitetura FestaPay + Regras Anti-Ban Oiko
  */
 
+import { db } from './config.js';
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+
 export const EVOLUTION_CONFIG = {
   baseUrl: (import.meta.env.VITE_EVOLUTION_API_BASE_URL || 'https://api.ibmanha.com.br').replace(/\/$/, ''),
   apiKey: import.meta.env.VITE_EVOLUTION_API_KEY || '554C767EA3D2-4221-AB6A-C126C68A657E',
@@ -17,17 +20,66 @@ export const EVOLUTION_CONFIG = {
   }
 };
 
+let firestoreEvolutionConfig = null;
+
+// Escuta em tempo real a configuração salva no Firestore pelo Admin
+export function initEvolutionConfigListener() {
+  try {
+    const configRef = doc(db, 'integrations', 'evolution');
+    onSnapshot(configRef, (snapshot) => {
+      if (snapshot.exists()) {
+        firestoreEvolutionConfig = snapshot.data();
+        if (firestoreEvolutionConfig.apiKey) {
+          localStorage.setItem('evolution_api_key', firestoreEvolutionConfig.apiKey);
+        }
+        if (firestoreEvolutionConfig.baseUrl) {
+          localStorage.setItem('evolution_api_url', firestoreEvolutionConfig.baseUrl);
+        }
+      }
+    }, (err) => {
+      console.warn('Erro ao escutar config da Evolution API no Firestore:', err);
+    });
+  } catch (e) {
+    console.warn('Falha ao inicializar listener de Evolution Config:', e);
+  }
+}
+
+// Salva a configuração global da Evolution API no Firestore (Apenas Admin)
+export async function saveEvolutionGlobalConfig(baseUrl, apiKey) {
+  const cleanUrl = baseUrl.replace(/\/$/, '').trim();
+  const cleanKey = apiKey.trim();
+  
+  const configRef = doc(db, 'integrations', 'evolution');
+  await setDoc(configRef, {
+    baseUrl: cleanUrl,
+    apiKey: cleanKey,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+
+  firestoreEvolutionConfig = { baseUrl: cleanUrl, apiKey: cleanKey };
+  localStorage.setItem('evolution_api_url', cleanUrl);
+  localStorage.setItem('evolution_api_key', cleanKey);
+}
+
 function getEvolutionConfig(customApiKey) {
   const localUrl = typeof localStorage !== 'undefined' ? localStorage.getItem('evolution_api_url') : null;
   const localKey = typeof localStorage !== 'undefined' ? localStorage.getItem('evolution_api_key') : null;
 
-  const apiKey = customApiKey || localKey || EVOLUTION_CONFIG.apiKey || import.meta.env.VITE_EVOLUTION_API_KEY;
-  const baseUrl = localUrl || EVOLUTION_CONFIG.baseUrl || import.meta.env.VITE_EVOLUTION_API_BASE_URL;
+  const apiKey = customApiKey || 
+                 firestoreEvolutionConfig?.apiKey || 
+                 localKey || 
+                 EVOLUTION_CONFIG.apiKey || 
+                 import.meta.env.VITE_EVOLUTION_API_KEY;
+                 
+  const baseUrl = firestoreEvolutionConfig?.baseUrl || 
+                  localUrl || 
+                  EVOLUTION_CONFIG.baseUrl || 
+                  import.meta.env.VITE_EVOLUTION_API_BASE_URL;
 
   if (!baseUrl || !apiKey) {
     throw new Error('Integração Evolution API não configurada.');
   }
-  return { apiKey, baseUrl: baseUrl.replace(/\/$/, '') };
+  return { apiKey: apiKey.trim(), baseUrl: baseUrl.replace(/\/$/, '').trim() };
 }
 
 /**

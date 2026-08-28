@@ -15,11 +15,15 @@ import { renderSettingsGeneral } from './components/SettingsGeneral.js';
 import { renderRolesManagement } from './components/RolesManagement.js';
 import { renderSecuritySettings } from './components/SecuritySettings.js';
 import { subscribeToTenantTeams, DEFAULT_TENANT_ID } from './firebase/realtime.js';
+import { initEvolutionConfigListener } from './firebase/evolutionApi.js';
 
 import { db } from './firebase/config.js';
 import { doc, getDoc } from 'firebase/firestore';
 
 const appEl = document.querySelector('#app');
+
+// Inicializa sincronização em tempo real das credenciais da Evolution API para todos os aparelhos
+initEvolutionConfigListener();
 
 // Remove somente o cache legado de demonstração; a fonte de dados em produção é o Firestore.
 ['campaign_teams', 'campaign_members', 'campaign_templates', 'campaign_contacts', 'campaign_audit_logs', 'mgmt_active_template'].forEach(key => localStorage.removeItem(key));

@@ -121,7 +121,8 @@ service cloud.firestore {
     }
 
     match /integrations/{integrationId} {
-      allow read, write: if isAdmin();
+      allow read: if signedIn();
+      allow write: if isAdmin();
     }
 
     match /roles/{roleId} {

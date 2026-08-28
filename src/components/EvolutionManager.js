@@ -7,6 +7,7 @@ import {
   cleanupDisconnectedInstances,
   sanitizeInstanceSlug,
   generateHierarchicalInstanceName,
+  saveEvolutionGlobalConfig,
   EVOLUTION_CONFIG 
 } from '../firebase/evolutionApi.js';
 import { db } from '../firebase/config.js';
@@ -439,14 +440,24 @@ export function renderEvolutionManager(container, currentUser) {
   });
 
   const saveApiConfigBtn = container.querySelector('#btn-save-api-config');
-  saveApiConfigBtn?.addEventListener('click', () => {
+  saveApiConfigBtn?.addEventListener('click', async () => {
     const url = container.querySelector('#input-api-url')?.value.trim();
     const key = container.querySelector('#input-api-key')?.value.trim();
-    if (url) localStorage.setItem('evolution_api_url', url);
-    if (key) localStorage.setItem('evolution_api_key', key);
-    showToast('Token e URL da Evolution API salvos com sucesso!', 'success');
-    checkStatus();
-    if (isAdmin) loadServerInstances();
+    try {
+      if (url && key) {
+        await saveEvolutionGlobalConfig(url, key);
+        showToast('Token e URL salvos globalmente no servidor para todos os celulares!', 'success');
+      } else {
+        if (url) localStorage.setItem('evolution_api_url', url);
+        if (key) localStorage.setItem('evolution_api_key', key);
+        showToast('Configuração salva localmente.', 'success');
+      }
+      checkStatus();
+      if (isAdmin) loadServerInstances();
+    } catch (err) {
+      console.error('Erro ao salvar config:', err);
+      showToast('Erro ao salvar configuração no servidor.', 'error');
+    }
   });
 
   container.querySelector('#btn-use-standard-slug')?.addEventListener('click', () => {
