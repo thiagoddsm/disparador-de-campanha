@@ -1,4 +1,4 @@
-import { updateUserProfileSettings, resetUserPassword } from '../firebase/auth.js';
+import { updateUserProfileSettings, resetUserPassword, uploadUserAvatarFile } from '../firebase/auth.js';
 import { showToast } from '../utils/feedback.js';
 
 export function renderSettingsGeneral(container, currentUser, onNavigate) {
@@ -60,12 +60,24 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
             </div>
 
             <div style="display: flex; gap: 1.75rem; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap;">
-              <!-- Avatar Column -->
-              <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
-                <img src="${currentAvatar}" 
-                     style="width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 3px solid #FFFFFF; box-shadow: var(--shadow-sm);" 
-                     id="settings-avatar-preview" alt="Avatar">
-                <button type="button" id="btn-change-avatar" style="background: none; border: none; font-size: 0.8rem; color: var(--primary-blue); font-weight: 600; cursor: pointer; padding: 0;">Alterar Foto</button>
+              <!-- Avatar Column com Upload via Storage -->
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; position: relative;">
+                <input type="file" id="input-avatar-file" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;">
+                
+                <div style="position: relative; cursor: pointer;" id="avatar-upload-trigger" title="Clique para enviar nova foto">
+                  <img src="${currentAvatar}" 
+                       style="width: 88px; height: 88px; border-radius: 50%; object-fit: cover; border: 3px solid #FFFFFF; box-shadow: var(--shadow-md); transition: opacity 0.2s;" 
+                       id="settings-avatar-preview" alt="Avatar">
+                  
+                  <div style="position: absolute; bottom: 2px; right: 2px; width: 28px; height: 28px; border-radius: 50%; background: #1D4ED8; color: #FFFFFF; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.25); border: 2px solid #FFFFFF;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                  </div>
+                </div>
+
+                <button type="button" id="btn-change-avatar" style="background: none; border: none; font-size: 0.82rem; color: var(--primary-blue); font-weight: 700; cursor: pointer; padding: 0.2rem 0.5rem;">
+                  📷 Alterar Foto
+                </button>
+                <span id="avatar-upload-status" style="font-size: 0.72rem; color: var(--text-muted); display: none;">Enviando...</span>
               </div>
 
               <!-- Name & Email Inputs -->
@@ -185,13 +197,85 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
     onNavigate('evolution');
   });
 
-  // Alterar Foto de Perfil
-  container.querySelector('#btn-change-avatar')?.addEventListener('click', () => {
-    const newUrl = prompt('Insira a URL pública da sua foto de perfil:', currentAvatar);
-    if (newUrl && newUrl.trim().startsWith('http')) {
-      currentAvatar = newUrl.trim();
-      const img = container.querySelector('#settings-avatar-preview');
-      if (img) img.src = currentAvatar;
+  // Upload de Foto de Perfil via Firebase Storage
+  const fileInput = container.querySelector('#input-avatar-file');
+  const avatarTrigger = container.querySelector('#avatar-upload-trigger');
+  const changeBtn = container.querySelector('#btn-change-avatar');
+  const avatarImg = container.querySelector('#settings-avatar-preview');
+  const uploadStatus = container.querySelector('#avatar-upload-status');
+
+  const openFilePicker = () => {
+    fileInput?.click();
+  };
+
+  avatarTrigger?.addEventListener('click', openFilePicker);
+  changeBtn?.addEventListener('click', openFilePicker);
+
+  fileInput?.addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Por favor, selecione um arquivo de imagem (PNG, JPG, WEBP).', 'error');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('O arquivo selecionado é maior que 5MB. Escolha uma imagem menor.', 'error');
+      return;
+    }
+
+    // Preview imediato
+    const localUrl = URL.createObjectURL(file);
+    if (avatarImg) {
+      avatarImg.src = localUrl;
+      avatarImg.style.opacity = '0.5';
+    }
+
+    if (uploadStatus) {
+      uploadStatus.style.display = 'block';
+      uploadStatus.textContent = 'Enviando imagem...';
+    }
+    if (changeBtn) {
+      changeBtn.disabled = true;
+      changeBtn.textContent = 'Enviando...';
+    }
+
+    try {
+      const downloadUrl = await uploadUserAvatarFile(file, currentUser.uid);
+      currentAvatar = downloadUrl;
+      currentUser.avatar_url = downloadUrl;
+
+      // Salva no perfil Firestore e Auth
+      await updateUserProfileSettings({
+        photoURL: downloadUrl
+      });
+
+      if (avatarImg) {
+        avatarImg.src = downloadUrl;
+        avatarImg.style.opacity = '1';
+      }
+
+      // Atualiza avatares visíveis no topbar/sidebar
+      document.querySelectorAll('.topbar-avatar-img, .user-avatar-img, .sidebar-avatar-img').forEach(img => {
+        img.src = downloadUrl;
+      });
+
+      showToast('Foto de perfil enviada e atualizada com sucesso!', 'success');
+    } catch (err) {
+      console.error('Erro no upload de foto:', err);
+      showToast(`Erro ao enviar foto: ${err.message}`, 'error');
+      if (avatarImg) {
+        avatarImg.src = currentUser.avatar_url || currentAvatar;
+        avatarImg.style.opacity = '1';
+      }
+    } finally {
+      if (uploadStatus) uploadStatus.style.display = 'none';
+      if (changeBtn) {
+        changeBtn.disabled = false;
+        changeBtn.textContent = '📷 Alterar Foto';
+      }
+      fileInput.value = '';
     }
   });
 

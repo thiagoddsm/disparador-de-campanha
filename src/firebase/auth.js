@@ -1,4 +1,4 @@
-import { auth, db } from './config.js';
+import { auth, db, storage } from './config.js';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
@@ -8,6 +8,7 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, getDocs, collection, query, where, serverTimestamp, updateDoc, onSnapshot } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export const DEFAULT_TENANT_ID = 'tenant_main';
 
@@ -96,6 +97,30 @@ export async function syncUserProfile(
 
   await setDoc(userRef, newProfile);
   return newProfile;
+}
+
+/**
+ * Faz upload da foto de perfil no Firebase Storage e retorna o link público.
+ * @param {File} file Arquivo de imagem selecionado pelo usuário
+ * @param {string} userUid UID do usuário
+ * @returns {Promise<string>} Download URL do arquivo
+ */
+export async function uploadUserAvatarFile(file, userUid) {
+  if (!file) throw new Error('Nenhum arquivo selecionado.');
+  if (!file.type.startsWith('image/')) throw new Error('Por favor, selecione um arquivo de imagem válido (PNG, JPG, JPEG, WEBP).');
+  
+  // Limite de 5MB
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error('A imagem deve ter no máximo 5MB.');
+  }
+
+  const ext = file.name.split('.').pop() || 'jpg';
+  const filePath = `avatars/${userUid || auth.currentUser?.uid || 'user'}_${Date.now()}.${ext}`;
+  const storageRef = ref(storage, filePath);
+
+  await uploadBytes(storageRef, file, { contentType: file.type });
+  const downloadUrl = await getDownloadURL(storageRef);
+  return downloadUrl;
 }
 
 /**
