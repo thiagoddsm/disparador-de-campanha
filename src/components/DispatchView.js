@@ -25,7 +25,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
   let selectedLeaderFilter = 'all'; // 'all' | 'mine' | '<uid>'
   let historyMessages = [];
   let availableTemplates = [];
-  let templateText = localStorage.getItem('dispatch_active_template') || 'Olá {nome}, temos uma novidade especial para {empresa}!';
+  let templateText = '';
   
   const isMember = currentUser?.role === 'member';
   const isAdmin = currentUser?.role === 'admin';
@@ -90,12 +90,9 @@ export function renderDispatchView(container, currentUser, onNavigate) {
         <!-- Quick Controls Top Bar inside Chat -->
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
           <div style="display: flex; gap: 0.4rem; align-items: center; flex: 1; min-width: 0;">
-            <select id="select-quick-template" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: var(--text-main); font-size: 0.78rem; font-weight: 700; padding: 0.35rem 0.65rem; border-radius: 9999px; outline: none; cursor: pointer; flex: 1; min-width: 140px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+            <select id="select-quick-template" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: var(--text-main); font-size: 0.78rem; font-weight: 700; padding: 0.35rem 0.65rem; border-radius: 9999px; outline: none; cursor: pointer; flex: 1; min-width: 160px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
               <option value="">📄 Modelo: Escolher template... ⌵</option>
             </select>
-            <button id="btn-preview-spintax" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: var(--text-main); font-size: 0.75rem; font-weight: 700; padding: 0.35rem 0.65rem; cursor: pointer;">
-              🎲 Variação
-            </button>
           </div>
 
           <button id="btn-toggle-queue-list" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: #008069; font-size: 0.75rem; font-weight: 800; padding: 0.35rem 0.75rem; cursor: pointer;">
@@ -119,36 +116,23 @@ export function renderDispatchView(container, currentUser, onNavigate) {
           </div>
         </div>
 
-        <!-- Strategy Options Drawer -->
-        <div id="drawer-options-menu" style="display: none; background: #FFFFFF; border-radius: 12px; border: 1px solid var(--border-color); padding: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-          <div style="font-size: 0.82rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--text-main);">Método de Envio:</div>
-          <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;" id="strategy-selector-mount">
-            <button type="button" id="strategy-btn-wame" class="pill-btn" style="flex: 1; justify-content: center; cursor: pointer; padding: 0.4rem 0.75rem; font-size: 0.75rem; font-weight: 700; background: #EFF6FF; color: #1D4ED8; border: 1.5px solid #3B82F6;">
-              📱 WhatsApp Web (wa.me)
-            </button>
-            <button type="button" id="strategy-btn-api" class="pill-btn" style="flex: 1; justify-content: center; cursor: not-allowed; padding: 0.4rem 0.75rem; font-size: 0.75rem; font-weight: 700; background: #F3F4F6; color: #9CA3AF; border: 1.5px solid var(--border-color);" disabled>
-              ⚡ Evolution API
-            </button>
+        <!-- Progress Container (Batch Dispatching) -->
+        <div id="batch-progress-container" style="display: none; background: #FFFFFF; border-radius: 12px; border: 1px solid var(--border-color); padding: 0.85rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; font-size: 0.8rem; font-weight: 700;">
+            <span id="batch-status-text" style="color: var(--text-main);">Iniciando envio...</span>
+            <span id="batch-counter-text" style="color: #008069;">0 / 0</span>
           </div>
-        </div>
-
-        <!-- Batch Progress Card (Live sending state) -->
-        <div id="batch-progress-container" style="display: none; background: #FFFFFF; border-radius: 12px; padding: 0.85rem 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-left: 4px solid #008069;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-            <strong id="batch-status-text" style="font-size: 0.82rem; color: #008069;">Enviando mensagens...</strong>
-            <span id="batch-counter-text" style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">0 / 0</span>
-          </div>
-          <div style="width: 100%; height: 6px; background: #E2E8F0; border-radius: 9999px; overflow: hidden;">
-            <div id="batch-progress-bar" style="width: 0%; height: 100%; background: #00A884; transition: width 0.3s ease;"></div>
+          <div style="width: 100%; height: 8px; background: #E2E8F0; border-radius: 99px; overflow: hidden;">
+            <div id="batch-progress-bar" style="width: 0%; height: 100%; background: #25D366; transition: width 0.3s ease;"></div>
           </div>
         </div>
 
         <!-- WhatsApp Sent Speech Bubble Preview -->
-        <div class="wa-speech-bubble-sent">
+        <div class="wa-speech-bubble-sent" id="wa-preview-bubble-container" style="display: none;">
           <div class="wa-speech-bubble-label">
-            Visualização do Template:
+            Visualização da Mensagem:
           </div>
-          <div id="wa-live-message-preview" style="white-space: pre-wrap;">${templateText}</div>
+          <div id="wa-live-message-preview" style="white-space: pre-wrap;"></div>
           <div class="wa-speech-bubble-time">
             <span id="wa-bubble-clock">14:02</span>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#53BDEB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline><polyline points="20 12 14 18"></polyline></svg>
@@ -160,10 +144,10 @@ export function renderDispatchView(container, currentUser, onNavigate) {
       <!-- WhatsApp Bottom Message Input Bar -->
       <div class="wa-chat-input-bar">
         <div class="wa-input-capsule">
-          <textarea id="dispatch-template-input" class="wa-input-textarea" rows="1" placeholder="Digite uma mensagem...">${templateText}</textarea>
+          <textarea id="dispatch-template-input" class="wa-input-textarea" rows="1" placeholder="Digite uma mensagem" autofocus></textarea>
         </div>
 
-        <button type="button" class="wa-send-btn-round" id="btn-start-batch-dispatch" title="Disparar para Toda a Lista">
+        <button type="button" class="wa-send-btn-round" id="btn-start-batch-dispatch" title="Enviar Mensagem">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg); margin-left: -2px;"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </button>
       </div>
@@ -362,25 +346,24 @@ export function renderDispatchView(container, currentUser, onNavigate) {
     el.style.height = `${newHeight}px`;
   }
 
-  // Inicializa o tamanho correto na carga inicial
+  // Inicializa o tamanho correto na carga inicial e foca no campo
+  const previewBubble = container.querySelector('#wa-preview-bubble-container');
   if (textarea) {
     autoResizeTextarea(textarea);
+    setTimeout(() => {
+      textarea.focus();
+    }, 150);
   }
 
   textarea?.addEventListener('input', (e) => {
     templateText = e.target.value;
-    localStorage.setItem('dispatch_active_template', templateText);
     autoResizeTextarea(textarea);
     if (preview) {
-      preview.textContent = templateText || 'Digite uma mensagem...';
+      preview.textContent = templateText;
     }
-  });
-
-  // Testar Variação Spintax
-  container.querySelector('#btn-preview-spintax')?.addEventListener('click', () => {
-    const raw = textarea?.value || templateText;
-    const sample = resolveSpintax(raw).replace(/\{nome\}/gi, 'Roberto').replace(/\{empresa\}/gi, 'Centro').replace(/\{cidade\}/gi, 'Centro');
-    if (preview) preview.textContent = sample;
+    if (previewBubble) {
+      previewBubble.style.display = templateText.trim() ? 'block' : 'none';
+    }
   });
 
   // Gavetas Interativas
@@ -556,8 +539,8 @@ export function renderDispatchView(container, currentUser, onNavigate) {
         autoResizeTextarea(textarea);
       }
       templateText = decodedBody;
-      localStorage.setItem('dispatch_active_template', decodedBody);
       if (preview) preview.textContent = decodedBody;
+      if (previewBubble) previewBubble.style.display = 'block';
     }
   });
 

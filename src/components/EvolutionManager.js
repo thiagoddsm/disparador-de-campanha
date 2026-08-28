@@ -458,8 +458,103 @@ export function renderEvolutionManager(container, currentUser) {
     checkStatus();
   });
 
+  // Auxiliar para converter Base64 em Blob de Imagem
+  function base64ToBlob(base64Data) {
+    try {
+      const parts = base64Data.split(';base64,');
+      const contentType = parts[0]?.replace('data:', '') || 'image/png';
+      const raw = window.atob(parts[1] || parts[0]);
+      const rawLength = raw.length;
+      const uInt8Array = new Uint8Array(rawLength);
+      for (let i = 0; i < rawLength; ++i) {
+        uInt8Array[i] = raw.charCodeAt(i);
+      }
+      return new Blob([uInt8Array], { type: contentType });
+    } catch (e) {
+      console.warn('Erro ao converter base64 para blob:', e);
+      return null;
+    }
+  }
+
+  // Ações de compartilhamento e cópia do QR Code
+  function attachQrCodeActions(imgSrc) {
+    const copyBtn = container.querySelector('#btn-copy-qr-image');
+    const downloadBtn = container.querySelector('#btn-download-qr-image');
+    const shareBtn = container.querySelector('#btn-share-qr-image');
+
+    // 1. Copiar Imagem do QR Code para a área de transferência
+    copyBtn?.addEventListener('click', async () => {
+      try {
+        const blob = base64ToBlob(imgSrc);
+        if (blob && navigator.clipboard && window.ClipboardItem) {
+          await navigator.clipboard.write([
+            new ClipboardItem({ [blob.type || 'image/png']: blob })
+          ]);
+          showToast('Imagem do QR Code copiada para a área de transferência!', 'success');
+        } else if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(imgSrc);
+          showToast('Código do QR Code copiado!', 'success');
+        } else {
+          showToast('Recurso de cópia direta não suportado neste navegador.', 'warning');
+        }
+      } catch (err) {
+        console.warn('Erro ao copiar imagem:', err);
+        // Fallback: tentar copiar texto
+        try {
+          await navigator.clipboard?.writeText(imgSrc);
+          showToast('Código do QR Code copiado!', 'success');
+        } catch (_) {
+          showToast('Não foi possível copiar automaticamente. Use a opção "Baixar Imagem".', 'warning');
+        }
+      }
+    });
+
+    // 2. Baixar Imagem do QR Code
+    downloadBtn?.addEventListener('click', () => {
+      try {
+        const link = document.createElement('a');
+        link.href = imgSrc;
+        link.download = `whatsapp-qrcode-${activeInstanceName}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('QR Code baixado! Abra em outro aparelho ou envie para escanear.', 'success');
+      } catch (err) {
+        console.error('Erro ao baixar imagem:', err);
+        showToast('Erro ao baixar a imagem do QR Code.', 'error');
+      }
+    });
+
+    // 3. Compartilhar QR Code com outro aparelho (Web Share API)
+    shareBtn?.addEventListener('click', async () => {
+      const blob = base64ToBlob(imgSrc);
+      if (navigator.share && blob) {
+        try {
+          const file = new File([blob], `whatsapp-qrcode-${activeInstanceName}.png`, { type: blob.type || 'image/png' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: 'Conexão WhatsApp',
+              text: 'Escaneie este QR Code no WhatsApp (Aparelhos Conectados)',
+              files: [file]
+            });
+            return;
+          }
+        } catch (shareErr) {
+          if (shareErr.name !== 'AbortError') {
+            console.warn('Share file fallback:', shareErr);
+          } else {
+            return;
+          }
+        }
+      }
+
+      // Fallback para download se compartilhamento nativo de arquivo não estiver disponível
+      downloadBtn?.click();
+    });
+  }
+
   genQrBtn?.addEventListener('click', async () => {
-    activeInstanceName = sanitizeInstanceSlug(slugInput.value);
+    activeInstanceName = sanitizeInstanceSlug(slugInput?.value || activeInstanceName || defaultHierarchicalName);
     localStorage.setItem('evolution_active_instance', activeInstanceName);
 
     genQrBtn.disabled = true;
@@ -467,7 +562,7 @@ export function renderEvolutionManager(container, currentUser) {
 
     qrMount.innerHTML = `
       <div style="padding: 2rem 0; color: var(--text-muted); font-size: 0.85rem;">
-        <div style="width: 32px; height: 32px; border: 3px solid #E2E8F0; border-top-color: #1D4ED8; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem auto;"></div>
+        <div style="width: 32px; height: 32px; border: 3px solid #E2E8F0; border-top-color: #008069; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem auto;"></div>
         Requisitando QR Code na Evolution API...
       </div>
       <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
@@ -477,14 +572,47 @@ export function renderEvolutionManager(container, currentUser) {
       const res = await getEvolutionQrCode(activeInstanceName);
       if (res.success && res.base64) {
         const imgSrc = res.base64.startsWith('data:') ? res.base64 : `data:image/png;base64,${res.base64}`;
+        qrBase64 = imgSrc;
+
         qrMount.innerHTML = `
-          <div>
-            <img src="${imgSrc}" alt="QR Code" style="width: 200px; height: 200px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: white; padding: 6px;">
-            <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.6rem;">
-              Abra o WhatsApp &gt; <strong>Aparelhos Conectados</strong> e aponte a câmera.
-            </p>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 0.85rem;">
+            <!-- Moldura do QR Code -->
+            <div style="background: #FFFFFF; padding: 12px; border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border: 1px solid #CBD5E1; display: inline-block;">
+              <img id="img-qr-code-view" src="${imgSrc}" alt="QR Code WhatsApp" style="width: 210px; height: 210px; display: block; object-fit: contain;">
+            </div>
+
+            <!-- Dica Amigável para Celular -->
+            <div style="width: 100%; max-width: 380px; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 10px; padding: 0.65rem 0.85rem; text-align: left; font-size: 0.78rem; color: #166534; line-height: 1.4;">
+              💡 <strong>Dica para Celular:</strong> Como a câmera do seu celular não aponta para a própria tela, toque em <strong>Compartilhar</strong> ou <strong>Baixar Imagem</strong> para enviar para o computador ou outro celular e escanear.
+            </div>
+
+            <!-- Botões de Ação para Celular / Desktop -->
+            <div style="display: flex; flex-direction: column; gap: 0.45rem; width: 100%; max-width: 380px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem;">
+                <button type="button" id="btn-copy-qr-image" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: #1E293B; font-weight: 700; font-size: 0.78rem; padding: 0.55rem 0.4rem; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">
+                  📋 Copiar Imagem
+                </button>
+
+                <button type="button" id="btn-download-qr-image" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: #1E293B; font-weight: 700; font-size: 0.78rem; padding: 0.55rem 0.4rem; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">
+                  📥 Baixar Imagem
+                </button>
+              </div>
+
+              <button type="button" id="btn-share-qr-image" class="pill-btn" style="background: #008069; border: none; color: #FFFFFF; font-weight: 700; font-size: 0.82rem; padding: 0.6rem 0.75rem; justify-content: center; box-shadow: 0 2px 6px rgba(0,128,105,0.3); cursor: pointer;">
+                📤 Compartilhar QR Code com Outro Aparelho
+              </button>
+            </div>
+
+            ${res.pairingCode ? `
+              <div style="background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 8px; padding: 0.55rem 0.85rem; width: 100%; max-width: 380px; text-align: center;">
+                <span style="font-size: 0.75rem; color: #92400E; display: block; margin-bottom: 0.2rem;">Código de Pareamento por Telefone:</span>
+                <strong style="font-size: 1.15rem; letter-spacing: 2px; color: #78350F; font-family: monospace;">${res.pairingCode}</strong>
+              </div>
+            ` : ''}
           </div>
         `;
+
+        attachQrCodeActions(imgSrc);
         startPolling();
       } else if (res.state === 'open') {
         checkStatus();
