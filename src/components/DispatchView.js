@@ -54,14 +54,19 @@ export function renderDispatchView(container, currentUser, onNavigate) {
 
   // Renderiza layout de conversa estilo WhatsApp
   container.innerHTML = `
-    <!-- Top Sub-Bar (WhatsApp Style Subtab) -->
-    <div style="background: #008069; color: #FFFFFF; display: flex; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.1); padding: 0 0.5rem; width: 100%; box-sizing: border-box; flex-shrink: 0;">
-      <div style="padding: 0.75rem 1rem; color: rgba(255,255,255,0.7); display: flex; align-items: center;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg); margin-left: -2px;"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+    <!-- Top Sub-Bar (WhatsApp Style Subtab with live queue count & API badge) -->
+    <div style="background: #008069; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid rgba(0,0,0,0.1); padding: 0.55rem 1rem; width: 100%; box-sizing: border-box; flex-shrink: 0; min-height: 42px;">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span style="font-size: 0.88rem; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #25D366; padding-bottom: 2px; letter-spacing: 0.5px;">
+          ENVIOS
+        </span>
+        <span style="font-size: 0.76rem; color: rgba(255,255,255,0.9); font-weight: 600;">
+          <span id="queue-header-count">0</span> contatos na fila
+        </span>
       </div>
-      <div style="flex: 1; text-align: center; padding: 0.75rem 0.5rem; color: #FFFFFF; font-size: 0.88rem; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #25D366; letter-spacing: 0.5px;">
-        ENVIOS
-      </div>
+      <span id="wa-connection-indicator" style="font-size: 0.7rem; padding: 2px 8px; border-radius: 99px; background: rgba(255,255,255,0.2); color: #FFFFFF; font-weight: 700; white-space: nowrap;">
+        Verificando...
+      </span>
     </div>
 
     <div class="wa-chat-container">
@@ -93,14 +98,9 @@ export function renderDispatchView(container, currentUser, onNavigate) {
             </button>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 0.35rem;">
-            <span id="wa-connection-indicator" style="font-size: 0.68rem; padding: 3px 8px; border-radius: 99px; background: #DCFCE7; color: #15803D; font-weight: 700; border: 1px solid #86EFAC;">
-              ⚡ API Ativa
-            </span>
-            <button id="btn-toggle-queue-list" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: #008069; font-size: 0.75rem; font-weight: 800; padding: 0.35rem 0.75rem; cursor: pointer;">
-              👥 Fila (<span id="queue-badge-count">0</span>) ⌵
-            </button>
-          </div>
+          <button id="btn-toggle-queue-list" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: #008069; font-size: 0.75rem; font-weight: 800; padding: 0.35rem 0.75rem; cursor: pointer;">
+            👥 Fila (<span id="queue-badge-count">0</span>) ⌵
+          </button>
         </div>
 
         <!-- Collapsible Queue Drawer / Card -->
@@ -575,7 +575,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
         selectedStrategy = 'evolution_api';
 
         if (indicator) {
-          indicator.innerHTML = '⚡ Envio Automático (API Ativa)';
+          indicator.innerHTML = '⚡ API Ativa';
           indicator.style.background = '#22C55E';
           indicator.style.color = '#FFFFFF';
         }
