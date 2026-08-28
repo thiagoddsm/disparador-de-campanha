@@ -93,14 +93,14 @@ function renderProtectedApp(currentUser) {
     } else {
       document.body.classList.add('view-mode-desktop');
       document.body.classList.remove('view-mode-mobile');
-      if (!currentView || ['dispatch', 'evolution', 'contacts', 'templates'].includes(currentView)) {
+      if (!currentView) {
         currentView = role === 'admin' ? 'admin' : 'manager';
       }
     }
   } else {
     document.body.classList.add('view-mode-mobile');
     document.body.classList.remove('view-mode-desktop');
-    if (!currentView || ['admin', 'manager', 'roles', 'import'].includes(currentView)) {
+    if (!currentView) {
       currentView = 'dispatch';
     }
   }

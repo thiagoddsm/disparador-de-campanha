@@ -277,6 +277,15 @@ body.view-mode-desktop .page-content {
   max-width: 1400px;
 }
 
+body.view-mode-desktop .wa-chat-container {
+  max-width: 880px;
+  height: calc(100vh - 110px);
+  margin: 1.25rem auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
 .sidebar-backdrop {
   position: absolute;
   inset: 0;
