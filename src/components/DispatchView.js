@@ -175,18 +175,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
       <!-- WhatsApp Bottom Message Input Bar -->
       <div class="wa-chat-input-bar">
         <div class="wa-input-capsule">
-          <button type="button" id="btn-chat-emoji" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: #8696A0; padding: 0; display: flex; align-items: center;">
-            😊
-          </button>
-          
           <textarea id="dispatch-template-input" class="wa-input-textarea" rows="1" placeholder="Digite uma mensagem...">${templateText}</textarea>
-          
-          <button type="button" id="btn-chat-attach" style="background: none; border: none; color: #8696A0; cursor: pointer; padding: 0; display: flex; align-items: center;" title="Anexo">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
-          </button>
-          <button type="button" style="background: none; border: none; color: #8696A0; cursor: pointer; padding: 0; display: flex; align-items: center;" title="Câmera">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-          </button>
         </div>
 
         <button type="button" class="wa-send-btn-round" id="btn-start-batch-dispatch" title="Disparar para Toda a Lista">
