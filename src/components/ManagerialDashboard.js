@@ -46,7 +46,12 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
         </div>
 
         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-          <button id="btn-coord-add-member" class="btn-green-action" style="font-weight: 600;">
+          ${isAdmin ? `
+            <button class="btn-outline-white" id="btn-open-new-coord-modal" style="font-size: 0.82rem; padding: 0.45rem 0.85rem; font-weight: 600;">
+              + Novo Coordenador
+            </button>
+          ` : ''}
+          <button class="btn-primary-blue" id="btn-coord-add-member" style="font-size: 0.82rem; padding: 0.45rem 0.85rem; display: flex; align-items: center; gap: 0.4rem;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -129,10 +134,6 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
           </button>
         </div>
       ` : ''}
-
-      <!-- Tab Content Area -->
-      <div id="manager-tab-content-area"></div>
-    </div>
 
       <!-- Tab Content Area -->
       <div id="manager-tab-content-area"></div>
@@ -284,8 +285,38 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
     if (!mount) return;
 
     if (activeTab === 'performance') {
+      // Top 3 Ranking
+      const sortedByAbordados = [...teamMembers].map(m => {
+        const memberContacts = teamContacts.filter(c => c.assigned_to === m.uid);
+        const abordados = memberContacts.filter(c => c.status === 'opened' || c.status === 'user_confirmed' || c.status === 'confirmed').length;
+        const goal = m.daily_goal || 30;
+        const pct = Math.min(100, Math.round((abordados / goal) * 100));
+        return { ...m, memberContacts, abordados, goal, pct };
+      }).sort((a, b) => b.abordados - a.abordados);
+
       mount.innerHTML = `
         <div class="main-panel-card">
+          <!-- Ranking Top Performers Summary -->
+          ${teamMembers.length >= 2 ? `
+            <div style="background: linear-gradient(135deg, #F0FDF4 0%, #EFF6FF 100%); border: 1px solid #BFDBFE; border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.5rem;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem;">
+                <span style="font-size: 1.2rem;">🏆</span>
+                <span style="font-weight: 800; font-size: 0.95rem; color: var(--text-main);">Destaques de Desempenho da Equipe</span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
+                ${sortedByAbordados.slice(0, 3).map((item, idx) => `
+                  <div style="background: #FFFFFF; border-radius: var(--radius-md); padding: 0.75rem 1rem; border: 1px solid #E2E8F0; display: flex; align-items: center; gap: 0.65rem;">
+                    <span style="font-size: 1.2rem; font-weight: 800; color: ${idx === 0 ? '#EAB308' : idx === 1 ? '#94A3B8' : '#B45309'};">${idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</span>
+                    <div style="min-width: 0;">
+                      <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name}</div>
+                      <div style="font-size: 0.75rem; color: ${item.pct >= 100 ? '#15803D' : 'var(--primary-blue)'}; font-weight: 600;">${item.abordados} disparos (${item.pct}% da meta)</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
           <div class="panel-top-header">
             <div>
               <span class="panel-title-text">Desempenho dos Membros da Equipe</span>
@@ -311,19 +342,18 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
                   <th>MEMBRO DA EQUIPE</th>
                   <th>PROGRESSO DA META</th>
                   <th>DISPAROS / META</th>
+                  <th>CONCLUÍDOS</th>
                   <th>STATUS</th>
                   <th style="text-align: right;">AÇÕES</th>
                 </tr>
               </thead>
               <tbody id="coord-table-body">
                 ${teamMembers.length === 0 ? `
-                  <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum membro na equipe ainda. Clique em <strong>+ Adicionar Membro da Equipe</strong>.</td></tr>
-                ` : teamMembers.map(m => {
-                  const goal = m.daily_goal || 30;
-                  const memberContacts = teamContacts.filter(c => c.assigned_to === m.uid);
-                  const abordados = memberContacts.filter(c => c.status === 'opened' || c.status === 'user_confirmed' || c.status === 'confirmed').length;
-                  const progressPercent = Math.min(100, Math.round((abordados / goal) * 100));
+                  <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum membro na equipe ainda. Clique em <strong>+ Adicionar Membro da Equipe</strong>.</td></tr>
+                ` : sortedByAbordados.map(m => {
                   const initials = (m.name || 'M').substring(0, 2).toUpperCase();
+                  const isActive = m.is_active !== false;
+                  const completionRate = m.memberContacts.length > 0 ? Math.round((m.abordados / m.memberContacts.length) * 100) : 0;
 
                   return `
                     <tr class="member-row">
@@ -336,23 +366,32 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
                           </div>
                         </div>
                       </td>
-                      <td style="width: 35%;">
+                      <td style="width: 25%;">
                         <div class="table-progress-wrap">
                           <div class="table-progress-track">
-                            <div class="table-progress-bar" style="width: ${progressPercent}%; background: ${progressPercent >= 100 ? 'var(--whatsapp-green)' : 'var(--primary-blue)'};"></div>
+                            <div class="table-progress-bar" style="width: ${m.pct}%; background: ${m.pct >= 100 ? 'var(--whatsapp-green)' : 'var(--primary-blue)'};"></div>
                           </div>
-                          <span style="font-size: 0.82rem; font-weight: 700; min-width: 40px; color: var(--text-main);">${progressPercent}%</span>
+                          <span style="font-size: 0.82rem; font-weight: 700; min-width: 40px; color: var(--text-main);">${m.pct}%</span>
                         </div>
                       </td>
                       <td>
                         <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main);">
-                          ${abordados} / ${goal}
+                          ${m.abordados} / ${m.goal}
                         </div>
-                        <div style="font-size: 0.72rem; color: var(--text-muted);">${memberContacts.length} atribuídos</div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted);">${m.memberContacts.length} atribuídos</div>
                       </td>
-                      <td><span class="status-pill ativo">ATIVO</span></td>
+                      <td>
+                        <div style="font-weight: 700; font-size: 0.88rem; color: ${completionRate >= 50 ? '#15803D' : '#64748B'};">
+                          ${completionRate}% da fila
+                        </div>
+                      </td>
+                      <td>
+                        <span class="status-pill ${isActive ? 'ativo' : 'pendente'}">
+                          ${isActive ? 'ATIVO' : 'INATIVO'}
+                        </span>
+                      </td>
                       <td style="text-align: right;">
-                        <button class="btn-open-edit-goal btn-outline-white" data-uid="${m.uid}" data-name="${m.name}" data-goal="${goal}" style="font-size: 0.75rem; padding: 0.3rem 0.65rem;">
+                        <button class="btn-open-edit-goal btn-outline-white" data-uid="${m.uid}" data-name="${m.name}" data-goal="${m.goal}" style="font-size: 0.75rem; padding: 0.3rem 0.65rem;">
                           Ajustar Meta
                         </button>
                       </td>
@@ -369,12 +408,9 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
               <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem;">
                 Nenhum membro na equipe ainda.<br>Clique em <strong>+ Adicionar Membro</strong> acima.
               </div>
-            ` : teamMembers.map(m => {
-              const goal = m.daily_goal || 30;
-              const memberContacts = teamContacts.filter(c => c.assigned_to === m.uid);
-              const abordados = memberContacts.filter(c => c.status === 'opened' || c.status === 'user_confirmed' || c.status === 'confirmed').length;
-              const progressPercent = Math.min(100, Math.round((abordados / goal) * 100));
+            ` : sortedByAbordados.map(m => {
               const initials = (m.name || 'M').substring(0, 2).toUpperCase();
+              const isActive = m.is_active !== false;
 
               return `
                 <div class="team-mobile-card member-mobile-item">
@@ -386,25 +422,25 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
                         <div style="font-size: 0.75rem; color: var(--text-muted);">${m.email}</div>
                       </div>
                     </div>
-                    <span class="status-pill ativo">ATIVO</span>
+                    <span class="status-pill ${isActive ? 'ativo' : 'pendente'}">${isActive ? 'ATIVO' : 'INATIVO'}</span>
                   </div>
 
                   <div class="team-mobile-card-progress">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; font-size: 0.8rem;">
                       <span style="font-weight: 600; color: var(--text-main);">Meta do Dia:</span>
-                      <strong style="color: ${progressPercent >= 100 ? '#15803D' : 'var(--primary-blue)'};">${abordados} / ${goal} (${progressPercent}%)</strong>
+                      <strong style="color: ${m.pct >= 100 ? '#15803D' : 'var(--primary-blue)'};">${m.abordados} / ${m.goal} (${m.pct}%)</strong>
                     </div>
                     <div class="table-progress-track" style="height: 7px;">
-                      <div class="table-progress-bar" style="width: ${progressPercent}%; background: ${progressPercent >= 100 ? 'var(--whatsapp-green)' : 'var(--primary-blue)'};"></div>
+                      <div class="table-progress-bar" style="width: ${m.pct}%; background: ${m.pct >= 100 ? 'var(--whatsapp-green)' : 'var(--primary-blue)'};"></div>
                     </div>
                     <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem;">
-                      <span>Leads vinculados: ${memberContacts.length}</span>
-                      <span>Restantes: ${Math.max(0, goal - abordados)}</span>
+                      <span>Leads vinculados: ${m.memberContacts.length}</span>
+                      <span>Restantes: ${Math.max(0, m.goal - m.abordados)}</span>
                     </div>
                   </div>
 
                   <div class="team-mobile-card-footer">
-                    <button class="btn-open-edit-goal btn-outline-white" data-uid="${m.uid}" data-name="${m.name}" data-goal="${goal}" style="width: 100%; font-size: 0.82rem; padding: 0.5rem; font-weight: 600; justify-content: center; border-radius: var(--radius-md);">
+                    <button class="btn-open-edit-goal btn-outline-white" data-uid="${m.uid}" data-name="${m.name}" data-goal="${m.goal}" style="width: 100%; font-size: 0.82rem; padding: 0.5rem; font-weight: 600; justify-content: center; border-radius: var(--radius-md);">
                       🎯 Ajustar Meta Diária
                     </button>
                   </div>
@@ -474,6 +510,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
                 ${allTeams.length === 0 ? `
                   <tr><td colspan="${isAdmin ? 5 : 4}" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhuma equipe cadastrada. Clique no botão acima para criar a primeira equipe e vincular um coordenador!</td></tr>
                 ` : allTeams.map(t => {
+                  const memberCount = allCoordinators.filter(u => u.team_id === t.id).length;
                   return `
                     <tr>
                       <td style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">
@@ -491,7 +528,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
                         </div>
                       </td>
                       <td style="color: var(--text-muted); font-size: 0.85rem;">
-                        Equipe Ativa
+                        ${memberCount > 0 ? `${memberCount} membro(s)` : 'Equipe Ativa'}
                       </td>
                       <td><span class="status-pill ativo">OPERACIONAL</span></td>
                       ${isAdmin ? `
@@ -531,7 +568,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
               });
               showToast(`Equipe "${teamName}" excluída com sucesso!`, 'success');
             } catch (e) {
-              alert('Erro ao excluir equipe: ' + e.message);
+              showToast('Erro ao excluir equipe: ' + e.message, 'error');
             }
           }
         });
@@ -561,7 +598,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
     container.querySelector('#modal-create-team').style.display = 'flex';
   }
 
-  const targetTeamId = isCoordinator ? (currentUser?.team_id || 'team_alpha') : (currentTeamId || currentUser?.team_id || (allTeams.length > 0 ? allTeams[0].id : null));
+  const targetTeamId = isCoordinator ? currentUser?.team_id : (currentTeamId || currentUser?.team_id || (allTeams.length > 0 ? allTeams[0].id : null));
 
   // Subscriptions
   const unsubMembers = subscribeToTeamMembers(
@@ -650,7 +687,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
     const coordName = coordSelect.options[coordSelect.selectedIndex]?.getAttribute('data-name') || 'Coordenador';
 
     if (!coordUid) {
-      alert('Por favor, selecione o Coordenador Líder da equipe.');
+      showToast('Por favor, selecione o Coordenador Líder da equipe.', 'error');
       return;
     }
 
@@ -670,12 +707,14 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
         action: 'team_created',
         metadata: { team: teamNameInput, coordinator: coordName }
       });
+      showToast(`Equipe "${teamNameInput}" criada com sucesso!`, 'success');
       teamModal.style.display = 'none';
       container.querySelector('#form-create-team').reset();
       activeTab = 'teams_list';
       renderTabContent();
     } catch (err) {
       console.warn('Erro ao criar equipe:', err);
+      showToast('Erro ao criar equipe: ' + err.message, 'error');
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Criar Equipe & Vincular Líder';
@@ -703,12 +742,14 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
         email,
         name,
         role: 'coordinator',
-        teamId: 'team_alpha'
+        teamId: null
       });
+      showToast(`Coordenador "${name}" cadastrado com sucesso!`, 'success');
       coordModal.style.display = 'none';
       container.querySelector('#form-create-coordinator').reset();
     } catch (err) {
       console.warn('Erro ao cadastrar coordenador:', err);
+      showToast('Erro ao cadastrar coordenador: ' + err.message, 'error');
     } finally {
       saveBtn.disabled = false;
       saveBtn.textContent = 'Cadastrar Coordenador';
@@ -761,7 +802,7 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
   container.querySelector('#form-edit-goal')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const uid = container.querySelector('#edit-goal-member-uid').value;
-    const newGoal = container.querySelector('#input-edit-goal-val').value;
+    const newGoal = parseInt(container.querySelector('#input-edit-goal-val').value, 10) || 30;
 
     try {
       await updateMemberGoal(uid, newGoal);
@@ -783,3 +824,4 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
     if (unsubUsers) unsubUsers();
   };
 }
+

@@ -426,16 +426,22 @@ function renderProtectedApp(currentUser) {
       await logoutUser();
     }
   });
-
-  document.addEventListener('click', (e) => {
-    if (notifDropdown && !notifDropdown.contains(e.target) && e.target !== notifBtn) {
-      notifDropdown.style.display = 'none';
-    }
-    if (profileDropdown && !profileDropdown.contains(e.target) && !avatarBtn.contains(e.target)) {
-      profileDropdown.style.display = 'none';
-    }
-  });
 }
+
+// Fechamento de dropdowns ao clicar fora (registrado apenas uma vez globalmente)
+document.addEventListener('click', (e) => {
+  const notifDropdown = document.querySelector('#notif-dropdown');
+  const notifBtn = document.querySelector('#btn-topbar-notif');
+  const profileDropdown = document.querySelector('#profile-dropdown');
+  const avatarBtn = document.querySelector('#btn-topbar-avatar');
+
+  if (notifDropdown && !notifDropdown.contains(e.target) && notifBtn && !notifBtn.contains(e.target)) {
+    notifDropdown.style.display = 'none';
+  }
+  if (profileDropdown && !profileDropdown.contains(e.target) && avatarBtn && !avatarBtn.contains(e.target)) {
+    profileDropdown.style.display = 'none';
+  }
+});
 
 // Escuta mudanças de URL pelo botão voltar/avançar do navegador ou hash
 window.addEventListener('popstate', () => {

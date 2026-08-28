@@ -3,6 +3,7 @@ import {
   subscribeToOperatorContacts, 
   subscribeToTeamContacts, 
   subscribeToAllContacts, 
+  subscribeToTeamMembers,
   subscribeToMessagesHistory, 
   subscribeToTemplates,
   resetContactStatus, 
@@ -10,15 +11,21 @@ import {
 } from '../firebase/realtime.js';
 import { getEvolutionConnectionState, resolveSpintax, sanitizeInstanceSlug } from '../firebase/evolutionApi.js';
 import { logoutUser } from '../firebase/auth.js';
+import { showToast } from '../utils/feedback.js';
 
 export function renderDispatchView(container, currentUser, onNavigate) {
+  let rawContacts = [];
   let contacts = [];
+  let teamMembers = [];
+  let selectedLeaderFilter = 'all'; // 'all' | 'mine' | '<uid>'
   let historyMessages = [];
   let availableTemplates = [];
   let templateText = localStorage.getItem('dispatch_active_template') || 'Olá {nome}, temos uma novidade especial para {empresa}!';
   
   const isMember = currentUser?.role === 'member';
-  const teamLabel = currentUser?.team_name || (currentUser?.team_id ? 'Equipe Vinculada' : 'Jussara');
+  const isAdmin = currentUser?.role === 'admin';
+  const isCoordinator = currentUser?.role === 'coordinator';
+  const teamLabel = currentUser?.team_name || (currentUser?.team_id ? 'Equipe Vinculada' : 'Minha Equipe');
   let selectedStrategy = 'wa.me';
 
   const activeInstance = localStorage.getItem('evolution_active_instance') || 'alpha_coordenador_thiago';
@@ -31,7 +38,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
   let batchMaxDelay = 70; // segundos
   let enableComposing = true;
 
-  // Renderiza layout de conversa estilo WhatsApp (Fiel à imagem de referência)
+  // Renderiza layout de conversa estilo WhatsApp
   container.innerHTML = `
     <div class="wa-chat-container">
       
@@ -46,22 +53,22 @@ export function renderDispatchView(container, currentUser, onNavigate) {
             </svg>
           </button>
 
-          <!-- Foto Avatar com dimensões estritas 40x40 (Fixa o Bug de Tamanho) -->
+          <!-- Foto Avatar -->
           <div style="width: 40px; height: 40px; min-width: 40px; min-height: 40px; max-width: 40px; max-height: 40px; border-radius: 50%; overflow: hidden; border: 1.5px solid rgba(255,255,255,0.7); flex-shrink: 0; background: #E2E8F0;">
             <img src="${currentUser?.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; display: block;">
           </div>
 
           <div style="min-width: 0; display: flex; flex-direction: column;">
             <h3 style="margin: 0; font-size: 1.02rem; font-weight: 800; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">
-              Lista: Equipe ${teamLabel}
+              ${isMember ? `Olá, ${currentUser?.name || 'Membro'}` : `Fila: Equipe ${teamLabel}`}
             </h3>
             <span style="font-size: 0.75rem; color: rgba(255,255,255,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;">
-              <span id="queue-header-count">0</span> contatos
+              <span id="queue-header-count">0</span> contatos na fila
             </span>
           </div>
         </div>
 
-        <!-- Engrenagem de Configurações (Conexão WhatsApp & Ajustes) -->
+        <!-- Engrenagem de Configurações -->
         <div style="display: flex; align-items: center; gap: 0.4rem;">
           <button id="btn-chat-settings-gear" style="background: none; border: none; color: #FFFFFF; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; padding: 0;" title="Configurações & Conexão WhatsApp">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -75,11 +82,30 @@ export function renderDispatchView(container, currentUser, onNavigate) {
       <!-- WhatsApp Chat Body -->
       <div class="wa-chat-body" id="wa-chat-body">
         
-        <!-- Yellow Security Notice Pill -->
-        <div class="wa-security-notice">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          <span>As mensagens enviadas aqui serão disparadas para toda a sua lista de contatos.</span>
-        </div>
+        <!-- Leader / Manager Queue Selector (Visible to Admin & Coord) -->
+        ${!isMember ? `
+          <div style="background: #FFFFFF; border-radius: 10px; padding: 0.65rem 0.85rem; border: 1px solid #CBD5E1; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="font-size: 0.9rem;">👥</span>
+              <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">Filtrar por Fila:</span>
+            </div>
+            <select id="select-manager-leader-filter" style="font-size: 0.8rem; font-weight: 600; padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid #CBD5E1; background: #F8FAFC; max-width: 200px;">
+              <option value="all">🌐 Todos os Contatos da Equipe</option>
+              <option value="mine">⭐ Minha Fila Direta</option>
+            </select>
+          </div>
+        ` : `
+          <!-- Member Goal Banner -->
+          <div id="member-goal-banner" style="background: linear-gradient(135deg, #F0FDF4 0%, #EFF6FF 100%); border-radius: 12px; padding: 0.85rem 1rem; border: 1px solid #BFDBFE; margin-bottom: 0.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <span style="font-weight: 700; font-size: 0.82rem; color: var(--text-main);">🎯 Minha Meta de Envios Hoje:</span>
+              <strong id="member-goal-progress-text" style="font-size: 0.82rem; color: #15803D;">0 / ${currentUser?.daily_goal || 30}</strong>
+            </div>
+            <div style="width: 100%; height: 6px; background: #E2E8F0; border-radius: 9999px; overflow: hidden;">
+              <div id="member-goal-bar" style="width: 0%; height: 100%; background: #22C55E; transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+        `}
 
         <!-- Quick Controls Top Bar inside Chat -->
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
@@ -180,6 +206,29 @@ export function renderDispatchView(container, currentUser, onNavigate) {
   }
   updateBubbleClock();
 
+  function applyFilterAndRender() {
+    if (selectedLeaderFilter === 'all') {
+      contacts = [...rawContacts];
+    } else if (selectedLeaderFilter === 'mine') {
+      contacts = rawContacts.filter(c => c.assigned_to === currentUser.uid);
+    } else {
+      contacts = rawContacts.filter(c => c.assigned_to === selectedLeaderFilter);
+    }
+
+    // Atualiza barra de meta do membro
+    if (isMember) {
+      const goal = currentUser?.daily_goal || 30;
+      const abordados = rawContacts.filter(c => c.status === 'opened' || c.status === 'user_confirmed' || c.status === 'confirmed').length;
+      const pct = Math.min(100, Math.round((abordados / goal) * 100));
+      const goalText = container.querySelector('#member-goal-progress-text');
+      const goalBar = container.querySelector('#member-goal-bar');
+      if (goalText) goalText.textContent = `${abordados} / ${goal} (${pct}%)`;
+      if (goalBar) goalBar.style.width = `${pct}%`;
+    }
+
+    renderQueueList();
+  }
+
   // Renderiza Lista na Gaveta de Contatos
   function renderQueueList() {
     const listMount = container.querySelector('#wa-queue-list-items');
@@ -194,14 +243,15 @@ export function renderDispatchView(container, currentUser, onNavigate) {
     if (contacts.length === 0) {
       listMount.innerHTML = `
         <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 1rem;">
-          Nenhum contato atribuído nesta equipe.
+          Nenhum contato atribuído nesta seleção.
         </div>
       `;
       return;
     }
 
     listMount.innerHTML = contacts.map(c => {
-      const isConfirmed = c.status === 'user_confirmed' || c.status === 'sent' || c.status === 'delivered';
+      const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
+      const isOpened = c.status === 'opened';
       const initial = (c.name || 'C').charAt(0).toUpperCase();
 
       return `
@@ -210,20 +260,66 @@ export function renderDispatchView(container, currentUser, onNavigate) {
             <div style="width: 26px; height: 26px; border-radius: 50%; background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">${initial}</div>
             <div style="min-width: 0;">
               <div style="font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.name}</div>
-              <div style="font-size: 0.72rem; color: var(--text-muted);">${c.phone}</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted);">${c.phone} ${c.assigned_to_name ? `· ${c.assigned_to_name}` : ''}</div>
             </div>
           </div>
 
-          <div>
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
             ${isConfirmed ? `
               <span style="color: #15803D; font-weight: 700; font-size: 0.72rem;">✓ Enviado</span>
+            ` : isOpened ? `
+              <span style="color: #2563EB; font-weight: 700; font-size: 0.72rem;">Aberto</span>
             ` : `
-              <span style="color: #D97706; font-weight: 700; font-size: 0.72rem;">Pendente</span>
+              <button class="btn-quick-send-one" data-id="${c.id}" data-name="${c.name || ''}" data-phone="${c.phone}" data-city="${c.city || ''}" style="background: #25D366; color: #FFFFFF; border: none; font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer;">
+                📱 Enviar
+              </button>
             `}
           </div>
         </div>
       `;
     }).join('');
+
+    // Listener de envio rápido individual
+    listMount.querySelectorAll('.btn-quick-send-one').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const contactId = btn.getAttribute('data-id');
+        const contactName = btn.getAttribute('data-name');
+        const contactPhone = btn.getAttribute('data-phone');
+        const contactCity = btn.getAttribute('data-city');
+
+        const rawTemplate = textarea?.value || templateText;
+        if (!rawTemplate.trim()) {
+          showToast('Selecione ou digite um template antes de enviar.', 'error');
+          return;
+        }
+
+        const processedMessage = resolveSpintax(rawTemplate);
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+
+        try {
+          const dispatchRes = await executeDispatch({
+            contactId,
+            contactName,
+            contactCompany: contactCity,
+            contactPhone,
+            user: currentUser,
+            strategy: 'wa.me',
+            templateBody: processedMessage
+          });
+
+          const targetContact = rawContacts.find(c => c.id === contactId);
+          if (targetContact) targetContact.status = 'opened';
+          applyFilterAndRender();
+          showToast(`Mensagem gerada para ${contactName}!`, 'success');
+        } catch (err) {
+          console.warn('Erro ao enviar contato:', err);
+          showToast('Erro ao abrir conversa: ' + err.message, 'error');
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
   }
 
   // Sincronização em Tempo Real de Digitação
@@ -241,7 +337,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
   // Testar Variação Spintax
   container.querySelector('#btn-preview-spintax')?.addEventListener('click', () => {
     const raw = textarea?.value || templateText;
-    const sample = resolveSpintax(raw).replace(/\{nome\}/gi, 'Roberto').replace(/\{empresa\}/gi, 'Centro');
+    const sample = resolveSpintax(raw).replace(/\{nome\}/gi, 'Roberto').replace(/\{empresa\}/gi, 'Centro').replace(/\{cidade\}/gi, 'Centro');
     if (preview) preview.textContent = sample;
   });
 
@@ -251,6 +347,12 @@ export function renderDispatchView(container, currentUser, onNavigate) {
     if (drawer) {
       drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
     }
+  });
+
+  // Seletor de Fila por Líder (Admin e Coordenador)
+  container.querySelector('#select-manager-leader-filter')?.addEventListener('change', (e) => {
+    selectedLeaderFilter = e.target.value;
+    applyFilterAndRender();
   });
 
   // Botão Engrenagem (Abre Configurações & Conexão WhatsApp)
@@ -274,8 +376,9 @@ export function renderDispatchView(container, currentUser, onNavigate) {
   container.querySelector('#btn-reset-all-contacts')?.addEventListener('click', async () => {
     if (confirm('Deseja resetar o status de todos os contatos para permitir um novo envio?')) {
       await resetTeamContactsStatus(currentUser?.team_id);
-      contacts.forEach(c => c.status = 'pending');
-      renderQueueList();
+      rawContacts.forEach(c => c.status = 'pending');
+      applyFilterAndRender();
+      showToast('Status dos contatos resetado com sucesso!', 'success');
     }
   });
 
@@ -285,12 +388,20 @@ export function renderDispatchView(container, currentUser, onNavigate) {
 
     const pendingContacts = contacts.filter(c => c.status === 'pending' || !c.status);
     if (pendingContacts.length === 0) {
-      alert('Não há contatos pendentes para envio na sua fila.');
+      alert('Não há contatos pendentes para envio na sua fila selecionada.');
+      return;
+    }
+
+    // Guard: verificar se há template preenchido
+    const textarea = container.querySelector('#dispatch-template-input');
+    const currentTemplate = textarea?.value?.trim() || templateText?.trim();
+    if (!currentTemplate) {
+      showToast('Digite ou selecione um template antes de disparar.', 'error');
       return;
     }
 
     const total = pendingContacts.length;
-    if (!confirm(`Iniciar o envio automático para ${total} contato(s) da lista?`)) return;
+    if (!confirm(`Iniciar o envio automático para ${total} contato(s) da fila?`)) return;
 
     isBatchRunning = true;
     const progressContainer = container.querySelector('#batch-progress-container');
@@ -317,7 +428,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
         const dispatchRes = await executeDispatch({
           contactId: contact.id,
           contactName: contact.name,
-          contactCompany: contact.company,
+          contactCompany: contact.city,
           contactPhone: contact.phone,
           user: currentUser,
           strategy: selectedStrategy,
@@ -340,7 +451,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
         const pct = Math.round((sentCount / total) * 100);
         if (progressBar) progressBar.style.width = `${pct}%`;
         if (counterText) counterText.textContent = `${sentCount} / ${total}`;
-        renderQueueList();
+        applyFilterAndRender();
 
         // Aplica Jitter Delay entre envios (1 min)
         if (i < total - 1) {
@@ -372,18 +483,36 @@ export function renderDispatchView(container, currentUser, onNavigate) {
   let unsubscribeContacts = null;
   if (currentUser?.role === 'admin') {
     unsubscribeContacts = subscribeToAllContacts((data) => {
-      contacts = data;
-      renderQueueList();
+      rawContacts = data;
+      applyFilterAndRender();
     });
   } else if (currentUser?.role === 'coordinator') {
     unsubscribeContacts = subscribeToTeamContacts(currentUser.team_id, (data) => {
-      contacts = data;
-      renderQueueList();
+      rawContacts = data;
+      applyFilterAndRender();
     });
   } else {
     unsubscribeContacts = subscribeToOperatorContacts(currentUser.uid, (data) => {
-      contacts = data;
-      renderQueueList();
+      rawContacts = data;
+      applyFilterAndRender();
+    });
+  }
+
+  // Escuta Membros da Equipe para o Seletor de Fila (Admin / Coordenador)
+  let unsubscribeMembers = null;
+  if (!isMember) {
+    unsubscribeMembers = subscribeToTeamMembers(currentUser?.team_id || null, null, (members) => {
+      teamMembers = members;
+      const leaderSel = container.querySelector('#select-manager-leader-filter');
+      if (leaderSel) {
+        leaderSel.innerHTML = `
+          <option value="all" ${selectedLeaderFilter === 'all' ? 'selected' : ''}>🌐 Todos os Contatos</option>
+          <option value="mine" ${selectedLeaderFilter === 'mine' ? 'selected' : ''}>⭐ Minha Fila Direta</option>
+          ${teamMembers.map(m => `
+            <option value="${m.uid}" ${selectedLeaderFilter === m.uid ? 'selected' : ''}>👤 ${m.name || m.email}</option>
+          `).join('')}
+        `;
+      }
     });
   }
 
@@ -443,7 +572,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
   // Cleanup de listeners
   return () => {
     if (unsubscribeContacts) unsubscribeContacts();
+    if (unsubscribeMembers) unsubscribeMembers();
     if (unsubscribeTemplates) unsubscribeTemplates();
   };
 }
-

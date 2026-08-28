@@ -311,6 +311,14 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
           const memberIndex = contactsToSave.length % validMembers.length;
           assignedUid = validMembers[memberIndex].uid;
           assignedName = validMembers[memberIndex].name;
+        } else if (selectedAssignee === 'self' || selectedAssignee === currentUser.uid) {
+          assignedUid = currentUser.uid;
+          assignedName = currentUser.name || currentUser.email || 'Eu';
+        } else {
+          const targetMember = teamMembers.find(m => m.uid === selectedAssignee);
+          if (targetMember) {
+            assignedName = targetMember.name || targetMember.email;
+          }
         }
 
         contactsToSave.push({

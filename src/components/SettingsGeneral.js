@@ -19,7 +19,7 @@ export function renderSettingsGeneral(container, currentUser, onNavigate) {
       </div>
 
       <!-- Settings Layout Grid -->
-      <div style="display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem; align-items: start;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; align-items: start;">
         
         <!-- Left Column: Profile & Account Preferences -->
         <div style="display: flex; flex-direction: column; gap: 1.5rem;">

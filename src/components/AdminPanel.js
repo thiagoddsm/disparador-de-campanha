@@ -213,8 +213,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
     const coordsCount = validUsers.filter(u => u.role === 'coordinator' || u.role === 'admin').length;
     const teamsCount = allTeams.length;
     const contactsCount = allContacts.length;
-    const confirmedFromContacts = allContacts.filter(c => c.status === 'user_confirmed' || c.status === 'confirmed').length;
-    const dispatchesCount = Math.max(confirmedFromContacts, allMessages.length);
+    const dispatchesCount = allMessages.length;
 
     const kpiCoords = container.querySelector('#adm-kpi-coordinators');
     const kpiTeams = container.querySelector('#adm-kpi-teams');
@@ -266,7 +265,9 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
                         <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.72rem;">LÍDER</span>
                         <strong style="color: var(--text-main); margin-left: 0.35rem;">${t.coordinator_name || 'Coordenador Vinculado'}</strong>
                       </td>
-                      <td style="color: var(--text-muted); font-size: 0.85rem;">Equipe Ativa</td>
+                      <td style="color: var(--text-muted); font-size: 0.85rem;">
+                        ${allUsers.filter(u => u.team_id === t.id).length > 0 ? `${allUsers.filter(u => u.team_id === t.id).length} membro(s)` : '0 membros'}
+                      </td>
                       <td><span class="status-pill ativo">OPERACIONAL</span></td>
                       <td style="text-align: right;">
                         <div style="display: inline-flex; align-items: center; gap: 0.4rem;">
@@ -291,6 +292,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
               <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem;">Nenhuma equipe cadastrada ainda.</div>
             ` : allTeams.map(t => {
               const initials = t.name ? t.name.substring(0, 2).toUpperCase() : 'EQ';
+              const memberCount = allUsers.filter(u => u.team_id === t.id).length;
               return `
                 <div class="team-mobile-card">
                   <div class="team-mobile-card-header">
@@ -298,7 +300,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
                       <div class="user-identity-initials" style="background: #EFF6FF; color: #1D4ED8; width: 38px; height: 38px; font-size: 0.88rem;">${initials}</div>
                       <div>
                         <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${t.name}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">👔 Líder: ${t.coordinator_name || 'Não vinculado'}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">👔 Líder: ${t.coordinator_name || 'Não vinculado'} (${memberCount} membros)</div>
                       </div>
                     </div>
                     <span class="status-pill ativo">ATIVO</span>
@@ -342,7 +344,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
               });
               showToast(`Equipe "${teamName}" excluída com sucesso!`, 'success');
             } catch (e) {
-              alert('Erro ao excluir equipe: ' + e.message);
+              showToast('Erro ao excluir equipe: ' + e.message, 'error');
             }
           }
         });
@@ -551,6 +553,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
           } catch (err) {
             console.error('Erro ao alternar status:', err);
             showToast('Erro ao atualizar status do usuário.', 'error');
+          } finally {
             btn.disabled = false;
           }
         });
@@ -662,7 +665,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
 
     let coords = allUsers.filter(u => u.role === 'coordinator' || u.role === 'admin');
     if (coords.length === 0) {
-      coords = allUsers.length > 0 ? allUsers : [{ uid: currentUser.uid, name: currentUser.name || currentUser.email, role: 'admin' }];
+      coords = [{ uid: currentUser.uid, name: currentUser.name || currentUser.email, role: 'admin' }];
     }
 
     sel.innerHTML = coords.map((c, i) => `

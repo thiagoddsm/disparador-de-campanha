@@ -138,6 +138,12 @@ export function renderLoginView(container, onLoginSuccess) {
           message = 'Este e-mail já está cadastrado no sistema.';
         } else if (err.code === 'auth/weak-password') {
           message = 'A senha deve conter no mínimo 6 caracteres.';
+        } else if (err.code === 'auth/too-many-requests') {
+          message = 'Muitas tentativas sem sucesso. Aguarde alguns instantes antes de tentar novamente.';
+        } else if (err.code === 'auth/network-request-failed') {
+          message = 'Sem conexão com a internet. Verifique sua rede.';
+        } else if (err.code === 'auth/user-disabled') {
+          message = 'Esta conta de usuário foi desativada pelo administrador.';
         }
         showAlert(message);
         submitBtn.disabled = false;

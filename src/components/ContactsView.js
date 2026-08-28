@@ -194,7 +194,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
               </tr>
             </thead>
             <tbody id="contacts-tbody">
-              <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem;">Carregando contatos...</td></tr>
+              <tr><td colspan="${isMember ? 4 : 6}" style="text-align: center; color: var(--text-muted); padding: 3rem;">Carregando contatos...</td></tr>
             </tbody>
           </table>
         </div>
@@ -224,7 +224,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
           </div>
           <div style="margin-bottom: 1rem;">
             <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.3rem;">Telefone / WhatsApp</label>
-            <input type="text" id="input-contact-phone" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; padding: 0.5rem 0.75rem;" placeholder="(11) 98765-4321" required>
+            <input type="tel" inputmode="tel" id="input-contact-phone" class="topbar-search-input" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; padding: 0.5rem 0.75rem;" placeholder="(11) 98765-4321" required>
           </div>
           <div style="margin-bottom: 1rem;">
             <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.3rem;">Cidade / Região</label>
@@ -524,7 +524,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
     if (list.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+          <td colspan="${isMember ? 4 : 6}" style="text-align: center; color: var(--text-muted); padding: 3rem;">
             Nenhum contato encontrado nesta aba ou filtro. Clique em <strong>Adicionar Contato</strong> ou selecione outra aba.
           </td>
         </tr>
@@ -634,7 +634,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
       `;
 
       mobileList.querySelector('#btn-fab-add-contact')?.addEventListener('click', () => {
-        container.querySelector('#modal-add-contact').style.display = 'flex';
+        container.querySelector('#add-contact-modal').style.display = 'flex';
       });
     }
 

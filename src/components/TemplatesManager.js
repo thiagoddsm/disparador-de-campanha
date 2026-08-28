@@ -19,7 +19,7 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
 
   let allTemplates = [];
   let allTeams = [];
-  let scopeFilter = 'all'; // 'all' | 'global' | 'team'
+  let scopeFilter = 'all'; // 'all' | 'global' | 'team' | 'mine'
   let searchQuery = '';
   let activeSubTab = 'templates'; // 'templates' | 'campanhas'
 
@@ -35,13 +35,23 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
     </div>
 
     <div class="page-content" style="padding-top: 0;">
-      <!-- Search Bar -->
-      <div style="position: relative; width: 100%; margin-bottom: 1.25rem;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" style="position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%);">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <input type="text" id="input-search-template" class="topbar-search-input" placeholder="Buscar templates..." style="width: 100%; border-radius: var(--radius-md); padding-left: 2.5rem; font-size: 0.88rem; background: #FFFFFF; height: 44px; border: 1px solid var(--border-color);">
+      <!-- Search + Scope Filters -->
+      <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.25rem;">
+        <div style="position: relative; width: 100%;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" style="position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%);">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="input-search-template" class="topbar-search-input" placeholder="Buscar templates..." style="width: 100%; border-radius: var(--radius-md); padding-left: 2.5rem; font-size: 0.88rem; background: #FFFFFF; height: 44px; border: 1px solid var(--border-color);">
+        </div>
+        ${canManage ? `
+          <div id="template-scope-filters" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="scope-filter-btn" data-scope="all" style="font-size: 0.78rem; padding: 0.3rem 0.8rem; border-radius: 9999px; background: #008069; color: #FFFFFF; border: none; font-weight: 700; cursor: pointer;">📋 Todos</button>
+            <button class="scope-filter-btn" data-scope="global" style="font-size: 0.78rem; padding: 0.3rem 0.8rem; border-radius: 9999px; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color); font-weight: 600; cursor: pointer;">🌐 Globais</button>
+            <button class="scope-filter-btn" data-scope="team" style="font-size: 0.78rem; padding: 0.3rem 0.8rem; border-radius: 9999px; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color); font-weight: 600; cursor: pointer;">👥 Minha Equipe</button>
+            <button class="scope-filter-btn" data-scope="mine" style="font-size: 0.78rem; padding: 0.3rem 0.8rem; border-radius: 9999px; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color); font-weight: 600; cursor: pointer;">⭐ Meus</button>
+          </div>
+        ` : ''}
       </div>
 
       <!-- Templates Grid -->
@@ -107,14 +117,14 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
           <div style="margin-bottom: 1rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
               <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">Corpo da Mensagem</label>
-              <div style="display: flex; gap: 4px;">
+              <div style="display: flex; gap: 4px; flex-wrap: wrap;">
                 <button type="button" class="btn-var-tag" data-tag="{nome}" style="font-size: 0.72rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 4px; cursor: pointer;">+{nome}</button>
                 <button type="button" class="btn-var-tag" data-tag="{empresa}" style="font-size: 0.72rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 4px; cursor: pointer;">+{empresa}</button>
-                <button type="button" class="btn-var-tag" data-tag="{valor}" style="font-size: 0.72rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 4px; cursor: pointer;">+{valor}</button>
+                <button type="button" class="btn-var-tag" data-tag="{cidade}" style="font-size: 0.72rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 4px; cursor: pointer;">+{cidade}</button>
                 <button type="button" class="btn-var-tag" data-tag="{data}" style="font-size: 0.72rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 4px; cursor: pointer;">+{data}</button>
               </div>
             </div>
-            <textarea id="textarea-tpl-body" class="topbar-search-input" rows="4" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; resize: vertical; line-height: 1.4;" placeholder="Escreva a mensagem. Use {nome}, {empresa} para personalizar..." required></textarea>
+            <textarea id="textarea-tpl-body" class="topbar-search-input" rows="4" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; resize: vertical; line-height: 1.4;" placeholder="Escreva a mensagem. Use {nome}, {empresa}, {cidade} para personalizar..." required></textarea>
           </div>
 
           <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
@@ -151,6 +161,15 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
 
     let filtered = [...allTemplates];
 
+    // Filtro de escopo funcional
+    if (scopeFilter === 'global') {
+      filtered = filtered.filter(t => t.is_global === true || t.scope === 'global');
+    } else if (scopeFilter === 'team') {
+      filtered = filtered.filter(t => t.team_id === currentUser.team_id && !t.is_global);
+    } else if (scopeFilter === 'mine') {
+      filtered = filtered.filter(t => t.created_by_uid === currentUser.uid);
+    }
+
     // Filtro por busca
     if (searchQuery.trim().length > 0) {
       const q = searchQuery.toLowerCase().trim();
@@ -178,12 +197,15 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
 
     grid.innerHTML = filtered.map((tpl, index) => {
       const canEdit = isAdmin || (isCoordinator && tpl.created_by_uid === currentUser.uid);
+      const canDelete = isAdmin || (canManage && tpl.created_by_uid === currentUser.uid);
       const colorBg = avatarColors[index % avatarColors.length];
       const typeLabel = tpl.body.includes('[imagem]') ? 'Image + Text' : tpl.body.includes('[documento]') ? 'Document + Text' : 'Text Message';
+      const scopeBadge = tpl.is_global ? '🌐 Global' : tpl.team_id ? '👥 Equipe' : '📋 Template';
+      const usageCount = typeof tpl.usage_count === 'number' ? `${tpl.usage_count} envios` : '0 envios';
 
       return `
         <div class="main-panel-card" style="padding: 1.25rem; border-radius: var(--radius-lg); background: #FFFFFF; border: 1px solid #E2E8F0; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-          <!-- Card Header (Matching Reference Image 4) -->
+          <!-- Card Header -->
           <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.85rem;">
             <div style="width: 42px; height: 42px; border-radius: 50%; background: ${colorBg}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F766E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -197,15 +219,21 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
                 ${tpl.title}
               </h3>
               <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;">
-                ${typeLabel}
+                ${typeLabel} · ${scopeBadge}
               </span>
             </div>
 
-            ${canEdit ? `
-              <button class="btn-edit-tpl" data-id="${tpl.id}" style="background: none; border: none; color: #64748B; font-weight: 600; font-size: 0.8rem; cursor: pointer; padding: 0.2rem 0.5rem;" title="Editar">
-                ✏️
-              </button>
-            ` : ''}
+            <div style="display: flex; gap: 0.3rem; align-items: center;">
+              ${canEdit ? `
+                <button class="btn-edit-tpl" data-id="${tpl.id}" style="background: none; border: none; color: #64748B; font-weight: 600; font-size: 0.8rem; cursor: pointer; padding: 0.2rem 0.4rem;" title="Editar">✏️</button>
+              ` : ''}
+              ${canManage ? `
+                <button class="btn-duplicate-tpl" data-id="${tpl.id}" style="background: none; border: none; color: #64748B; font-weight: 600; font-size: 0.8rem; cursor: pointer; padding: 0.2rem 0.4rem;" title="Duplicar">📋</button>
+              ` : ''}
+              ${canDelete ? `
+                <button class="btn-delete-tpl" data-id="${tpl.id}" data-title="${tpl.title.replace(/"/g, '&quot;')}" style="background: none; border: none; color: #EF4444; font-weight: 600; font-size: 0.8rem; cursor: pointer; padding: 0.2rem 0.4rem;" title="Excluir">🗑️</button>
+              ` : ''}
+            </div>
           </div>
 
           <!-- Message Body Preview Box with highlighted variables -->
@@ -213,16 +241,16 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
             ${highlightVariables(tpl.body)}
           </div>
 
-          <!-- Card Footer (Matching Reference Image 4: Stats + Aprovado badge + Use action) -->
+          <!-- Card Footer -->
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
             <div style="display: flex; align-items: center; gap: 0.4rem; color: var(--text-muted); font-size: 0.8rem; font-weight: 600;">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-              <span>${(tpl.usage_count || (Math.floor(Math.random() * 3000) + 1000) / 1000).toFixed(1)}k envios</span>
+              <span>${usageCount}</span>
             </div>
 
             <div style="display: flex; align-items: center; gap: 0.6rem;">
               <span class="btn-use-tpl" data-body="${encodeURIComponent(tpl.body)}" style="background: #22C55E; color: #FFFFFF; font-weight: 800; font-size: 0.75rem; padding: 0.35rem 0.85rem; border-radius: 9999px; cursor: pointer; box-shadow: 0 2px 6px rgba(34, 197, 94, 0.3); display: inline-flex; align-items: center; gap: 4px;">
-                ✓ Aprovado
+                🚀 Usar no Disparo
               </span>
             </div>
           </div>
@@ -258,6 +286,28 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
       });
     });
 
+    // Listener Duplicar
+    container.querySelectorAll('.btn-duplicate-tpl').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        const tpl = allTemplates.find(t => t.id === id);
+        if (!tpl) return;
+        const newId = `tpl_${Date.now()}`;
+        await saveTemplateInFirestore(newId, {
+          ...tpl,
+          id: newId,
+          title: `${tpl.title} (cópia)`,
+          created_by_uid: currentUser.uid,
+          created_by_name: currentUser.name || currentUser.email,
+          usage_count: 0,
+          is_global: false,
+          scope: 'team',
+          team_id: currentUser.team_id || null
+        });
+        showToast(`Template "${tpl.title}" duplicado com sucesso!`, 'success');
+      });
+    });
+
     // Listener Excluir
     container.querySelectorAll('.btn-delete-tpl').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -271,7 +321,7 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
     });
   }
 
-  // Escopo de Filtros
+  // Filtros de escopo funcionais
   container.querySelectorAll('#template-scope-filters .scope-filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       scopeFilter = btn.getAttribute('data-scope');
@@ -306,22 +356,24 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
     container.querySelector('#input-tpl-id').value = '';
     modal.style.display = 'flex';
   };
-  container.querySelector('#btn-open-add-template')?.addEventListener('click', openAddModal);
+
   container.querySelector('#fab-add-template')?.addEventListener('click', openAddModal);
   container.querySelector('#btn-close-template-modal')?.addEventListener('click', () => { modal.style.display = 'none'; });
-  container.querySelector('#btn-cancel-template')?.addEventListener('click', () => { modal.style.display = 'none'; });
+  container.querySelector('#btn-cancel-tpl')?.addEventListener('click', () => { modal.style.display = 'none'; });
 
-  // Testar Spintax
-  container.querySelector('#btn-test-spintax-modal')?.addEventListener('click', () => {
-    const raw = container.querySelector('#textarea-tpl-body').value;
-    if (!raw) return;
-    const sample = resolveSpintax(raw).replace(/\{nome\}/gi, 'Roberto').replace(/\{empresa\}/gi, 'Centro');
-    const previewBox = container.querySelector('#spintax-test-preview');
-    const previewText = container.querySelector('#spintax-test-preview-text');
-    if (previewBox && previewText) {
-      previewText.textContent = sample;
-      previewBox.style.display = 'block';
-    }
+  // Chips de variáveis inserem no cursor do textarea
+  container.querySelectorAll('.btn-var-tag').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tag = btn.getAttribute('data-tag');
+      const textarea = container.querySelector('#textarea-tpl-body');
+      if (!textarea) return;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const current = textarea.value;
+      textarea.value = current.substring(0, start) + tag + current.substring(end);
+      textarea.selectionStart = textarea.selectionEnd = start + tag.length;
+      textarea.focus();
+    });
   });
 
   // Submit Template
@@ -333,12 +385,16 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
     const scope = container.querySelector('#select-tpl-scope').value;
     const body = container.querySelector('#textarea-tpl-body').value.trim();
 
+    if (!body) {
+      showToast('O corpo da mensagem não pode estar vazio.', 'error');
+      return;
+    }
+
     const isGlobal = scope === 'global' && isAdmin;
     const teamId = isGlobal ? null : (currentUser.team_id || null);
 
-    const submitBtn = container.querySelector('#btn-submit-template');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Salvando...';
+    const submitBtn = container.querySelector('#btn-save-tpl');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Salvando...'; }
 
     try {
       await saveTemplateInFirestore(id, {
@@ -359,20 +415,18 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
       console.error('Erro ao salvar template:', err);
       showToast('Erro ao salvar template no Firestore.', 'error');
     } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Salvar Template';
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Salvar Template'; }
     }
   });
 
-  // Subscriptions
+  // Subscriptions (assinaturas corretas)
   const unsubTemplates = subscribeToTemplates((list) => {
     allTemplates = list;
     renderTemplates();
   });
 
-  const unsubTeams = subscribeToTenantTeams((teams) => {
+  const unsubTeams = subscribeToTenantTeams('tenant_main', (teams) => {
     allTeams = teams;
-    renderTemplates();
   });
 
   return () => {

@@ -54,7 +54,7 @@ export function renderSecuritySettings(container, currentUser, onNavigate) {
 
               <!-- Toggle Switch -->
               <label style="position: relative; display: inline-block; width: 44px; height: 24px;">
-                <input type="checkbox" id="mfa-toggle" checked style="opacity: 0; width: 0; height: 0;">
+                <input type="checkbox" id="toggle-mfa" checked style="opacity: 0; width: 0; height: 0;">
                 <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #22C55E; transition: .3s; border-radius: 24px;"></span>
               </label>
             </div>
@@ -75,7 +75,7 @@ export function renderSecuritySettings(container, currentUser, onNavigate) {
                 </div>
               </div>
 
-              <button id="btn-manage-mfa" class="btn-outline-white" style="font-size: 0.82rem; padding: 0.4rem 0.9rem; font-weight: 600;">Gerenciar</button>
+              <button id="btn-manage-mfa" class="btn-outline-white" disabled title="Em breve" style="font-size: 0.82rem; padding: 0.4rem 0.9rem; font-weight: 600; opacity: 0.5; cursor: not-allowed;">Gerenciar (Em breve)</button>
             </div>
           </div>
 
@@ -125,8 +125,8 @@ export function renderSecuritySettings(container, currentUser, onNavigate) {
             </div>
 
             <div style="display: flex; justify-content: flex-end; margin-top: 1.25rem;">
-              <button id="btn-revoke-all" style="background: none; border: none; font-size: 0.85rem; color: #DC2626; font-weight: 600; cursor: pointer;">
-                Desconectar Todas as Outras Sessões
+              <button id="btn-revoke-all" disabled title="Em breve" style="background: none; border: none; font-size: 0.85rem; color: #9CA3AF; font-weight: 600; cursor: not-allowed;">
+                Desconectar Todas as Outras Sessões (Em breve)
               </button>
             </div>
           </div>
