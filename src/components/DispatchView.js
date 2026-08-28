@@ -36,27 +36,27 @@ export function renderDispatchView(container, currentUser) {
       <!-- Top Title & Navigation Row -->
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem; width: 100%;">
         <div style="min-width: 0; max-width: 100%;">
-          <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.35rem;">
-            <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem; padding: 2px 8px;">
-              👤 Minha Fila: <span id="queue-header-count">0</span> contatos
+          <h2 style="font-size: 1.45rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px; margin-bottom: 0.4rem;">
+            Envio de Mensagens
+          </h2>
+          <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.4rem;">
+            <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem; padding: 3px 9px;">
+              👤 Lista de Contatos: <span id="queue-header-count">0</span> contatos
             </span>
             ${currentUser?.team_id ? `
-              <span class="pill-btn" style="background: #F8FAFC; color: var(--text-muted); font-weight: 600; font-size: 0.75rem; border: 1px solid var(--border-color); padding: 2px 8px;">
+              <span class="pill-btn" style="background: #F1F5F9; color: #475569; font-weight: 600; font-size: 0.75rem; border: 1px solid var(--border-color); padding: 3px 9px;">
                 👥 Equipe: <strong class="current-user-team-name">${currentUser?.team_name || 'Minha Equipe'}</strong>
               </span>
             ` : ''}
           </div>
-          <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px; word-break: break-word; margin: 0;">
-            Envio & Histórico de Disparos
-          </h2>
-          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem; line-height: 1.4;">
+          <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
             Cada líder visualiza e dispara exclusivamente a sua própria lista de contatos atribuídos.
           </p>
         </div>
 
         <div style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
-          <button id="tab-btn-queue" class="pill-btn" style="flex: 1; justify-content: center; cursor: pointer; padding: 0.5rem 0.75rem; font-weight: 700; font-size: 0.82rem; background: #1D4ED8; color: #FFFFFF; border: none; transition: all 0.2s; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">
-            🎯 Minha Fila
+          <button id="tab-btn-queue" class="pill-btn" style="flex: 1; justify-content: center; cursor: pointer; padding: 0.5rem 0.75rem; font-weight: 700; font-size: 0.82rem; background: #008069; color: #FFFFFF; border: none; transition: all 0.2s; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">
+            🎯 Fila de Envios
           </button>
           <button id="tab-btn-history" class="pill-btn" style="flex: 1; justify-content: center; cursor: pointer; padding: 0.5rem 0.75rem; font-weight: 700; font-size: 0.82rem; background: #FFFFFF; color: var(--text-main); border: 1px solid var(--border-color); transition: all 0.2s; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">
             📜 Histórico (<span id="history-badge-count">0</span>)
@@ -89,6 +89,16 @@ export function renderDispatchView(container, currentUser) {
       <div id="dispatch-view-main-content" style="width: 100%; max-width: 100%; overflow-x: hidden;">
         <!-- Renders Queue or History below -->
       </div>
+
+      <!-- Floating Rocket FAB -->
+      <button class="fab-button fab-button-rocket" id="fab-rocket-dispatch" title="Iniciar Envios">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+          <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+          <path d="M9 12H4s.55-3.03 2-4.5c1.62-1.63 5-2 5-2"></path>
+          <path d="M12 15v5s3.03-.55 4.5-2c1.63-1.62 2-5 2-5"></path>
+        </svg>
+      </button>
     </div>
   `;
 
@@ -103,17 +113,16 @@ export function renderDispatchView(container, currentUser) {
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
           
           <!-- Template Editor Card -->
-          <div class="template-editor-card">
-            <div style="display: flex; align-items: center; justify-content: space-between; font-weight: 700; color: var(--text-main); font-size: 0.95rem; margin-bottom: 0.75rem;">
-              <div style="display: flex; align-items: center; gap: 0.4rem;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <div class="template-editor-card" style="background: #FFFFFF; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.25rem; box-shadow: var(--shadow-xs);">
+            <div style="display: flex; align-items: center; justify-content: space-between; font-weight: 800; color: var(--text-main); font-size: 1.05rem; margin-bottom: 0.85rem;">
+              <div style="display: flex; align-items: center; gap: 0.45rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#008069" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
                   <line x1="16" y1="13" x2="8" y2="13"></line>
                   <line x1="16" y1="17" x2="8" y2="17"></line>
-                  <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
-                Template Editor & Spintax
+                Mensagem
               </div>
               <button id="btn-preview-spintax" class="btn-outline-white" style="font-size: 0.72rem; padding: 0.25rem 0.55rem; font-weight: 600;">
                 🎲 Gerar Variação
@@ -121,8 +130,8 @@ export function renderDispatchView(container, currentUser) {
             </div>
 
             <!-- Seletor Rápido de Template -->
-            <div style="margin-bottom: 0.85rem; background: #F8FAFC; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.65rem 0.85rem;">
-              <label for="select-quick-template" style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
+            <div style="margin-bottom: 0.85rem; background: #F8FAFC; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.5rem 0.75rem;">
+              <label for="select-quick-template" style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">
                 📄 Escolher Modelo de Mensagem (Template):
               </label>
               <select id="select-quick-template" class="form-control" style="font-size: 0.82rem; background: #FFFFFF; cursor: pointer; width: 100%;">
@@ -130,23 +139,19 @@ export function renderDispatchView(container, currentUser) {
               </select>
             </div>
 
-            <div class="note-box-blue" style="margin-bottom: 0.75rem;">
-              <div style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.78rem;">
-                <div>🔹 Use <strong>{nome}</strong> para o nome e <strong>{empresa}</strong> para a empresa.</div>
-                <div>🛡️ <strong>Anti-Ban Spintax:</strong> Use <code>{Olá|Oi|Bom dia}</code> para gerar textos únicos a cada disparo!</div>
-              </div>
-            </div>
-
-            <div id="spintax-preview-box" style="display: none; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: var(--radius-sm); padding: 0.6rem; font-size: 0.78rem; color: #166534; margin-bottom: 0.75rem;">
-              <strong>Prévia Sorteada:</strong> <span id="spintax-preview-text"></span>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-              <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-main);">Mensagem da Abordagem</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">Digite aqui...</label>
               <span style="font-size: 0.72rem; color: var(--text-light);" id="char-counter">Máx 1024 char</span>
             </div>
 
-            <textarea id="dispatch-template-input" class="template-textarea" placeholder="Digite a mensagem...">${templateText}</textarea>
+            <textarea id="dispatch-template-input" class="template-textarea" style="height: 180px; font-size: 0.95rem; line-height: 1.45; border-radius: var(--radius-md);" placeholder="Digite a mensagem...">${templateText}</textarea>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+              <button id="btn-start-batch-dispatch-card" class="btn-start-send-pill">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                ➤ Iniciar Envios
+              </button>
+            </div>
           </div>
 
           <!-- Anti-Ban Controls Card -->
@@ -703,19 +708,18 @@ export function renderDispatchView(container, currentUser) {
       }
     });
 
-    // Disparo em Lote Automatizado (Anti-Ban)
-    container.querySelector('#btn-start-batch-dispatch')?.addEventListener('click', async () => {
+    // Função de Disparo em Lote
+    async function triggerBatchDispatch() {
       if (isBatchRunning) return;
 
       const pendingContacts = contacts.filter(c => c.status === 'pending' || !c.status);
       if (pendingContacts.length === 0) {
-        alert('Não há contatos pendentes para disparo.');
+        alert('Não há contatos pendentes para envio na sua fila.');
         return;
       }
 
-      if (!confirm(`Iniciar disparo em lote para ${pendingContacts.length} contatos com proteção Anti-Ban?`)) {
-        return;
-      }
+      const total = pendingContacts.length;
+      if (!confirm(`Iniciar o envio automático para ${total} contato(s) pendente(s)?`)) return;
 
       isBatchRunning = true;
       const progressContainer = container.querySelector('#batch-progress-container');
@@ -727,15 +731,13 @@ export function renderDispatchView(container, currentUser) {
       if (progressContainer) progressContainer.style.display = 'block';
       if (batchBtn) {
         batchBtn.disabled = true;
-        batchBtn.innerHTML = 'Disparo em andamento...';
+        batchBtn.innerHTML = 'Enviando fila...';
       }
 
       let sentCount = 0;
-      const total = pendingContacts.length;
-
-      for (let i = 0; i < total; i++) {
+      for (let i = 0; i < pendingContacts.length; i++) {
         const contact = pendingContacts[i];
-        if (statusText) statusText.textContent = `Enviando para ${contact.name} (${contact.phone})...`;
+        if (statusText) statusText.textContent = `Enviando para ${contact.name}...`;
 
         try {
           const rawTemplate = container.querySelector('#dispatch-template-input')?.value || templateText;
@@ -760,6 +762,7 @@ export function renderDispatchView(container, currentUser) {
             contact.status = 'user_confirmed';
           } else {
             contact.status = 'opened';
+            contact.last_message_id = dispatchRes.messageId;
           }
 
           sentCount++;
@@ -782,15 +785,19 @@ export function renderDispatchView(container, currentUser) {
       }
 
       isBatchRunning = false;
-      if (statusText) statusText.textContent = '🎉 Disparo em lote concluído com sucesso!';
+      if (statusText) statusText.textContent = '🎉 Envio em lote concluído com sucesso!';
       if (batchBtn) {
         batchBtn.disabled = false;
-        batchBtn.innerHTML = '🚀 Disparar Fila em Lote (Anti-Ban)';
+        batchBtn.innerHTML = '🚀 Disparar para Todos (Automático)';
       }
       setTimeout(() => {
         if (progressContainer) progressContainer.style.display = 'none';
       }, 5000);
-    });
+    }
+
+    container.querySelector('#btn-start-batch-dispatch')?.addEventListener('click', triggerBatchDispatch);
+    container.querySelector('#btn-start-batch-dispatch-card')?.addEventListener('click', triggerBatchDispatch);
+    container.querySelector('#fab-rocket-dispatch')?.addEventListener('click', triggerBatchDispatch);
   }
 
   // Alternador de Abas

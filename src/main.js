@@ -121,26 +121,34 @@ function renderProtectedApp(currentUser) {
 
       <!-- Main Content Area -->
       <div class="main-wrapper">
-        <!-- Topbar -->
+        <!-- Topbar WhatsApp Business Style -->
         <header class="topbar">
-          <div class="topbar-left">
+          <div class="topbar-left" style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1;">
+            <button id="btn-mobile-sidebar-toggle" style="background: none; border: none; color: #FFFFFF; font-size: 1.25rem; cursor: pointer; display: flex; align-items: center; padding: 0;" title="Menu">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+
             <div style="min-width: 0; display: flex; flex-direction: column;">
-              <h2 style="margin: 0; font-size: 1.05rem; font-weight: 800; line-height: 1.2;">
-                ${currentView === 'admin' ? 'Painel Administrativo' : currentView === 'manager' ? 'Gestão da Equipe' : currentView === 'dispatch' ? 'Disparos' : currentView === 'contacts' ? 'Contatos' : currentView === 'templates' ? 'Templates' : currentView === 'evolution' ? 'Conexões' : 'WhatsApp Manager'}
+              <h2 style="margin: 0; font-size: 1.05rem; font-weight: 800; line-height: 1.2; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${currentUser.name || 'Alex Amarante'}
               </h2>
               ${teamDisplayName ? `
-                <span style="font-size: 0.72rem; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; margin-top: 2px;">
+                <span style="font-size: 0.72rem; opacity: 0.9; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; margin-top: 1px;">
                   👥 Equipe: <strong>${teamDisplayName}</strong>
                 </span>
               ` : ''}
             </div>
             
             ${role === 'admin' && isManagerView ? `
-              <select id="topbar-team-select" class="team-selector-pill" style="padding: 0.35rem 0.85rem; font-size: 0.82rem; font-weight: 700; border-radius: 9999px; background: #FFFFFF; border: 1px solid var(--border-color); cursor: pointer; color: var(--text-main); outline: none;">
+              <select id="topbar-team-select" class="team-selector-pill" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; font-weight: 700; border-radius: 9999px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: #FFFFFF; cursor: pointer; outline: none;">
                 ${tenantTeams.length === 0 ? `
-                  <option value="">Nenhuma equipe cadastrada</option>
+                  <option value="" style="color: black;">Nenhuma equipe</option>
                 ` : tenantTeams.map(t => `
-                  <option value="${t.id}" ${currentTeamId === t.id ? 'selected' : ''}>👥 ${t.name} ⌵</option>
+                  <option value="${t.id}" ${currentTeamId === t.id ? 'selected' : ''} style="color: black;">👥 ${t.name}</option>
                 `).join('')}
               </select>
             ` : ''}
