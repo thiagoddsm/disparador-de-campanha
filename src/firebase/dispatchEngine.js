@@ -95,6 +95,8 @@ export async function executeDispatch({
   contactId,
   contactName,
   contactCompany,
+  contactCity,
+  contactNeighborhood,
   contactPhone,
   user,
   strategy = 'wa.me',
@@ -111,12 +113,15 @@ export async function executeDispatch({
   const cleanName = contactName ? contactName.trim() : 'Prezado(a)';
   // Extrai automaticamente apenas o primeiro nome (ex: "Mariana Moura" -> "Mariana")
   const firstName = cleanName.split(/\s+/)[0] || cleanName;
-  const cleanCompany = contactCompany ? contactCompany.trim() : 'sua empresa';
+  const cleanCity = (contactCity || contactCompany || '').trim() || 'sua cidade';
+  const cleanNeighborhood = (contactNeighborhood || '').trim() || 'seu bairro';
 
   let personalizedMessage = messageTemplate.replace(/\{primeiro_nome\}|\{primeironome\}|\{first_name\}/gi, firstName);
   personalizedMessage = personalizedMessage.replace(/\{nome\}/gi, firstName);
   personalizedMessage = personalizedMessage.replace(/\{nome_completo\}|\{nomecompleto\}|\{full_name\}/gi, cleanName);
-  personalizedMessage = personalizedMessage.replace(/\{empresa\}/gi, cleanCompany);
+  personalizedMessage = personalizedMessage.replace(/\{cidade\}|\{municipio\}/gi, cleanCity);
+  personalizedMessage = personalizedMessage.replace(/\{bairro\}|\{regiao\}/gi, cleanNeighborhood);
+  personalizedMessage = personalizedMessage.replace(/\{empresa\}/gi, cleanCity);
 
   const formattedPhone = sanitizePhoneNumber(contactPhone);
   const messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;

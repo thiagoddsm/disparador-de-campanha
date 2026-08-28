@@ -76,9 +76,15 @@ export function renderContactsView(container, currentUser, onNavigate) {
               <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">WhatsApp / Telefone (DDD + Número)</label>
               <input type="tel" inputmode="tel" id="input-contact-phone" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: 5511999998888" required>
             </div>
-            <div style="margin-bottom: 1.5rem;">
-              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Cidade / Região (Opcional)</label>
-              <input type="text" id="input-contact-company" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: São Paulo - SP">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.5rem;">
+              <div>
+                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Cidade</label>
+                <input type="text" id="input-contact-city" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: Rio de Janeiro">
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Bairro</label>
+                <input type="text" id="input-contact-neighborhood" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: Copacabana">
+              </div>
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
               <button type="button" id="btn-cancel-contact-modal" class="btn-outline-white">Cancelar</button>
@@ -215,14 +221,15 @@ export function renderContactsView(container, currentUser, onNavigate) {
                 <tr>
                   <th>NOME</th>
                   <th>TELEFONE</th>
-                  <th>CIDADE / REGIÃO</th>
+                  <th>CIDADE</th>
+                  <th>BAIRRO</th>
                   <th>LÍDER ATRIBUÍDO</th>
                   <th>STATUS</th>
                   <th style="text-align: right;">AÇÕES</th>
                 </tr>
               </thead>
               <tbody id="contacts-tbody">
-                <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 3rem;">Carregando contatos...</td></tr>
+                <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 3rem;">Carregando contatos...</td></tr>
               </tbody>
             </table>
           </div>
@@ -245,9 +252,15 @@ export function renderContactsView(container, currentUser, onNavigate) {
               <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">WhatsApp / Telefone (DDD + Número)</label>
               <input type="tel" inputmode="tel" id="input-contact-phone" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: 5511999998888" required>
             </div>
-            <div style="margin-bottom: 1.5rem;">
-              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Cidade / Região (Opcional)</label>
-              <input type="text" id="input-contact-company" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: São Paulo - SP">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.5rem;">
+              <div>
+                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Cidade</label>
+                <input type="text" id="input-contact-city" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: Rio de Janeiro">
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Bairro</label>
+                <input type="text" id="input-contact-neighborhood" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: Copacabana">
+              </div>
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
               <button type="button" id="btn-cancel-contact-modal" class="btn-outline-white">Cancelar</button>
@@ -475,6 +488,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
         (c.name && c.name.toLowerCase().includes(q)) || 
         (c.phone && c.phone.includes(q)) ||
         (c.city && c.city.toLowerCase().includes(q)) ||
+        ((c.neighborhood || c.bairro) && (c.neighborhood || c.bairro).toLowerCase().includes(q)) ||
         (c.assigned_to_name && c.assigned_to_name.toLowerCase().includes(q))
       );
     }
@@ -515,7 +529,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
       if (list.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="${isMember ? 4 : 6}" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+            <td colspan="${isMember ? 5 : 7}" style="text-align: center; color: var(--text-muted); padding: 3rem;">
               Nenhum contato encontrado nesta seleção. Clique em <strong>Adicionar Contato</strong> para cadastrar.
             </td>
           </tr>
@@ -541,7 +555,8 @@ export function renderContactsView(container, currentUser, onNavigate) {
                 </div>
               </td>
               <td style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem;">${c.phone}</td>
-              <td style="color: var(--text-muted); font-size: 0.85rem;">${c.city || c.company || '—'}</td>
+              <td style="color: var(--text-main); font-size: 0.85rem; font-weight: 500;">${c.city || '—'}</td>
+              <td style="color: var(--text-muted); font-size: 0.85rem;">${c.neighborhood || c.bairro || '—'}</td>
               ${!isMember ? `
                 <td style="font-size: 0.82rem; color: var(--text-main); font-weight: 600;">
                   👤 ${c.assigned_to_name || (c.assigned_to === currentUser.uid ? 'Você' : 'Não Atribuído')}
@@ -576,6 +591,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
         mobileList.innerHTML = list.map(c => {
           const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
           const isOpened = c.status === 'opened';
+          const locationInfo = [c.city, c.neighborhood || c.bairro].filter(Boolean).join(' · ');
 
           return `
             <div class="wa-contact-item-row" data-id="${c.id}" style="display: flex; align-items: center; gap: 0.95rem; padding: 0.85rem 1rem; border-bottom: 1px solid #F1F5F9; cursor: pointer; transition: background 0.15s ease;">
@@ -596,8 +612,8 @@ export function renderContactsView(container, currentUser, onNavigate) {
                     <span style="font-size: 0.72rem; color: #B45309; font-weight: 700;">Aberto</span>
                   ` : ''}
                 </div>
-                <div style="font-size: 0.85rem; color: #64748B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                  ${c.phone || c.city || '.'}
+                <div style="font-size: 0.82rem; color: #64748B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  ${c.phone} ${locationInfo ? `• ${locationInfo}` : ''}
                 </div>
               </div>
             </div>
@@ -662,7 +678,8 @@ export function renderContactsView(container, currentUser, onNavigate) {
     e.preventDefault();
     const name = container.querySelector('#input-contact-name').value.trim();
     const phone = container.querySelector('#input-contact-phone').value.trim();
-    const company = container.querySelector('#input-contact-company').value.trim();
+    const city = container.querySelector('#input-contact-city')?.value.trim() || '';
+    const neighborhood = container.querySelector('#input-contact-neighborhood')?.value.trim() || '';
     const assignSel = container.querySelector('#select-contact-assignee');
     const assignedUid = assignSel ? assignSel.value : currentUser.uid;
     const assignedName = assignSel ? assignSel.options[assignSel.selectedIndex]?.text.replace(/ \(.*\)/, '') : currentUser.name;
@@ -677,7 +694,9 @@ export function renderContactsView(container, currentUser, onNavigate) {
       await saveContactsBatch([{
         name,
         phone,
-        city: company,
+        city: city,
+        neighborhood: neighborhood,
+        bairro: neighborhood,
         tenant_id: currentUser.tenant_id || 'tenant_main',
         team_id: currentUser.team_id || null,
         assigned_to: assignedUid,

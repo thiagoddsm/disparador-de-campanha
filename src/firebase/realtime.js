@@ -397,6 +397,8 @@ export async function saveContactsBatch(contacts, onProgress = null) {
         phone: contact.phone,
         email: contact.email || null,
         city: contact.city || null,
+        neighborhood: contact.neighborhood || contact.bairro || null,
+        bairro: contact.neighborhood || contact.bairro || null,
         tags: Array.isArray(contact.tags) ? contact.tags : [],
         team_id: contact.team_id || null,
         assigned_to: contact.assigned_to || null,

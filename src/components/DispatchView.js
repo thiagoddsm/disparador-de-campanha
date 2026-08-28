@@ -364,13 +364,16 @@ export function renderDispatchView(container, currentUser, onNavigate) {
     const sampleContact = contacts?.[0];
     const sampleFull = sampleContact?.name ? sampleContact.name.trim() : 'Mariana Moura';
     const sampleFirst = sampleFull.split(/\s+/)[0] || 'Mariana';
-    const sampleCity = sampleContact?.city || 'sua cidade';
+    const sampleCity = sampleContact?.city || 'Rio de Janeiro';
+    const sampleNeighborhood = sampleContact?.neighborhood || sampleContact?.bairro || 'Copacabana';
 
     const rendered = text
       .replace(/\{primeiro_nome\}|\{primeironome\}|\{first_name\}/gi, sampleFirst)
       .replace(/\{nome\}/gi, sampleFirst)
       .replace(/\{nome_completo\}|\{nomecompleto\}|\{full_name\}/gi, sampleFull)
-      .replace(/\{empresa\}|\{cidade\}/gi, sampleCity);
+      .replace(/\{cidade\}|\{municipio\}/gi, sampleCity)
+      .replace(/\{bairro\}|\{regiao\}/gi, sampleNeighborhood)
+      .replace(/\{empresa\}/gi, sampleCity);
 
     preview.textContent = rendered;
     if (previewBubble) previewBubble.style.display = 'block';
@@ -444,6 +447,8 @@ export function renderDispatchView(container, currentUser, onNavigate) {
         const dispatchRes = await executeDispatch({
           contactId: contact.id,
           contactName: contact.name,
+          contactCity: contact.city,
+          contactNeighborhood: contact.neighborhood || contact.bairro,
           contactCompany: contact.city,
           contactPhone: contact.phone,
           user: currentUser,

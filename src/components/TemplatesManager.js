@@ -119,12 +119,11 @@ export function renderTemplatesManager(container, currentUser, onNavigate) {
               <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">Corpo da Mensagem</label>
               <div style="display: flex; gap: 4px; flex-wrap: wrap;">
                 <button type="button" class="btn-var-tag" data-tag="{nome}" style="font-size: 0.72rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 4px; cursor: pointer;">+{nome}</button>
-                <button type="button" class="btn-var-tag" data-tag="{empresa}" style="font-size: 0.72rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 4px; cursor: pointer;">+{empresa}</button>
                 <button type="button" class="btn-var-tag" data-tag="{cidade}" style="font-size: 0.72rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 4px; cursor: pointer;">+{cidade}</button>
-                <button type="button" class="btn-var-tag" data-tag="{data}" style="font-size: 0.72rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 4px; cursor: pointer;">+{data}</button>
+                <button type="button" class="btn-var-tag" data-tag="{bairro}" style="font-size: 0.72rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; border-radius: 4px; cursor: pointer;">+{bairro}</button>
               </div>
             </div>
-            <textarea id="textarea-tpl-body" class="topbar-search-input" rows="4" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; resize: vertical; line-height: 1.4;" placeholder="Escreva a mensagem. Use {nome}, {empresa}, {cidade} para personalizar..." required></textarea>
+            <textarea id="textarea-tpl-body" class="topbar-search-input" rows="4" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; resize: vertical; line-height: 1.4;" placeholder="Escreva a mensagem. Use {nome}, {cidade}, {bairro} para personalizar..." required></textarea>
           </div>
 
           <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">

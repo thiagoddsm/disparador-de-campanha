@@ -194,7 +194,8 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
                   const lower = h.toLowerCase();
                   const isName = lower.includes('nome') || lower.includes('name') || idx === 0;
                   const isPhone = lower.includes('tel') || lower.includes('cel') || lower.includes('phone') || idx === 1;
-                  const isComp = lower.includes('cidade') || lower.includes('empresa') || lower.includes('company') || lower.includes('bairro');
+                  const isNeighborhood = lower.includes('bairro') || lower.includes('neighborhood') || lower.includes('distrito');
+                  const isCity = !isNeighborhood && (lower.includes('cidade') || lower.includes('city') || lower.includes('municipio') || lower.includes('uf') || lower.includes('regiao'));
 
                   return `
                     <tr>
@@ -203,8 +204,9 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
                         <select class="topbar-search-input col-map-select" data-col-index="${idx}" style="width: 220px; background: #FFFFFF; border-radius: var(--radius-md); padding: 0.45rem 0.75rem;">
                           <option value="name" ${isName ? 'selected' : ''}>Nome do Contato</option>
                           <option value="phone" ${isPhone ? 'selected' : ''}>Telefone / WhatsApp (Obrigatório)</option>
-                          <option value="city" ${isComp ? 'selected' : ''}>Cidade / Região</option>
-                          <option value="ignore" ${!isName && !isPhone && !isComp ? 'selected' : ''}>Ignorar coluna</option>
+                          <option value="city" ${isCity ? 'selected' : ''}>Cidade</option>
+                          <option value="neighborhood" ${isNeighborhood ? 'selected' : ''}>Bairro</option>
+                          <option value="ignore" ${!isName && !isPhone && !isCity && !isNeighborhood ? 'selected' : ''}>Ignorar coluna</option>
                         </select>
                       </td>
                       <td style="color: #4B5563; font-style: italic;">${val}</td>
@@ -325,6 +327,8 @@ export function renderCsvImportWizard(container, currentUser, onNavigate) {
           name: map.name !== undefined ? (r[map.name] || 'Contato') : 'Contato',
           phone: cleanPhone,
           city: map.city !== undefined ? (r[map.city] || '') : '',
+          neighborhood: map.neighborhood !== undefined ? (r[map.neighborhood] || '') : '',
+          bairro: map.neighborhood !== undefined ? (r[map.neighborhood] || '') : '',
           tenant_id: currentUser.tenant_id || 'tenant_main',
           team_id: targetTeamId || null,
           assigned_to: assignedUid,
