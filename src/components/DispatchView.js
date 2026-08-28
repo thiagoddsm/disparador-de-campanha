@@ -96,7 +96,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
           </div>
 
           <button id="btn-toggle-queue-list" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: #008069; font-size: 0.75rem; font-weight: 800; padding: 0.35rem 0.75rem; cursor: pointer;">
-            👥 Fila (<span id="queue-badge-count">0</span>) ⌵
+            👥 Lista de Contatos ⌵
           </button>
         </div>
 
