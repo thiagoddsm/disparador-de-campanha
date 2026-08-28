@@ -182,18 +182,9 @@ function renderProtectedApp(currentUser) {
               ` : ''}
             </div>
 
-            <div class="topbar-right" style="position: relative; display: flex; align-items: center; gap: 0.4rem;">
-              <!-- Notificações -->
-              <button id="btn-topbar-notifications" class="topbar-icon-btn" title="Notificações" style="position: relative;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                </svg>
-                <div class="topbar-badge-dot"></div>
-              </button>
-
-              <!-- Configurações -->
-              <button id="btn-topbar-settings" class="topbar-icon-btn" title="Configurações">
+            <div class="topbar-right" style="position: relative; display: flex; align-items: center; gap: 0.45rem;">
+              <!-- Configurações (Engrenagem) -->
+              <button id="btn-topbar-settings" class="topbar-icon-btn" title="Configurações & Conexão WhatsApp">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="12" r="3"></circle>
                   <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -208,70 +199,6 @@ function renderProtectedApp(currentUser) {
                   <line x1="21" y1="12" x2="9" y2="12"></line>
                 </svg>
               </button>
-
-              <!-- Avatar -->
-              <button id="btn-topbar-avatar" style="background: none; border: none; padding: 0; cursor: pointer;">
-                <img src="${currentUser.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&h=160&fit=crop&crop=face'}" class="topbar-avatar" alt="Avatar Usuário">
-              </button>
-
-              <!-- Dropdown Notificações -->
-              <div id="dropdown-notifications" class="topbar-dropdown" style="display: none;">
-                <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-                  <strong style="font-size: 0.9rem; color: var(--text-main);">Notificações da Campanha</strong>
-                  <span class="pill-btn" style="font-size: 0.65rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8;">2 Novas</span>
-                </div>
-                <div style="max-height: 260px; overflow-y: auto;">
-                  <div style="padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-color); font-size: 0.82rem; background: #F8FAFC;">
-                    <div style="font-weight: 600; color: var(--text-main);">🔥 Meta de Disparos Ativa</div>
-                    <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 2px;">Envie mensagens para os leads pendentes da sua lista.</div>
-                  </div>
-                  <div style="padding: 0.85rem 1rem; font-size: 0.82rem;">
-                    <div style="font-weight: 600; color: var(--text-main);">🛡️ Proteção Anti-Ban Ativada</div>
-                    <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: 2px;">Intervalo de 1 minuto entre mensagens em execução.</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Dropdown Perfil / Configurações -->
-              <div id="dropdown-profile" class="topbar-dropdown" style="display: none; width: 250px;">
-                <div style="padding: 1rem; border-bottom: 1px solid var(--border-color);">
-                  <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-main);">${currentUser.name || 'Usuário'}</div>
-                  <div style="font-size: 0.75rem; color: var(--text-muted);">${currentUser.email}</div>
-                  <span class="pill-btn" style="font-size: 0.68rem; margin-top: 0.4rem; padding: 2px 6px; background: #EFF6FF; color: #1D4ED8;">${roleLabel}</span>
-                </div>
-
-                ${isAdminOrCoord ? `
-                  <!-- Atalho para Alternar entre / e /admin -->
-                  <div style="padding: 0.65rem 1rem; border-bottom: 1px solid var(--border-color); background: #F8FAFC;">
-                    ${onAdminRoute ? `
-                      <a href="/" id="btn-switch-to-mobile" style="display: flex; align-items: center; justify-content: space-between; color: #059669; font-weight: 700; font-size: 0.82rem; text-decoration: none;">
-                        <span>📱 Versão Celular (Operador)</span>
-                        <span>→</span>
-                      </a>
-                    ` : `
-                      <a href="/admin" id="btn-switch-to-admin" style="display: flex; align-items: center; justify-content: space-between; color: #1D4ED8; font-weight: 700; font-size: 0.82rem; text-decoration: none;">
-                        <span>🖥️ Painel de Gestão (/admin)</span>
-                        <span>→</span>
-                      </a>
-                    `}
-                  </div>
-                ` : ''}
-
-                <div style="padding: 0.5rem 0;">
-                  <a href="#" id="menu-topbar-profile" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1rem; color: var(--text-main); text-decoration: none; font-size: 0.85rem;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                    Meu Perfil
-                  </a>
-                  <a href="#" id="menu-topbar-security" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1rem; color: var(--text-main); text-decoration: none; font-size: 0.85rem;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                    Security Settings
-                  </a>
-                  <a href="#" id="menu-topbar-logout" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 1rem; color: #DC2626; text-decoration: none; font-size: 0.85rem; font-weight: 500; border-top: 1px solid var(--border-color);">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                    Logout
-                  </a>
-                </div>
-              </div>
             </div>
           </header>
         `}
@@ -364,60 +291,11 @@ function renderProtectedApp(currentUser) {
     }
   });
 
-  const notifBtn = appEl.querySelector('#btn-topbar-notifications');
   const settingsBtn = appEl.querySelector('#btn-topbar-settings');
-  const avatarBtn = appEl.querySelector('#btn-topbar-avatar');
-  const notifDropdown = appEl.querySelector('#dropdown-notifications');
-  const profileDropdown = appEl.querySelector('#dropdown-profile');
-
-  notifBtn?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const isVisible = notifDropdown.style.display === 'block';
-    notifDropdown.style.display = isVisible ? 'none' : 'block';
-    if (profileDropdown) profileDropdown.style.display = 'none';
-  });
-
-  avatarBtn?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const isVisible = profileDropdown.style.display === 'block';
-    profileDropdown.style.display = isVisible ? 'none' : 'block';
-    if (notifDropdown) notifDropdown.style.display = 'none';
-  });
 
   settingsBtn?.addEventListener('click', () => {
     currentView = 'settings';
     renderProtectedApp(currentUserState);
-  });
-
-  appEl.querySelector('#btn-switch-to-admin')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    window.history.pushState(null, '', '/admin');
-    currentView = currentUserState?.role === 'admin' ? 'admin' : 'manager';
-    renderProtectedApp(currentUserState);
-  });
-
-  appEl.querySelector('#btn-switch-to-mobile')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    window.history.pushState(null, '', '/');
-    currentView = 'dispatch';
-    renderProtectedApp(currentUserState);
-  });
-
-  appEl.querySelector('#menu-goto-settings')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    currentView = 'settings';
-    renderProtectedApp(currentUserState);
-  });
-
-  appEl.querySelector('#menu-goto-security')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    currentView = 'security';
-    renderProtectedApp(currentUserState);
-  });
-
-  appEl.querySelector('#menu-topbar-logout')?.addEventListener('click', async (e) => {
-    e.preventDefault();
-    await logoutUser();
   });
 
   appEl.querySelector('#btn-topbar-direct-logout')?.addEventListener('click', async (e) => {
@@ -428,20 +306,6 @@ function renderProtectedApp(currentUser) {
   });
 }
 
-// Fechamento de dropdowns ao clicar fora (registrado apenas uma vez globalmente)
-document.addEventListener('click', (e) => {
-  const notifDropdown = document.querySelector('#notif-dropdown');
-  const notifBtn = document.querySelector('#btn-topbar-notif');
-  const profileDropdown = document.querySelector('#profile-dropdown');
-  const avatarBtn = document.querySelector('#btn-topbar-avatar');
-
-  if (notifDropdown && !notifDropdown.contains(e.target) && notifBtn && !notifBtn.contains(e.target)) {
-    notifDropdown.style.display = 'none';
-  }
-  if (profileDropdown && !profileDropdown.contains(e.target) && avatarBtn && !avatarBtn.contains(e.target)) {
-    profileDropdown.style.display = 'none';
-  }
-});
 
 // Escuta mudanças de URL pelo botão voltar/avançar do navegador ou hash
 window.addEventListener('popstate', () => {
