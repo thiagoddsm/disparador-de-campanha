@@ -465,8 +465,26 @@ export function renderContactsView(container, currentUser, onNavigate) {
     if (selectedCoordinatorUid === 'mine') {
       filtered = filtered.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name));
     } else if (selectedCoordinatorUid !== 'all') {
-      const team = allTeams.find(t => t.id === selectedCoordinatorUid);
-      filtered = filtered.filter(c => c.team_id === selectedCoordinatorUid || (team && (c.team_id === team.name || c.team_name === team.name)));
+      const team = allTeams.find(t => t.id === selectedCoordinatorUid || t.coordinator_uid === selectedCoordinatorUid || t.name === selectedCoordinatorUid);
+      const coordUser = allUsers.find(u => u.uid === selectedCoordinatorUid || (team && u.uid === team.coordinator_uid));
+      
+      const teamUsers = allUsers.filter(u => 
+        u.team_id === selectedCoordinatorUid || 
+        (team && (u.team_id === team.id || u.team_name === team.name || u.coordinator_id === team.coordinator_uid)) ||
+        (coordUser && (u.coordinator_id === coordUser.uid || u.coordinator_name === coordUser.name))
+      );
+      const teamUserUids = new Set(teamUsers.map(u => u.uid));
+      const teamUserEmails = new Set(teamUsers.map(u => u.email?.toLowerCase()).filter(Boolean));
+      const teamUserNames = new Set(teamUsers.map(u => u.name?.trim().toLowerCase()).filter(Boolean));
+
+      filtered = filtered.filter(c => {
+        if (c.team_id === selectedCoordinatorUid) return true;
+        if (team && (c.team_id === team.name || c.team_name === team.name || c.team_id === team.id)) return true;
+        if (coordUser && (c.assigned_to === coordUser.uid || c.assigned_to === coordUser.email || (c.assigned_to_name && coordUser.name && c.assigned_to_name.trim().toLowerCase() === coordUser.name.trim().toLowerCase()))) return true;
+        if (c.assigned_to && (teamUserUids.has(c.assigned_to) || teamUserEmails.has(c.assigned_to.toLowerCase()))) return true;
+        if (c.assigned_to_name && teamUserNames.has(c.assigned_to_name.trim().toLowerCase())) return true;
+        return false;
+      });
     }
 
     // Filtro de Líder / Operador
@@ -477,6 +495,8 @@ export function renderContactsView(container, currentUser, onNavigate) {
         if (targetLeader) {
           if (c.assigned_to && (c.assigned_to === targetLeader.email || c.assigned_to === targetLeader.uid)) return true;
           if (c.assigned_to_name && targetLeader.name && c.assigned_to_name.trim().toLowerCase() === targetLeader.name.trim().toLowerCase()) return true;
+          if (c.assigned_to_name && targetLeader.email && c.assigned_to_name.trim().toLowerCase() === targetLeader.email.trim().toLowerCase()) return true;
+          if (c.assigned_to && targetLeader.name && c.assigned_to.trim().toLowerCase() === targetLeader.name.trim().toLowerCase()) return true;
         }
         return false;
       });

@@ -248,12 +248,33 @@ export function renderDispatchHistoryView(container, currentUser, onNavigate) {
 
     // Filtro de Equipe (Admin)
     if (selectedTeamId !== 'all') {
-      filtered = filtered.filter(m => m.team_id === selectedTeamId);
+      const team = allTeams.find(t => t.id === selectedTeamId || t.name === selectedTeamId);
+      const teamUsers = allUsers.filter(u => 
+        u.team_id === selectedTeamId || 
+        (team && (u.team_id === team.id || u.team_name === team.name || u.coordinator_id === team.coordinator_uid))
+      );
+      const teamUserUids = new Set(teamUsers.map(u => u.uid));
+      const teamUserNames = new Set(teamUsers.map(u => u.name?.trim().toLowerCase()).filter(Boolean));
+
+      filtered = filtered.filter(m => 
+        m.team_id === selectedTeamId || 
+        (team && (m.team_id === team.name || m.team_name === team.name)) ||
+        teamUserUids.has(m.user_uid) ||
+        (m.user_name && teamUserNames.has(m.user_name.trim().toLowerCase()))
+      );
     }
 
-    // Filtro de Usuário
+    // Filtro de Usuário / Líder
     if (selectedUserUid !== 'all') {
-      filtered = filtered.filter(m => m.user_uid === selectedUserUid);
+      const targetUser = allUsers.find(u => u.uid === selectedUserUid);
+      filtered = filtered.filter(m => {
+        if (m.user_uid === selectedUserUid) return true;
+        if (targetUser) {
+          if (m.user_email && targetUser.email && m.user_email.toLowerCase() === targetUser.email.toLowerCase()) return true;
+          if (m.user_name && targetUser.name && m.user_name.trim().toLowerCase() === targetUser.name.trim().toLowerCase()) return true;
+        }
+        return false;
+      });
     }
 
     // Filtro de Canal
@@ -521,12 +542,12 @@ export function renderDispatchHistoryView(container, currentUser, onNavigate) {
   let unsubUsers = null;
   if (!isMember) {
     unsubUsers = subscribeToAllUsers((users) => {
-      allUsers = users;
+      allUsers = (users || []).filter(u => u && (u.name || u.email));
       const userSel = container.querySelector('#hist-user-select');
       if (userSel) {
-        let filteredUsers = users;
+        let filteredUsers = allUsers;
         if (isCoordinator) {
-          filteredUsers = users.filter(u => u.team_id === currentUser.team_id || u.uid === currentUser.uid);
+          filteredUsers = allUsers.filter(u => u.team_id === currentUser.team_id || u.uid === currentUser.uid);
         }
         userSel.innerHTML = `
           <option value="all">👥 Todos os Operadores</option>
