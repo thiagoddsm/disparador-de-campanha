@@ -240,8 +240,19 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
             </div>
           </div>
 
+          <div style="margin-bottom: 0.75rem;">
+            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748B; margin-bottom: 0.25rem;">
+              Filtro de Status dos Contatos
+            </label>
+            <select id="bulk-status-select" class="form-control" style="background: #F8FAFC; padding: 0.5rem 0.75rem; font-size: 0.82rem;">
+              <option value="pending" selected>⏳ Apenas Pendentes (Não abordados)</option>
+              <option value="all">🌐 Todos os Contatos da Carteira (Reengajamento)</option>
+              <option value="opened">📱 Abertos / Aguardando</option>
+            </select>
+          </div>
+
           <div id="bulk-queue-preview" style="background: #F1F5F9; border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.82rem; color: #334155; display: flex; justify-content: space-between; align-items: center;">
-            <span>Contatos pendentes prontos para a fila:</span>
+            <span>Contatos prontos para a fila:</span>
             <strong id="bulk-queue-count" style="font-size: 1.1rem; color: #0F172A;">0</strong>
           </div>
         </div>
@@ -502,22 +513,58 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     }
   }
 
-  function updateQueuePreview() {
-    let pendingContacts = allContacts.filter(c => c.status === 'pending');
+  let selectedStatusFilter = 'pending';
 
-    // Filtro por Equipe
-    if (selectedTeamFilter !== 'all') {
-      const team = allTeams.find(t => t.id === selectedTeamFilter || t.name === selectedTeamFilter);
-      pendingContacts = pendingContacts.filter(c => c.team_id === selectedTeamFilter || (team && (c.team_id === team.name || c.team_name === team.name)));
+  function updateQueuePreview() {
+    let filteredContacts = [...allContacts];
+
+    // Filtro por Status
+    if (selectedStatusFilter === 'pending') {
+      filteredContacts = filteredContacts.filter(c => !c.status || c.status === 'pending');
+    } else if (selectedStatusFilter === 'opened') {
+      filteredContacts = filteredContacts.filter(c => c.status === 'opened');
     }
 
-    // Filtro por Líder
+    // Filtro por Equipe / Coordenador
+    if (selectedTeamFilter !== 'all') {
+      const team = allTeams.find(t => t.id === selectedTeamFilter || t.coordinator_uid === selectedTeamFilter || t.name === selectedTeamFilter);
+      const coordUser = allUsers.find(u => u.uid === selectedTeamFilter || (team && u.uid === team.coordinator_uid));
+      
+      const teamUsers = allUsers.filter(u => 
+        u.team_id === selectedTeamFilter || 
+        (team && (u.team_id === team.id || u.team_name === team.name || u.coordinator_id === team.coordinator_uid)) ||
+        (coordUser && (u.coordinator_id === coordUser.uid || u.coordinator_name === coordUser.name))
+      );
+      const teamUserUids = new Set(teamUsers.map(u => u.uid));
+      const teamUserEmails = new Set(teamUsers.map(u => u.email?.toLowerCase()).filter(Boolean));
+      const teamUserNames = new Set(teamUsers.map(u => u.name?.trim().toLowerCase()).filter(Boolean));
+
+      filteredContacts = filteredContacts.filter(c => {
+        if (c.team_id === selectedTeamFilter) return true;
+        if (team && (c.team_id === team.name || c.team_name === team.name || c.team_id === team.id)) return true;
+        if (coordUser && (c.assigned_to === coordUser.uid || c.assigned_to === coordUser.email || (c.assigned_to_name && coordUser.name && c.assigned_to_name.trim().toLowerCase() === coordUser.name.trim().toLowerCase()))) return true;
+        if (c.assigned_to && (teamUserUids.has(c.assigned_to) || teamUserEmails.has(c.assigned_to.toLowerCase()))) return true;
+        if (c.assigned_to_name && teamUserNames.has(c.assigned_to_name.trim().toLowerCase())) return true;
+        return false;
+      });
+    }
+
+    // Filtro por Líder / Operador
     if (selectedLeaderFilter !== 'all') {
       const leader = allUsers.find(u => u.uid === selectedLeaderFilter);
-      pendingContacts = pendingContacts.filter(c => c.assigned_to === selectedLeaderFilter || (leader && (c.assigned_to_name === leader.name || c.assigned_to === leader.email)));
+      filteredContacts = filteredContacts.filter(c => {
+        if (c.assigned_to === selectedLeaderFilter) return true;
+        if (leader) {
+          if (c.assigned_to && (c.assigned_to === leader.email || c.assigned_to === leader.uid)) return true;
+          if (c.assigned_to_name && leader.name && c.assigned_to_name.trim().toLowerCase() === leader.name.trim().toLowerCase()) return true;
+          if (c.assigned_to_name && leader.email && c.assigned_to_name.trim().toLowerCase() === leader.email.trim().toLowerCase()) return true;
+          if (c.assigned_to && leader.name && c.assigned_to.trim().toLowerCase() === leader.name.trim().toLowerCase()) return true;
+        }
+        return false;
+      });
     }
 
-    queue = pendingContacts;
+    queue = filteredContacts;
     const countEl = container.querySelector('#bulk-queue-count');
     if (countEl) countEl.textContent = queue.length;
   }
@@ -824,6 +871,11 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
 
   container.querySelector('#bulk-leader-select')?.addEventListener('change', (e) => {
     selectedLeaderFilter = e.target.value;
+    updateQueuePreview();
+  });
+
+  container.querySelector('#bulk-status-select')?.addEventListener('change', (e) => {
+    selectedStatusFilter = e.target.value;
     updateQueuePreview();
   });
 
