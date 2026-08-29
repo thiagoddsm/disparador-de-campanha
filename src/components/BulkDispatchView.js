@@ -5,7 +5,7 @@ import {
   DEFAULT_TENANT_ID 
 } from '../firebase/realtime.js';
 import { executeDispatch } from '../firebase/dispatchEngine.js';
-import { resolveSpintax, sendEvolutionTextMessage } from '../firebase/evolutionApi.js';
+import { resolveSpintax } from '../firebase/evolutionApi.js';
 import { showToast } from '../utils/feedback.js';
 
 export function renderBulkDispatchView(container, currentUser, onNavigate) {
@@ -16,13 +16,14 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
   let selectedTeamFilter = 'all';
   let selectedLeaderFilter = 'all';
 
-  // Configurações Anti-Ban padrão
+  // Configurações Anti-Ban 100% Personalizáveis
   let totalDailyLimit = 60;
   let batchSize = 20;
   let minDelaySec = 15;
   let maxDelaySec = 45;
   let typingSec = 3;
-  let coolingMinutes = 90;
+  let coolingMinutes = 20;
+  let numPreviewVariations = 3;
 
   // Estado da Fila de Disparo
   let isRunning = false;
@@ -35,33 +36,31 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
   let currentBatchIndex = 1;
   let sentInCurrentBatch = 0;
   let totalSentToday = 0;
-  let dispatchLogs = [];
 
-  let activeTimer = null;
   let activeCountdownInterval = null;
 
-  // Template Spintax padrão recomendado pelo usuário
+  // Template Spintax padrão com variáveis dinâmicas
   let defaultTemplate = `{Olá|Oi|Como vai}, {primeiro_nome}! {Tudo bem?|Espero que esteja tendo um bom dia.}\n\nEstamos acompanhando as novidades da nossa região e gostaríamos de saber sua opinião.\n\n{Qualquer dúvida me avise.|Fico à disposição!|Podemos nos falar por aqui?}`;
 
   container.innerHTML = `
-    <div class="page-content" style="max-width: 1200px; padding: 1.5rem;">
+    <div class="page-content" style="max-width: 1240px; padding: 1.5rem;">
       
       <!-- Header do Módulo Anti-Ban -->
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
         <div>
           <div style="display: flex; align-items: center; gap: 0.6rem;">
             <span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-weight: 800; font-size: 0.75rem; padding: 2px 8px;">
-              🛡️ MODO ANTI-BAN & WARMUP
+              🛡️ DISPARO EM MASSA ANTI-BAN
             </span>
             <span class="pill-btn" style="background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 0.75rem; padding: 2px 8px;">
-              ⚡ EVOLUTION API
+              ⚡ 100% PERSONALIZÁVEL
             </span>
           </div>
           <h2 style="font-size: 1.6rem; font-weight: 800; color: #0F172A; letter-spacing: -0.5px; margin: 0.35rem 0 0 0;">
-            Disparo em Massa Inteligente
+            Disparo em Massa & Prevenção a Ban
           </h2>
           <p style="font-size: 0.85rem; color: #64748B; margin: 3px 0 0 0;">
-            Simulação de comportamento orgânico humano com blocos, Spintax, digitação simulada e pausas de resfriamento.
+            Configure livremente os blocos de envio, delays randômicos, tempos de pausa e variações dinâmicas de mensagem.
           </p>
         </div>
 
@@ -72,48 +71,49 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
         </div>
       </div>
 
-      <!-- Cronograma & Parâmetros Estratégicos -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+      <!-- Simulador de Cronograma Dinâmico Calculado em Tempo Real -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
         
-        <!-- Bloco 1: Manhã -->
+        <!-- KPI 1: Divisão em Blocos -->
         <div class="kpi-card" style="border-top: 3px solid #3B82F6; background: #FFFFFF; padding: 1.25rem; border-radius: 12px; border: 1px solid #E2E8F0;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 0.75rem; font-weight: 800; color: #2563EB;">BLOCO 1 · MANHÃ</span>
-            <span style="font-size: 0.72rem; color: #64748B; font-weight: 600;">09:30 às 10:15</span>
+            <span style="font-size: 0.75rem; font-weight: 800; color: #2563EB;">DIVISÃO DA CAMPANHA</span>
+            <span id="sim-blocks-badge" class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-size: 0.7rem; font-weight: 800;">3 Blocos</span>
           </div>
-          <div style="font-size: 1.5rem; font-weight: 900; color: #0F172A; margin: 0.35rem 0;">20 envios</div>
-          <span style="font-size: 0.75rem; color: #64748B;">Delay randômico: 15–40s (~12 min)</span>
+          <div id="sim-blocks-calc" style="font-size: 1.45rem; font-weight: 900; color: #0F172A; margin: 0.35rem 0;">3 lotes de 20</div>
+          <span id="sim-blocks-desc" style="font-size: 0.75rem; color: #64748B;">Total configurado: 60 envios</span>
         </div>
 
-        <!-- Intervalo e Atendimento -->
-        <div class="kpi-card" style="border-top: 3px solid #F59E0B; background: #FFFFFF; padding: 1.25rem; border-radius: 12px; border: 1px solid #E2E8F0;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 0.75rem; font-weight: 800; color: #D97706;">JANELA DE DESCANSO</span>
-            <span style="font-size: 0.72rem; color: #64748B; font-weight: 600;">Pausa de 90 min</span>
-          </div>
-          <div style="font-size: 1.5rem; font-weight: 900; color: #0F172A; margin: 0.35rem 0;">Atendimento</div>
-          <span style="font-size: 0.75rem; color: #64748B;">Espaço para responder quem interagir</span>
-        </div>
-
-        <!-- Bloco 2: Tarde -->
+        <!-- KPI 2: Tempo por Bloco -->
         <div class="kpi-card" style="border-top: 3px solid #10B981; background: #FFFFFF; padding: 1.25rem; border-radius: 12px; border: 1px solid #E2E8F0;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 0.75rem; font-weight: 800; color: #059669;">BLOCO 2 · TARDE</span>
-            <span style="font-size: 0.72rem; color: #64748B; font-weight: 600;">14:00 às 14:45</span>
+            <span style="font-size: 0.75rem; font-weight: 800; color: #059669;">TEMPO POR BLOCO</span>
+            <span class="pill-btn" style="background: #ECFDF5; color: #059669; font-size: 0.7rem; font-weight: 800;">Em Execução</span>
           </div>
-          <div style="font-size: 1.5rem; font-weight: 900; color: #0F172A; margin: 0.35rem 0;">20 envios</div>
-          <span style="font-size: 0.75rem; color: #64748B;">Variação Spintax (novo payload)</span>
+          <div id="sim-block-duration" style="font-size: 1.45rem; font-weight: 900; color: #0F172A; margin: 0.35rem 0;">~10 a 15 min</div>
+          <span id="sim-block-delay-desc" style="font-size: 0.75rem; color: #64748B;">Delay randômico: 15s a 45s</span>
         </div>
 
-        <!-- Bloco 3: Final da Tarde -->
+        <!-- KPI 3: Pausa de Descanso -->
+        <div class="kpi-card" style="border-top: 3px solid #F59E0B; background: #FFFFFF; padding: 1.25rem; border-radius: 12px; border: 1px solid #E2E8F0;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.75rem; font-weight: 800; color: #D97706;">INTERVALO DE DESCANSO</span>
+            <span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-size: 0.7rem; font-weight: 800;">Atendimento</span>
+          </div>
+          <div id="sim-cooling-calc" style="font-size: 1.45rem; font-weight: 900; color: #0F172A; margin: 0.35rem 0;">20 min de pausa</div>
+          <span style="font-size: 0.75rem; color: #64748B;">Espaço para dialogar com quem responder</span>
+        </div>
+
+        <!-- KPI 4: Estimativa Total & Índice de Segurança -->
         <div class="kpi-card" style="border-top: 3px solid #8B5CF6; background: #FFFFFF; padding: 1.25rem; border-radius: 12px; border: 1px solid #E2E8F0;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 0.75rem; font-weight: 800; color: #7C3AED;">BLOCO 3 · FINAL DO DIA</span>
-            <span style="font-size: 0.72rem; color: #64748B; font-weight: 600;">16:30 às 17:15</span>
+            <span style="font-size: 0.75rem; font-weight: 800; color: #7C3AED;">TEMPO TOTAL ESTIMADO</span>
+            <span id="sim-safety-badge" class="pill-btn" style="background: #DCFCE7; color: #15803D; font-size: 0.7rem; font-weight: 800;">🟢 Seguro</span>
           </div>
-          <div style="font-size: 1.5rem; font-weight: 900; color: #0F172A; margin: 0.35rem 0;">20 envios</div>
-          <span style="font-size: 0.75rem; color: #64748B;">Meta diária: 60 envios concluídos</span>
+          <div id="sim-total-time" style="font-size: 1.45rem; font-weight: 900; color: #0F172A; margin: 0.35rem 0;">~1h 20min</div>
+          <span style="font-size: 0.75rem; color: #64748B;">Diluição orgânica do tráfego</span>
         </div>
+
       </div>
 
       <!-- Configuração de Parâmetros & Editor Spintax -->
@@ -122,21 +122,21 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
         <!-- Coluna 1: Parâmetros de Disparo & Filtro da Fila -->
         <div class="main-panel-card" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.5rem;">
           <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.4rem;">
-            ⚙️ Configurações da Fila Anti-Ban
+            ⚙️ Parâmetros 100% Customizáveis
           </h3>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
             <div>
               <label style="display: block; font-size: 0.78rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
-                Total de Envios / Dia
+                Total de Envios Desejados
               </label>
-              <input type="number" id="input-daily-limit" class="topbar-search-input" style="width: 100%; background: #F8FAFC;" value="60" min="1" max="500">
+              <input type="number" id="input-daily-limit" class="topbar-search-input" style="width: 100%; background: #F8FAFC;" value="60" min="1" max="5000">
             </div>
             <div>
               <label style="display: block; font-size: 0.78rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
-                Tamanho do Bloco (Lote)
+                Mensagens por Bloco (Lote)
               </label>
-              <input type="number" id="input-batch-size" class="topbar-search-input" style="width: 100%; background: #F8FAFC;" value="20" min="1" max="100">
+              <input type="number" id="input-batch-size" class="topbar-search-input" style="width: 100%; background: #F8FAFC;" value="20" min="1" max="500">
             </div>
           </div>
 
@@ -146,9 +146,9 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
                 Delay Randômico (Segundos)
               </label>
               <div style="display: flex; align-items: center; gap: 0.4rem;">
-                <input type="number" id="input-min-delay" class="topbar-search-input" style="width: 50%; background: #F8FAFC;" value="15" min="5" max="120">
+                <input type="number" id="input-min-delay" class="topbar-search-input" style="width: 50%; background: #F8FAFC;" value="15" min="3" max="300">
                 <span style="color: #94A3B8;">a</span>
-                <input type="number" id="input-max-delay" class="topbar-search-input" style="width: 50%; background: #F8FAFC;" value="45" min="10" max="300">
+                <input type="number" id="input-max-delay" class="topbar-search-input" style="width: 50%; background: #F8FAFC;" value="45" min="5" max="600">
               </div>
             </div>
             <div>
@@ -156,6 +156,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
                 Simular "Digitando..."
               </label>
               <select id="select-typing-sim" class="form-control" style="background: #F8FAFC; padding: 0.55rem 0.75rem; font-size: 0.82rem;">
+                <option value="0">Desativado</option>
                 <option value="2">2 a 3 segundos (Rápido)</option>
                 <option value="3" selected>3 a 5 segundos (Orgânico)</option>
                 <option value="6">5 a 8 segundos (Mais Lento)</option>
@@ -165,11 +166,11 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
 
           <div style="margin-bottom: 1.25rem;">
             <label style="display: block; font-size: 0.78rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
-              Pausa entre Blocos de Envio
+              Duração da Pausa entre Blocos
             </label>
             <div style="display: flex; align-items: center; gap: 0.75rem;">
-              <input type="number" id="input-cooling-minutes" class="topbar-search-input" style="width: 100px; background: #F8FAFC;" value="90" min="1" max="300">
-              <span style="font-size: 0.8rem; color: #64748B;">minutos de descanso para atendimento</span>
+              <input type="number" id="input-cooling-minutes" class="topbar-search-input" style="width: 110px; background: #F8FAFC;" value="20" min="0" max="360">
+              <span style="font-size: 0.8rem; color: #64748B;">minutos de descanso para atendimento e segurança</span>
             </div>
           </div>
 
@@ -207,17 +208,25 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
 
         <!-- Coluna 2: Editor Spintax & Variação Anti-Hash -->
         <div class="main-panel-card" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
             <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.4rem;">
               💬 Mensagem com Spintax
             </h3>
-            <button id="btn-preview-spintax" class="btn-outline-white" style="font-size: 0.75rem; padding: 0.3rem 0.65rem; font-weight: 700;">
-              🎲 Gerar 3 Prévias
-            </button>
+            
+            <div style="display: flex; align-items: center; gap: 0.45rem;">
+              <select id="select-num-variations" style="padding: 0.25rem 0.5rem; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 0.75rem; font-weight: 700; background: #FFFFFF;">
+                <option value="3" selected>3 Variações</option>
+                <option value="5">5 Variações</option>
+                <option value="10">10 Variações</option>
+              </select>
+              <button id="btn-preview-spintax" class="btn-outline-white" style="font-size: 0.75rem; padding: 0.3rem 0.65rem; font-weight: 700;">
+                🎲 Gerar Prévias
+              </button>
+            </div>
           </div>
 
           <p style="font-size: 0.78rem; color: #64748B; margin: 0 0 0.75rem 0;">
-            Use chaves <code>{opção1|opção2}</code> para variar saudações e texto. Tags disponíveis: <code>{nome}</code>, <code>{primeiro_nome}</code>, <code>{cidade}</code>, <code>{bairro}</code>.
+            Use chaves <code>{opção1|opção2|opção3}</code> para variar frases. Tags: <code>{nome}</code>, <code>{primeiro_nome}</code>, <code>{cidade}</code>, <code>{bairro}</code>.
           </p>
 
           <textarea id="bulk-message-template" class="form-control" style="flex: 1; min-height: 140px; font-family: monospace; font-size: 0.85rem; line-height: 1.4; padding: 0.75rem; background: #FAFAFA; border: 1px solid #CBD5E1; resize: vertical;" placeholder="Digite o texto com Spintax...">${defaultTemplate}</textarea>
@@ -225,10 +234,10 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
           <!-- Prévias Dinâmicas de Spintax -->
           <div id="spintax-previews-container" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
             <div style="font-size: 0.75rem; font-weight: 800; color: #64748B; text-transform: uppercase;">
-              Exemplo de Variações que serão enviadas:
+              Exemplo de Variações Geradas (Anti-Hash):
             </div>
-            <div id="spintax-previews-list" style="display: flex; flex-direction: column; gap: 0.4rem;">
-              <!-- 3 Prévias automáticas -->
+            <div id="spintax-previews-list" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 200px; overflow-y: auto;">
+              <!-- Prévias geradas dinamicamente -->
             </div>
           </div>
         </div>
@@ -286,7 +295,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
           <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 1rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
               <span style="font-size: 0.8rem; font-weight: 800; color: #334155;">
-                TOTAL DISPARADO HOJE
+                TOTAL DISPARADO DA CAMPANHA
               </span>
               <strong id="daily-progress-num" style="font-size: 0.85rem; color: #0F172A;">0 / 60</strong>
             </div>
@@ -330,18 +339,77 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     </div>
   `;
 
+  // Atualiza em tempo real as estimativas matemáticas da campanha conforme o usuário digita
+  function updateRealtimeSimulations() {
+    totalDailyLimit = parseInt(container.querySelector('#input-daily-limit')?.value, 10) || 60;
+    batchSize = parseInt(container.querySelector('#input-batch-size')?.value, 10) || 20;
+    minDelaySec = parseInt(container.querySelector('#input-min-delay')?.value, 10) || 15;
+    maxDelaySec = parseInt(container.querySelector('#input-max-delay')?.value, 10) || 45;
+    coolingMinutes = parseInt(container.querySelector('#input-cooling-minutes')?.value, 10) || 20;
+    typingSec = parseInt(container.querySelector('#select-typing-sim')?.value, 10) || 3;
+
+    const totalBlocks = Math.max(1, Math.ceil(totalDailyLimit / batchSize));
+    const avgDelay = (minDelaySec + maxDelaySec) / 2;
+    const blockDurationMinutes = Math.round((batchSize * (avgDelay + typingSec)) / 60);
+    const totalWorkingMinutes = (totalBlocks * blockDurationMinutes) + ((totalBlocks - 1) * coolingMinutes);
+
+    const hours = Math.floor(totalWorkingMinutes / 60);
+    const minutes = totalWorkingMinutes % 60;
+    const totalFormatted = hours > 0 ? `~${hours}h ${minutes}min` : `~${minutes}min`;
+
+    // Atualiza cards superiores
+    const simBlocksBadge = container.querySelector('#sim-blocks-badge');
+    const simBlocksCalc = container.querySelector('#sim-blocks-calc');
+    const simBlocksDesc = container.querySelector('#sim-blocks-desc');
+    const simBlockDuration = container.querySelector('#sim-block-duration');
+    const simBlockDelayDesc = container.querySelector('#sim-block-delay-desc');
+    const simCoolingCalc = container.querySelector('#sim-cooling-calc');
+    const simTotalTime = container.querySelector('#sim-total-time');
+    const simSafetyBadge = container.querySelector('#sim-safety-badge');
+
+    if (simBlocksBadge) simBlocksBadge.textContent = `${totalBlocks} Bloco(s)`;
+    if (simBlocksCalc) simBlocksCalc.textContent = `${totalBlocks} lote(s) de ${batchSize}`;
+    if (simBlocksDesc) simBlocksDesc.textContent = `Total configurado: ${totalDailyLimit} envios`;
+
+    if (simBlockDuration) simBlockDuration.textContent = `~${blockDurationMinutes} min / bloco`;
+    if (simBlockDelayDesc) simBlockDelayDesc.textContent = `Delay: ${minDelaySec}s a ${maxDelaySec}s (+${typingSec}s digitação)`;
+
+    if (simCoolingCalc) simCoolingCalc.textContent = `${coolingMinutes} min de pausa`;
+
+    if (simTotalTime) simTotalTime.textContent = totalFormatted;
+
+    // Índice de Risco Anti-Ban
+    if (simSafetyBadge) {
+      if (minDelaySec < 8 || totalDailyLimit > 300) {
+        simSafetyBadge.textContent = '🔴 Alto Risco';
+        simSafetyBadge.style.background = '#FEE2E2';
+        simSafetyBadge.style.color = '#DC2626';
+      } else if (minDelaySec < 15 || coolingMinutes < 10) {
+        simSafetyBadge.textContent = '🟡 Moderado';
+        simSafetyBadge.style.background = '#FEF3C7';
+        simSafetyBadge.style.color = '#B45309';
+      } else {
+        simSafetyBadge.textContent = '🟢 Seguro';
+        simSafetyBadge.style.background = '#DCFCE7';
+        simSafetyBadge.style.color = '#15803D';
+      }
+    }
+  }
+
   function renderSpintaxPreviews() {
     const raw = container.querySelector('#bulk-message-template')?.value || defaultTemplate;
     const listEl = container.querySelector('#spintax-previews-list');
+    numPreviewVariations = parseInt(container.querySelector('#select-num-variations')?.value, 10) || 3;
     if (!listEl) return;
 
-    const sampleNames = ['Mariana Moura', 'Carlos Eduardo', 'Fernanda Lima'];
-    const sampleCities = ['Niterói', 'São Gonçalo', 'Rio de Janeiro'];
+    const sampleNames = ['Mariana Moura', 'Carlos Eduardo', 'Fernanda Lima', 'Rodrigo Silva', 'Juliana Costa', 'Paulo Cezar', 'Renata Souza', 'Felipe Santos', 'Beatriz Alves', 'Lucas Rocha'];
+    const sampleCities = ['Niterói', 'São Gonçalo', 'Rio de Janeiro', 'Maricá', 'Itaboraí', 'Nova Iguaçu', 'Duque de Caxias', 'Petrópolis', 'Campos', 'Belford Roxo'];
 
-    listEl.innerHTML = [1, 2, 3].map(i => {
-      const name = sampleNames[i - 1];
+    listEl.innerHTML = Array.from({ length: numPreviewVariations }, (_, index) => {
+      const i = index + 1;
+      const name = sampleNames[index % sampleNames.length];
       const firstName = name.split(' ')[0];
-      const city = sampleCities[i - 1];
+      const city = sampleCities[index % sampleCities.length];
 
       let rendered = resolveSpintax(raw);
       rendered = rendered.replace(/\{primeiro_nome\}|\{primeironome\}|\{first_name\}/gi, firstName);
@@ -351,12 +419,11 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
 
       return `
         <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 6px; padding: 0.6rem 0.75rem; font-size: 0.8rem; color: #166534; line-height: 1.35; white-space: pre-wrap;">
-          <strong>Variação ${i} (para ${firstName}):</strong>\n${rendered}
+          <strong>Variação #${i} (para ${firstName}):</strong>\n${rendered}
         </div>
       `;
     }).join('');
   }
-  renderSpintaxPreviews();
 
   function updateQueuePreview() {
     let pendingContacts = allContacts.filter(c => c.status === 'pending');
@@ -471,20 +538,25 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
 
     // Verifica limite diário atingido
     if (totalSentToday >= totalDailyLimit) {
-      appendLog(`🎉 Meta diária de ${totalDailyLimit} envios concluída com sucesso! Fila finalizada.`, 'success');
-      showToast('Meta diária de disparos em massa concluída!', 'success');
+      appendLog(`🎉 Meta de ${totalDailyLimit} envios concluída com sucesso! Fila finalizada.`, 'success');
+      showToast('Disparos em massa concluídos com sucesso!', 'success');
       stopQueue();
       return;
     }
 
     // Verifica fim de bloco (cooling period de descanso)
     if (sentInCurrentBatch >= batchSize) {
-      appendLog(`☕ Bloco ${currentBatchIndex} finalizado (${batchSize} envios). Iniciando pausa de descanso de ${coolingMinutes} minutos para o chip e atendimento...`, 'warning');
+      appendLog(`☕ Bloco ${currentBatchIndex} finalizado (${batchSize} envios). Pausa de ${coolingMinutes} minutos para o chip e atendimento...`, 'warning');
       
       const coolingSec = coolingMinutes * 60;
       currentBatchIndex++;
       sentInCurrentBatch = 0;
       updateProgressUI();
+
+      if (coolingSec <= 0) {
+        processNextInQueue();
+        return;
+      }
 
       startCountdown(
         coolingSec,
@@ -510,7 +582,6 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     currentContactIndex++;
 
     const templateRaw = container.querySelector('#bulk-message-template')?.value || defaultTemplate;
-    const cleanFirstName = (contact.name || 'Prezado(a)').split(' ')[0];
 
     // 1. Simula digitando (Composing)
     const typingTime = typingSec * 1000;
@@ -519,10 +590,12 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     const subEl = container.querySelector('#antiban-status-sub');
     const spinner = container.querySelector('#antiban-spinner');
     
-    if (banner) banner.style.display = 'flex';
-    if (titleEl) titleEl.textContent = `✍️ Simulando Digitação para ${contact.name}...`;
-    if (subEl) subEl.textContent = `Presença "composing" ativa na Evolution API (${typingSec}s)`;
-    if (spinner) spinner.textContent = '✍️';
+    if (typingSec > 0) {
+      if (banner) banner.style.display = 'flex';
+      if (titleEl) titleEl.textContent = `✍️ Simulando Digitação para ${contact.name}...`;
+      if (subEl) subEl.textContent = `Presença "composing" ativa na Evolution API (${typingSec}s)`;
+      if (spinner) spinner.textContent = '✍️';
+    }
 
     setTimeout(async () => {
       if (!isRunning || isPaused) return;
@@ -548,7 +621,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
 
         appendLog(`✓ Mensagem enviada para ${contact.name} (${contact.phone}) via Evolution API. [Bloco ${currentBatchIndex}: ${sentInCurrentBatch}/${batchSize}]`, 'success');
 
-        // 3. Delay Randômico Humano (15 a 45 segundos)
+        // 3. Delay Randômico Humano
         const randomDelay = Math.floor(Math.random() * (maxDelaySec - minDelaySec + 1)) + minDelaySec;
         startCountdown(
           randomDelay,
@@ -572,7 +645,6 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
           return;
         }
 
-        // Delay breve antes de tentar o próximo
         setTimeout(() => {
           processNextInQueue();
         }, 5000);
@@ -592,7 +664,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     minDelaySec = parseInt(container.querySelector('#input-min-delay')?.value, 10) || 15;
     maxDelaySec = parseInt(container.querySelector('#input-max-delay')?.value, 10) || 45;
     typingSec = parseInt(container.querySelector('#select-typing-sim')?.value, 10) || 3;
-    coolingMinutes = parseInt(container.querySelector('#input-cooling-minutes')?.value, 10) || 90;
+    coolingMinutes = parseInt(container.querySelector('#input-cooling-minutes')?.value, 10) || 20;
 
     isRunning = true;
     isPaused = false;
@@ -642,7 +714,13 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     container.querySelector('#queue-live-status-text').textContent = 'Pronto para iniciar. Fila em repouso.';
   }
 
-  // Event Listeners
+  // Event Listeners de Atualização Dinâmica em Tempo Real
+  ['#input-daily-limit', '#input-batch-size', '#input-min-delay', '#input-max-delay', '#input-cooling-minutes', '#select-typing-sim'].forEach(id => {
+    container.querySelector(id)?.addEventListener('input', updateRealtimeSimulations);
+    container.querySelector(id)?.addEventListener('change', updateRealtimeSimulations);
+  });
+
+  container.querySelector('#select-num-variations')?.addEventListener('change', renderSpintaxPreviews);
   container.querySelector('#btn-preview-spintax')?.addEventListener('click', renderSpintaxPreviews);
   container.querySelector('#bulk-message-template')?.addEventListener('input', renderSpintaxPreviews);
 
@@ -685,6 +763,10 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     allUsers = users;
     populateDropdowns();
   });
+
+  // Inicializa cálculo e prévias
+  updateRealtimeSimulations();
+  renderSpintaxPreviews();
 
   return () => {
     if (activeCountdownInterval) clearInterval(activeCountdownInterval);
