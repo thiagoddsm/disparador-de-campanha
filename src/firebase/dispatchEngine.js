@@ -61,13 +61,13 @@ export const WaMeStrategy = {
  */
 export const EvolutionStrategy = {
   name: 'evolution_api',
-  async execute({ contact, user, formattedPhone, personalizedMessage, messageId }) {
+  async execute({ contact, user, formattedPhone, personalizedMessage, messageId, overrideInstanceName }) {
     const activeStored = typeof localStorage !== 'undefined' ? localStorage.getItem('evolution_active_instance') : null;
     const hierarchicalName = (user?.team_name && user?.role && user?.name)
       ? `${user.team_name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${user.role}_${user.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
       : null;
       
-    const userInstance = user?.whatsapp?.instanceName || activeStored || hierarchicalName || 'instancia_operador';
+    const userInstance = overrideInstanceName || user?.whatsapp?.instanceName || user?.whatsapp_instance || activeStored || hierarchicalName || 'instancia_operador';
 
     const result = await sendEvolutionTextMessage({
       instanceName: userInstance,
@@ -101,7 +101,8 @@ export async function executeDispatch({
   user,
   strategy = 'wa.me',
   templateId = 'default',
-  templateBody = null
+  templateBody = null,
+  overrideInstanceName = null
 }) {
   const userId = user?.uid || 'guest_user';
   const teamId = user?.team_id || 'team_alpha';
@@ -204,7 +205,8 @@ export async function executeDispatch({
       user,
       formattedPhone,
       personalizedMessage,
-      messageId
+      messageId,
+      overrideInstanceName
     });
 
     try {

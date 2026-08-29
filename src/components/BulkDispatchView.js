@@ -53,6 +53,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
 
   let selectedTeamFilter = 'all';
   let selectedLeaderFilter = 'all';
+  let selectedSenderInstance = 'auto';
 
   // Configurações Anti-Ban 100% Personalizáveis
   let totalDailyLimit = 60;
@@ -217,9 +218,27 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
 
           <hr style="border: 0; border-top: 1px solid #E2E8F0; margin: 1.25rem 0;">
 
+          <!-- Seleção do Chip Remetente (Exclusivo Admin Master / Gestor) -->
+          <div style="margin-bottom: 1.15rem; background: #F0FDF4; border: 1.5px solid #86EFAC; border-radius: 12px; padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              <label style="display: block; font-size: 0.8rem; font-weight: 800; color: #15803D;">
+                📱 Chip / Instância de Disparo (Remetente)
+              </label>
+              <span id="bulk-sender-status-badge" class="pill-btn" style="background: #DCFCE7; color: #15803D; font-size: 0.72rem; font-weight: 800;">
+                🟢 Chip Conectado
+              </span>
+            </div>
+            <select id="bulk-sender-instance-select" class="form-control" style="width: 100%; background: #FFFFFF; border: 1px solid #86EFAC; padding: 0.6rem 0.85rem; font-size: 0.85rem; font-weight: 700; color: #0F172A; outline: none; border-radius: 8px;">
+              <option value="auto">⭐ Minha Própria Instância (${currentUser.name || 'Admin Master'})</option>
+            </select>
+            <div style="font-size: 0.75rem; color: #166534; margin-top: 5px; line-height: 1.3;">
+              💡 <strong>Controle Master:</strong> Escolha por qual chip de WhatsApp conectado a campanha será disparada.
+            </div>
+          </div>
+
           <!-- Seleção da Base de Destinatários -->
           <h4 style="font-size: 0.9rem; font-weight: 800; color: var(--text-main); margin: 0 0 0.75rem 0;">
-            🎯 Seleção da Base de Contatos
+            🎯 Seleção da Base de Contatos (Destinatários)
           </h4>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
@@ -593,6 +612,46 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
   function populateDropdowns() {
     const teamSel = container.querySelector('#bulk-team-select');
     const leaderSel = container.querySelector('#bulk-leader-select');
+    const senderSel = container.querySelector('#bulk-sender-instance-select');
+    const senderBadge = container.querySelector('#bulk-sender-status-badge');
+
+    if (senderSel) {
+      const myIsConnected = currentUser?.whatsapp?.status === 'CONNECTED' || currentUser?.whatsapp_connected === true;
+      const myInstanceName = currentUser?.whatsapp?.instanceName || currentUser?.whatsapp_instance || localStorage.getItem('evolution_active_instance') || 'minha_instancia';
+
+      let senderOptions = `
+        <option value="auto" ${selectedSenderInstance === 'auto' ? 'selected' : ''}>
+          ⭐ Minha Própria Instância (${currentUser.name || 'Admin'} · ${myIsConnected ? '🟢 Online' : '⚪ Padrão'})
+        </option>
+      `;
+
+      const usersWithWhatsapp = allUsers.filter(u => u && u.uid !== currentUser.uid && (u.whatsapp?.instanceName || u.whatsapp_instance || u.whatsapp_connected));
+      usersWithWhatsapp.forEach(u => {
+        const inst = u.whatsapp?.instanceName || u.whatsapp_instance;
+        const isOnline = u.whatsapp?.status === 'CONNECTED' || u.whatsapp_connected === true;
+        senderOptions += `
+          <option value="${inst}" ${selectedSenderInstance === inst ? 'selected' : ''}>
+            👤 ${u.name || u.email} (${inst || 'instância'} · ${isOnline ? '🟢 Online' : '🔴 Offline'})
+          </option>
+        `;
+      });
+
+      senderSel.innerHTML = senderOptions;
+
+      if (senderBadge) {
+        if (selectedSenderInstance === 'auto') {
+          senderBadge.textContent = myIsConnected ? '🟢 Chip Conectado' : '⚪ Chip Padrão';
+          senderBadge.style.background = myIsConnected ? '#DCFCE7' : '#F1F5F9';
+          senderBadge.style.color = myIsConnected ? '#15803D' : '#475569';
+        } else {
+          const selectedUser = allUsers.find(u => (u.whatsapp?.instanceName === selectedSenderInstance) || (u.whatsapp_instance === selectedSenderInstance));
+          const isOnline = selectedUser?.whatsapp?.status === 'CONNECTED' || selectedUser?.whatsapp_connected === true;
+          senderBadge.textContent = isOnline ? '🟢 Chip Conectado' : '🔴 Chip Offline';
+          senderBadge.style.background = isOnline ? '#DCFCE7' : '#FEE2E2';
+          senderBadge.style.color = isOnline ? '#15803D' : '#DC2626';
+        }
+      }
+    }
 
     if (teamSel) {
       teamSel.innerHTML = `
@@ -761,6 +820,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
 
       try {
         // 2. Executa disparo com transação atômica e Spintax
+        const activeSenderInst = selectedSenderInstance !== 'auto' ? selectedSenderInstance : null;
         await executeDispatch({
           contactId: contactId,
           contactName: contactName,
@@ -770,7 +830,8 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
           contactPhone: contactPhone,
           user: currentUser,
           strategy: 'evolution_api',
-          templateBody: selectedVersion
+          templateBody: selectedVersion,
+          overrideInstanceName: activeSenderInst
         });
 
         consecutiveErrors = 0;
@@ -778,7 +839,8 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
         totalSentToday++;
         updateProgressUI();
 
-        appendLog(`✓ Mensagem enviada para ${contactName} (${contactPhone}) via Evolution API. [Bloco ${currentBatchIndex}: ${sentInCurrentBatch}/${batchSize}]`, 'success');
+        const chipLabel = activeSenderInst ? `chip [${activeSenderInst}]` : 'chip padrão';
+        appendLog(`✓ Mensagem enviada para ${contactName} (${contactPhone}) via ${chipLabel}. [Bloco ${currentBatchIndex}: ${sentInCurrentBatch}/${batchSize}]`, 'success');
 
         // 3. Delay Randômico Humano
         const randomDelay = Math.floor(Math.random() * (maxDelaySec - minDelaySec + 1)) + minDelaySec;
@@ -897,6 +959,25 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
 
   container.querySelector('#select-num-variations')?.addEventListener('change', generateAndRenderVersions);
   container.querySelector('#bulk-message-template')?.addEventListener('input', generateAndRenderVersions);
+
+  container.querySelector('#bulk-sender-instance-select')?.addEventListener('change', (e) => {
+    selectedSenderInstance = e.target.value;
+    const senderBadge = container.querySelector('#bulk-sender-status-badge');
+    if (senderBadge) {
+      if (selectedSenderInstance === 'auto') {
+        const myIsConnected = currentUser?.whatsapp?.status === 'CONNECTED' || currentUser?.whatsapp_connected === true;
+        senderBadge.textContent = myIsConnected ? '🟢 Chip Conectado' : '⚪ Chip Padrão';
+        senderBadge.style.background = myIsConnected ? '#DCFCE7' : '#F1F5F9';
+        senderBadge.style.color = myIsConnected ? '#15803D' : '#475569';
+      } else {
+        const selectedUser = allUsers.find(u => (u.whatsapp?.instanceName === selectedSenderInstance) || (u.whatsapp_instance === selectedSenderInstance));
+        const isOnline = selectedUser?.whatsapp?.status === 'CONNECTED' || selectedUser?.whatsapp_connected === true;
+        senderBadge.textContent = isOnline ? '🟢 Chip Conectado' : '🔴 Chip Offline';
+        senderBadge.style.background = isOnline ? '#DCFCE7' : '#FEE2E2';
+        senderBadge.style.color = isOnline ? '#15803D' : '#DC2626';
+      }
+    }
+  });
 
   container.querySelector('#bulk-team-select')?.addEventListener('change', (e) => {
     selectedTeamFilter = e.target.value;
