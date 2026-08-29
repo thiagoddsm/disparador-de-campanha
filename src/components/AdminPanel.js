@@ -219,6 +219,33 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
         </div>
       </div>
     </div>
+
+    <!-- Modal Detalhes do Alerta Operacional -->
+    <div id="modal-alert-details" class="modal-overlay" style="display: none;">
+      <div class="modal-content" style="max-width: 680px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <span id="modal-alert-icon" style="font-size: 1.4rem;">🔔</span>
+            <div>
+              <h3 id="modal-alert-title" style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin: 0;">Detalhes do Alerta</h3>
+              <p id="modal-alert-sub" style="font-size: 0.78rem; color: var(--text-muted); margin: 2px 0 0 0;">Lista de líderes identificados neste alerta operacional.</p>
+            </div>
+          </div>
+          <button id="btn-close-alert-modal" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);">✕</button>
+        </div>
+        
+        <div style="padding: 1rem 1.5rem; overflow-y: auto; flex: 1;">
+          <div id="modal-alert-list" style="display: flex; flex-direction: column; gap: 0.6rem;">
+            <!-- Itens carregados dinamicamente -->
+          </div>
+        </div>
+
+        <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); background: #F8FAFC; display: flex; justify-content: space-between; align-items: center;">
+          <span id="modal-alert-footer-count" style="font-size: 0.8rem; font-weight: 700; color: #64748B;">0 líderes listados</span>
+          <button id="btn-alert-modal-close-action" class="btn-outline-white" style="font-size: 0.82rem; padding: 0.4rem 1rem;">Fechar</button>
+        </div>
+      </div>
+    </div>
   `;
 
   function updateKpis() {
@@ -286,15 +313,18 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
                   <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main);">Alertas Operacionais da Rede</h3>
                 </div>
                 <span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-weight: 700; font-size: 0.75rem;">
-                  ${alerts.length} alerta(s) de atenção
+                  ${alerts.length} alerta(s) de atenção · Clique para ver lista
                 </span>
               </div>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.85rem;">
                 ${alerts.map(a => `
-                  <div style="background: ${a.type === 'danger' ? '#FEF2F2' : a.type === 'warning' ? '#FFFBEB' : a.type === 'success' ? '#F0FDF4' : '#EFF6FF'}; border: 1px solid ${a.type === 'danger' ? '#FECACA' : a.type === 'warning' ? '#FDE68A' : a.type === 'success' ? '#BBF7D0' : '#BFDBFE'}; border-radius: var(--radius-md); padding: 0.85rem 1rem; display: flex; align-items: flex-start; gap: 0.75rem;">
+                  <div class="clickable-alert-card" data-alert-id="${a.id}" style="background: ${a.type === 'danger' ? '#FEF2F2' : a.type === 'warning' ? '#FFFBEB' : a.type === 'success' ? '#F0FDF4' : '#EFF6FF'}; border: 1px solid ${a.type === 'danger' ? '#FECACA' : a.type === 'warning' ? '#FDE68A' : a.type === 'success' ? '#BBF7D0' : '#BFDBFE'}; border-radius: var(--radius-md); padding: 0.85rem 1rem; display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; transition: all 0.15s ease;" title="Clique para ver os líderes deste alerta">
                     <span style="font-size: 1.3rem; line-height: 1;">${a.icon}</span>
                     <div style="flex: 1; min-width: 0;">
-                      <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">${a.title}</div>
+                      <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>${a.title}</span>
+                        <span style="font-size: 0.72rem; color: #2563EB; font-weight: 700;">Ver lista ›</span>
+                      </div>
                       <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.3;">${a.message}</div>
                     </div>
                   </div>
@@ -476,6 +506,15 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
         btn.addEventListener('click', () => {
           const teamId = btn.getAttribute('data-team-id');
           onNavigate('manager', teamId);
+        });
+      });
+
+      // Clique nos Cards de Alerta para detalhamento
+      contentEl.querySelectorAll('.clickable-alert-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const alertId = card.getAttribute('data-alert-id');
+          const targetAlert = alerts.find(a => a.id === alertId);
+          if (targetAlert) openAlertDetailsModal(targetAlert);
         });
       });
 
@@ -959,6 +998,78 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
       }
     });
   });
+
+  // Modal Detalhes do Alerta Operacional
+  const alertModal = container.querySelector('#modal-alert-details');
+  container.querySelector('#btn-close-alert-modal')?.addEventListener('click', () => { alertModal.style.display = 'none'; });
+  container.querySelector('#btn-alert-modal-close-action')?.addEventListener('click', () => { alertModal.style.display = 'none'; });
+
+  function openAlertDetailsModal(alertObj) {
+    const iconEl = container.querySelector('#modal-alert-icon');
+    const titleEl = container.querySelector('#modal-alert-title');
+    const subEl = container.querySelector('#modal-alert-sub');
+    const listEl = container.querySelector('#modal-alert-list');
+    const footerCount = container.querySelector('#modal-alert-footer-count');
+
+    if (!alertModal) return;
+
+    if (iconEl) iconEl.textContent = alertObj.icon || '🔔';
+    if (titleEl) titleEl.textContent = alertObj.title || 'Alerta Operacional';
+    if (subEl) subEl.textContent = alertObj.message || '';
+
+    const items = alertObj.items || [];
+    if (footerCount) footerCount.textContent = `${items.length} líder(es) nesta condição`;
+
+    if (items.length === 0) {
+      listEl.innerHTML = '<div style="text-align: center; color: #94A3B8; padding: 2rem;">Nenhum líder específico detalhado neste alerta.</div>';
+    } else {
+      listEl.innerHTML = items.map(l => `
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <div style="min-width: 180px;">
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <strong style="color: #0F172A; font-size: 0.9rem;">${l.name || 'Sem nome'}</strong>
+              <span class="pill-btn" style="background: #F1F5F9; color: #475569; font-size: 0.7rem; font-weight: 700;">
+                👥 ${l.team_name || 'Sem Equipe'}
+              </span>
+            </div>
+            <div style="font-size: 0.75rem; color: #64748B; margin-top: 2px;">${l.email || 'Sem e-mail'}</div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 1.25rem;">
+            <div style="text-align: center;">
+              <div style="font-size: 0.7rem; font-weight: 700; color: #64748B; text-transform: uppercase;">CARTEIRA</div>
+              <div style="font-size: 0.88rem; font-weight: 800; color: #0F172A;">${l.totalContacts} contatos</div>
+            </div>
+
+            <div style="text-align: center;">
+              <div style="font-size: 0.7rem; font-weight: 700; color: #64748B; text-transform: uppercase;">ENVIADOS</div>
+              <div style="font-size: 0.88rem; font-weight: 800; color: ${l.abordados > 0 ? '#15803D' : '#DC2626'};">${l.abordados} (${l.pctFormatted || (l.pct + '%')})</div>
+            </div>
+
+            <div style="text-align: center;">
+              <div style="font-size: 0.7rem; font-weight: 700; color: #64748B; text-transform: uppercase;">WHATSAPP</div>
+              <span class="pill-btn" style="background: ${l.isConnected ? '#DCFCE7' : '#FEE2E2'}; color: ${l.isConnected ? '#15803D' : '#DC2626'}; font-size: 0.72rem; font-weight: 700;">
+                ${l.isConnected ? '🟢 Online' : '🔴 Offline'}
+              </span>
+            </div>
+
+            <button class="btn-goto-leader-contacts btn-outline-white" data-uid="${l.uid}" style="font-size: 0.75rem; padding: 0.35rem 0.65rem; font-weight: 700;" title="Ver contatos deste líder">
+              🎯 Ver Contatos
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      listEl.querySelectorAll('.btn-goto-leader-contacts').forEach(btn => {
+        btn.addEventListener('click', () => {
+          alertModal.style.display = 'none';
+          if (onNavigate) onNavigate('contacts');
+        });
+      });
+    }
+
+    alertModal.style.display = 'flex';
+  }
 
   // Subscriptions
   const unsubUsers = subscribeToAllUsers((users) => {
