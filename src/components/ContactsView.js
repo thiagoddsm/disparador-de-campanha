@@ -18,11 +18,13 @@ export function renderContactsView(container, currentUser, onNavigate) {
   let allUsers = [];
   let teamMembers = [];
   
-  let selectedTeamId = 'all'; // 'all' | 'mine' | '<team_id>'
-  let selectedMemberUid = 'all'; // 'all' | '<uid>'
+  let selectedCoordinatorUid = 'all'; // 'all' | 'mine' | '<coordinator_uid>'
+  let selectedLeaderUid = 'all'; // 'all' | '<leader_uid>'
   let statusFilter = 'all'; // 'all' | 'confirmed' | 'opened' | 'pending'
   let locationFilter = '';
   let searchQuery = '';
+  let currentPage = 1;
+  let pageSize = 50;
 
   const isMember = currentUser?.role === 'member';
   const isAdmin = currentUser?.role === 'admin';
@@ -109,7 +111,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
       </div>
     `;
   } else {
-    // LAYOUT GERENCIAL DESKTOP CORRESPONDENTE À REFERÊNCIA VISUAL
+    // LAYOUT GERENCIAL DESKTOP CORRESPONDENTE À REFERÊNCIA VISUAL E ESCALÁVEL
     container.innerHTML = `
       <div class="page-content" style="max-width: 1300px; padding: 1.5rem;">
         
@@ -152,8 +154,10 @@ export function renderContactsView(container, currentUser, onNavigate) {
           <span style="color: #94A3B8; display: inline-flex; align-items: center; gap: 0.3rem;">👤 Membros</span>
         </div>
 
-        <!-- Barra de Filtros com Pills em Destaque & Dropdown de Coordenadores -->
+        <!-- Barra de Filtros com Pills em Destaque & Dropdowns em Cascata -->
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+          
+          <!-- Pills de Visão Rápida -->
           <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
             
             <!-- Pill Minha Base -->
@@ -180,15 +184,43 @@ export function renderContactsView(container, currentUser, onNavigate) {
 
           </div>
 
-          <!-- Dropdown Filtrar por Coordenador/Líder -->
-          <div style="min-width: 280px; flex: 1; max-width: 380px;">
-            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748B; margin-bottom: 0.25rem;">
-              Filtrar por Coordenador/Líder
-            </label>
-            <select id="filter-team-select" class="form-control" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border: 1px solid #CBD5E1; font-weight: 600; outline: none;">
-              <option value="all">Todos os Coordenadores</option>
-              <option value="mine">Minha Base Pessoal</option>
-            </select>
+          <!-- Filtros em Cascata: Coordenador & Líder -->
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; flex: 1; justify-content: flex-end;">
+            
+            <!-- Dropdown Filtrar por Coordenador -->
+            <div style="min-width: 220px; flex: 1; max-width: 280px;">
+              <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748B; margin-bottom: 0.25rem;">
+                Filtrar por Coordenador
+              </label>
+              <select id="filter-coordinator-select" class="form-control" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border: 1px solid #CBD5E1; font-weight: 600; outline: none;">
+                <option value="all">Todos os Coordenadores</option>
+                <option value="mine">Minha Base Pessoal</option>
+              </select>
+            </div>
+
+            <!-- Dropdown Filtrar por Líder / Operador -->
+            <div style="min-width: 220px; flex: 1; max-width: 280px;">
+              <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748B; margin-bottom: 0.25rem;">
+                Filtrar por Líder
+              </label>
+              <select id="filter-leader-select" class="form-control" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border: 1px solid #CBD5E1; font-weight: 600; outline: none;">
+                <option value="all">Todos os Líderes</option>
+              </select>
+            </div>
+
+            <!-- Dropdown Filtrar por Status -->
+            <div style="min-width: 160px; max-width: 200px;">
+              <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748B; margin-bottom: 0.25rem;">
+                Status
+              </label>
+              <select id="filter-status-select" class="form-control" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border: 1px solid #CBD5E1; font-weight: 600; outline: none;">
+                <option value="all">Todos os Status</option>
+                <option value="pending">⏳ Pendente</option>
+                <option value="confirmed">✓ Confirmado</option>
+                <option value="opened">📱 Aberto (WA)</option>
+              </select>
+            </div>
+
           </div>
         </div>
 
@@ -257,6 +289,34 @@ export function renderContactsView(container, currentUser, onNavigate) {
                 <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 3rem;">Carregando contatos...</td></tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- Rodapé de Paginação Otimizado para Grandes Bases -->
+          <div id="contacts-pagination-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1.25rem; border-top: 1px solid #E2E8F0; background: #F8FAFC; flex-wrap: wrap; gap: 0.75rem; font-size: 0.82rem;">
+            <div id="contacts-pagination-info" style="color: #64748B; font-weight: 600;">
+              Mostrando 0 de 0 contatos
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <select id="contacts-page-size-select" style="padding: 0.35rem 0.65rem; border-radius: 6px; border: 1px solid #CBD5E1; background: #FFFFFF; font-size: 0.8rem; font-weight: 600; color: #334155;">
+                <option value="50" selected>50 por página</option>
+                <option value="100">100 por página</option>
+                <option value="200">200 por página</option>
+                <option value="500">500 por página</option>
+              </select>
+
+              <div style="display: flex; gap: 0.35rem; align-items: center;">
+                <button id="btn-prev-page" class="btn-outline-white" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 700; border-radius: 6px;" disabled>
+                  ‹ Anterior
+                </button>
+                <span id="contacts-page-indicator" style="font-weight: 700; color: #1E293B; min-width: 80px; text-align: center;">
+                  Pág. 1 / 1
+                </span>
+                <button id="btn-next-page" class="btn-outline-white" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; font-weight: 700; border-radius: 6px;" disabled>
+                  Próxima ›
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -331,9 +391,9 @@ export function renderContactsView(container, currentUser, onNavigate) {
   `;
   container.insertAdjacentHTML('beforeend', reassignModalHtml);
 
-  // Popula os Selects de Equipe e Coordenador
-  function populateTeamDropdown() {
-    const teamSel = container.querySelector('#filter-team-select');
+  // Popula os Selects de Coordenadores e Líderes em Cascata
+  function populateCoordinatorDropdown() {
+    const coordSel = container.querySelector('#filter-coordinator-select');
     const pillMineCount = container.querySelector('#pill-mine-count');
     const pillAllCount = container.querySelector('#pill-all-count');
 
@@ -341,21 +401,47 @@ export function renderContactsView(container, currentUser, onNavigate) {
     if (pillMineCount) pillMineCount.textContent = myTotalCount;
     if (pillAllCount) pillAllCount.textContent = allContacts.length;
 
-    if (!teamSel) return;
+    if (!coordSel) return;
 
     let options = '<option value="all">Todos os Coordenadores</option>';
-    options += `<option value="mine" ${selectedTeamId === 'mine' ? 'selected' : ''}>⭐ Minha Base (${myTotalCount})</option>`;
+    options += `<option value="mine" ${selectedCoordinatorUid === 'mine' ? 'selected' : ''}>⭐ Minha Base (${myTotalCount})</option>`;
 
     if (isAdmin) {
       allTeams.forEach(t => {
         const teamContactsCount = allContacts.filter(c => c.team_id === t.id || c.team_name === t.name).length;
-        options += `<option value="${t.id}" ${selectedTeamId === t.id ? 'selected' : ''}>👥 ${t.name} (${t.coordinator_name || 'Coordenador'})</option>`;
+        options += `<option value="${t.id}" ${selectedCoordinatorUid === t.id ? 'selected' : ''}>👔 ${t.coordinator_name || 'Coordenador'} (${t.name} · ${teamContactsCount})</option>`;
       });
     } else if (isCoordinator) {
-      options += `<option value="${currentUser.team_id}" ${selectedTeamId === currentUser.team_id ? 'selected' : ''}>👥 ${currentUser.team_name || 'Minha Equipe'}</option>`;
+      options += `<option value="${currentUser.team_id}" ${selectedCoordinatorUid === currentUser.team_id ? 'selected' : ''}>👥 ${currentUser.team_name || 'Minha Equipe'}</option>`;
     }
 
-    teamSel.innerHTML = options;
+    coordSel.innerHTML = options;
+    populateLeaderDropdown();
+  }
+
+  function populateLeaderDropdown() {
+    const leaderSel = container.querySelector('#filter-leader-select');
+    if (!leaderSel) return;
+
+    let availableUsers = allUsers.filter(u => u.role === 'member' || !u.role);
+    if (selectedCoordinatorUid === 'mine') {
+      availableUsers = allUsers.filter(u => u.uid === currentUser.uid);
+    } else if (selectedCoordinatorUid !== 'all') {
+      const team = allTeams.find(t => t.id === selectedCoordinatorUid);
+      availableUsers = allUsers.filter(u => u.team_id === selectedCoordinatorUid || (team && (u.team_id === team.name || u.team_name === team.name)));
+    } else if (isCoordinator) {
+      availableUsers = teamMembers.length > 0 ? teamMembers : allUsers.filter(u => u.team_id === currentUser.team_id);
+    }
+
+    let options = '<option value="all">Todos os Líderes</option>';
+    options += `<option value="${currentUser.uid}" ${selectedLeaderUid === currentUser.uid ? 'selected' : ''}>⭐ Você (${currentUser.name || currentUser.email})</option>`;
+
+    availableUsers.filter(u => u.uid !== currentUser.uid).forEach(u => {
+      const leaderCount = allContacts.filter(c => c.assigned_to === u.uid || c.assigned_to === u.email || (u.name && c.assigned_to_name === u.name)).length;
+      options += `<option value="${u.uid}" ${selectedLeaderUid === u.uid ? 'selected' : ''}>👤 ${u.name || u.email} (${leaderCount})</option>`;
+    });
+
+    leaderSel.innerHTML = options;
   }
 
   function updateAssigneesSelect() {
@@ -375,12 +461,34 @@ export function renderContactsView(container, currentUser, onNavigate) {
   function applyFiltersAndRender() {
     let filtered = [...allContacts];
 
-    // Filtro por Equipe / Seleção Pill
-    if (selectedTeamId === 'mine') {
+    // Filtro de Coordenador / Equipe
+    if (selectedCoordinatorUid === 'mine') {
       filtered = filtered.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name));
-    } else if (selectedTeamId !== 'all') {
-      const team = allTeams.find(t => t.id === selectedTeamId);
-      filtered = filtered.filter(c => c.team_id === selectedTeamId || (team && (c.team_id === team.name || c.team_name === team.name)));
+    } else if (selectedCoordinatorUid !== 'all') {
+      const team = allTeams.find(t => t.id === selectedCoordinatorUid);
+      filtered = filtered.filter(c => c.team_id === selectedCoordinatorUid || (team && (c.team_id === team.name || c.team_name === team.name)));
+    }
+
+    // Filtro de Líder / Operador
+    if (selectedLeaderUid !== 'all') {
+      const targetLeader = allUsers.find(u => u.uid === selectedLeaderUid);
+      filtered = filtered.filter(c => {
+        if (c.assigned_to === selectedLeaderUid) return true;
+        if (targetLeader) {
+          if (c.assigned_to && (c.assigned_to === targetLeader.email || c.assigned_to === targetLeader.uid)) return true;
+          if (c.assigned_to_name && targetLeader.name && c.assigned_to_name.trim().toLowerCase() === targetLeader.name.trim().toLowerCase()) return true;
+        }
+        return false;
+      });
+    }
+
+    // Filtro por Status
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'confirmed') {
+        filtered = filtered.filter(c => c.status === 'user_confirmed' || c.status === 'confirmed');
+      } else {
+        filtered = filtered.filter(c => c.status === statusFilter);
+      }
     }
 
     // Filtro de Busca por Texto (Nome / Tel)
@@ -399,7 +507,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
     const pillMine = container.querySelector('#pill-filter-mine');
     const pillAll = container.querySelector('#pill-filter-all');
     if (pillMine && pillAll) {
-      if (selectedTeamId === 'mine') {
+      if (selectedCoordinatorUid === 'mine' && selectedLeaderUid === 'all') {
         pillMine.style.border = '2px solid #16A34A';
         pillMine.style.background = '#F0FDF4';
         pillAll.style.border = '2px solid #CBD5E1';
@@ -413,7 +521,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
     }
 
     renderKPIs(filtered);
-    renderTable(filtered);
+    renderTableWithPagination(filtered);
   }
 
   function renderKPIs(list) {
@@ -444,12 +552,33 @@ export function renderContactsView(container, currentUser, onNavigate) {
     return phone;
   }
 
-  function renderTable(list) {
+  function renderTableWithPagination(list) {
     const tbody = container.querySelector('#contacts-tbody');
     const mobileList = container.querySelector('#contacts-mobile-list');
+    const pageInfo = container.querySelector('#contacts-pagination-info');
+    const pageIndicator = container.querySelector('#contacts-page-indicator');
+    const btnPrev = container.querySelector('#btn-prev-page');
+    const btnNext = container.querySelector('#btn-next-page');
+
+    const total = list.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    const startIdx = (currentPage - 1) * pageSize;
+    const endIdx = Math.min(startIdx + pageSize, total);
+    const paginatedItems = list.slice(startIdx, endIdx);
+
+    if (pageInfo) {
+      pageInfo.textContent = total > 0 ? `Mostrando ${startIdx + 1}–${endIdx} de ${total.toLocaleString('pt-BR')} contatos` : 'Mostrando 0 contatos';
+    }
+    if (pageIndicator) {
+      pageIndicator.textContent = `Pág. ${currentPage} / ${totalPages}`;
+    }
+    if (btnPrev) btnPrev.disabled = currentPage <= 1;
+    if (btnNext) btnNext.disabled = currentPage >= totalPages;
 
     if (tbody) {
-      if (list.length === 0) {
+      if (paginatedItems.length === 0) {
         tbody.innerHTML = `
           <tr>
             <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 3.5rem;">
@@ -458,7 +587,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
           </tr>
         `;
       } else {
-        tbody.innerHTML = list.map(c => {
+        tbody.innerHTML = paginatedItems.map(c => {
           const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
           const isOpened = c.status === 'opened';
           const initials = (c.name || 'C').substring(0, 2).toUpperCase();
@@ -515,7 +644,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
     }
 
     if (mobileList) {
-      if (list.length === 0) {
+      if (paginatedItems.length === 0) {
         mobileList.innerHTML = `
           <div style="text-align: center; background: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 12px; padding: 3rem 1.5rem; color: var(--text-muted); margin: 1rem;">
             <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">👥</div>
@@ -526,7 +655,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
       } else {
         mobileList.innerHTML = `
           <div style="display: flex; flex-direction: column; background: #FFFFFF;">
-            ${list.map(c => {
+            ${paginatedItems.map(c => {
               const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
               const isOpened = c.status === 'opened';
               const locationInfo = [c.city, c.neighborhood || c.bairro].filter(Boolean).join(' · ');
@@ -567,32 +696,76 @@ export function renderContactsView(container, currentUser, onNavigate) {
 
   // Pill filter clicks
   container.querySelector('#pill-filter-mine')?.addEventListener('click', () => {
-    selectedTeamId = 'mine';
-    const teamSel = container.querySelector('#filter-team-select');
-    if (teamSel) teamSel.value = 'mine';
+    selectedCoordinatorUid = 'mine';
+    selectedLeaderUid = 'all';
+    const coordSel = container.querySelector('#filter-coordinator-select');
+    if (coordSel) coordSel.value = 'mine';
+    currentPage = 1;
+    populateLeaderDropdown();
     applyFiltersAndRender();
   });
 
   container.querySelector('#pill-filter-all')?.addEventListener('click', () => {
-    selectedTeamId = 'all';
-    const teamSel = container.querySelector('#filter-team-select');
-    if (teamSel) teamSel.value = 'all';
+    selectedCoordinatorUid = 'all';
+    selectedLeaderUid = 'all';
+    const coordSel = container.querySelector('#filter-coordinator-select');
+    if (coordSel) coordSel.value = 'all';
+    currentPage = 1;
+    populateLeaderDropdown();
     applyFiltersAndRender();
   });
 
   // Filter Listeners
-  container.querySelector('#filter-team-select')?.addEventListener('change', (e) => {
-    selectedTeamId = e.target.value;
+  container.querySelector('#filter-coordinator-select')?.addEventListener('change', (e) => {
+    selectedCoordinatorUid = e.target.value;
+    selectedLeaderUid = 'all';
+    currentPage = 1;
+    populateLeaderDropdown();
+    applyFiltersAndRender();
+  });
+
+  container.querySelector('#filter-leader-select')?.addEventListener('change', (e) => {
+    selectedLeaderUid = e.target.value;
+    currentPage = 1;
+    applyFiltersAndRender();
+  });
+
+  container.querySelector('#filter-status-select')?.addEventListener('change', (e) => {
+    statusFilter = e.target.value;
+    currentPage = 1;
     applyFiltersAndRender();
   });
 
   container.querySelector('#contacts-search')?.addEventListener('input', (e) => {
     searchQuery = e.target.value;
+    currentPage = 1;
     applyFiltersAndRender();
   });
 
   container.querySelector('#contacts-search-mobile')?.addEventListener('input', (e) => {
     searchQuery = e.target.value;
+    currentPage = 1;
+    applyFiltersAndRender();
+  });
+
+  // Pagination Listeners
+  container.querySelector('#btn-prev-page')?.addEventListener('click', () => {
+    if (currentPage > 1) {
+      currentPage--;
+      applyFiltersAndRender();
+      container.querySelector('.main-panel-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+
+  container.querySelector('#btn-next-page')?.addEventListener('click', () => {
+    currentPage++;
+    applyFiltersAndRender();
+    container.querySelector('.main-panel-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  container.querySelector('#contacts-page-size-select')?.addEventListener('change', (e) => {
+    pageSize = parseInt(e.target.value, 10) || 50;
+    currentPage = 1;
     applyFiltersAndRender();
   });
 
@@ -681,28 +854,30 @@ export function renderContactsView(container, currentUser, onNavigate) {
   if (isAdmin) {
     unsubContacts = subscribeToAllContacts((realContacts) => {
       allContacts = realContacts;
-      populateTeamDropdown();
+      populateCoordinatorDropdown();
       applyFiltersAndRender();
     });
 
     unsubTeams = subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
       allTeams = teams;
-      populateTeamDropdown();
+      populateCoordinatorDropdown();
     });
 
     unsubUsers = subscribeToAllUsers((users) => {
       allUsers = users;
+      populateLeaderDropdown();
       updateAssigneesSelect();
     });
   } else if (isCoordinator) {
     unsubContacts = subscribeToTeamContacts(currentUser.team_id, (teamContacts) => {
       allContacts = teamContacts;
-      populateTeamDropdown();
+      populateCoordinatorDropdown();
       applyFiltersAndRender();
     });
 
     unsubMembers = subscribeToTeamMembers(currentUser.team_id, currentUser.uid, (members) => {
       teamMembers = members;
+      populateLeaderDropdown();
       updateAssigneesSelect();
     });
   } else {
