@@ -678,6 +678,8 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     }, 1000);
   }
 
+  let activeExecutionQueue = [];
+
   async function processNextInQueue() {
     if (!isRunning || isPaused) return;
 
@@ -716,15 +718,24 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     }
 
     // Verifica se ainda há contatos na fila
-    if (currentContactIndex >= queue.length) {
-      appendLog('🏁 Todos os contatos pendentes da seleção foram processados!', 'success');
-      showToast('Fila de contatos concluída!', 'success');
+    if (currentContactIndex >= activeExecutionQueue.length) {
+      appendLog('🏁 Todos os contatos da fila foram processados!', 'success');
+      showToast('Fila de disparos concluída!', 'success');
       stopQueue();
       return;
     }
 
-    const contact = queue[currentContactIndex];
+    const contact = activeExecutionQueue[currentContactIndex];
     currentContactIndex++;
+
+    if (!contact || (!contact.id && !contact.uid)) {
+      processNextInQueue();
+      return;
+    }
+
+    const contactId = contact.id || contact.uid || contact.docId;
+    const contactName = contact.name || 'Prezado(a)';
+    const contactPhone = contact.phone || '';
 
     // Alternância de Versões: seleciona uma das versões geradas ou o template ativo
     const selectedVersion = messageVersions.length > 0 
@@ -740,7 +751,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     
     if (typingSec > 0) {
       if (banner) banner.style.display = 'flex';
-      if (titleEl) titleEl.textContent = `✍️ Simulando Digitação para ${contact.name}...`;
+      if (titleEl) titleEl.textContent = `✍️ Simulando Digitação para ${contactName}...`;
       if (subEl) subEl.textContent = `Presença "composing" ativa na Evolution API (${typingSec}s)`;
       if (spinner) spinner.textContent = '✍️';
     }
@@ -751,12 +762,12 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
       try {
         // 2. Executa disparo com transação atômica e Spintax
         await executeDispatch({
-          contactId: contact.id,
-          contactName: contact.name,
-          contactCompany: contact.company,
+          contactId: contactId,
+          contactName: contactName,
+          contactCompany: contact.company || contact.city,
           contactCity: contact.city,
           contactNeighborhood: contact.neighborhood || contact.bairro,
-          contactPhone: contact.phone,
+          contactPhone: contactPhone,
           user: currentUser,
           strategy: 'evolution_api',
           templateBody: selectedVersion
@@ -767,7 +778,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
         totalSentToday++;
         updateProgressUI();
 
-        appendLog(`✓ Mensagem enviada para ${contact.name} (${contact.phone}) via Evolution API. [Bloco ${currentBatchIndex}: ${sentInCurrentBatch}/${batchSize}]`, 'success');
+        appendLog(`✓ Mensagem enviada para ${contactName} (${contactPhone}) via Evolution API. [Bloco ${currentBatchIndex}: ${sentInCurrentBatch}/${batchSize}]`, 'success');
 
         // 3. Delay Randômico Humano
         const randomDelay = Math.floor(Math.random() * (maxDelaySec - minDelaySec + 1)) + minDelaySec;
@@ -783,7 +794,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
       } catch (err) {
         console.error('Erro ao disparar mensagem em massa:', err);
         consecutiveErrors++;
-        appendLog(`✕ Falha ao enviar para ${contact.name}: ${err.message}`, 'error');
+        appendLog(`✕ Falha ao enviar para ${contactName}: ${err.message}`, 'error');
 
         // Circuit Breaker: 3 falhas consecutivas interrompem a fila
         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
@@ -803,9 +814,11 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
   function startQueue() {
     updateQueuePreview();
     if (queue.length === 0) {
-      showToast('Nenhum contato pendente encontrado com os filtros selecionados.', 'warning');
+      showToast('Nenhum contato encontrado com os filtros selecionados.', 'warning');
       return;
     }
+
+    activeExecutionQueue = [...queue];
 
     totalDailyLimit = parseInt(container.querySelector('#input-daily-limit')?.value, 10) || 60;
     batchSize = parseInt(container.querySelector('#input-batch-size')?.value, 10) || 20;
@@ -827,7 +840,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     container.querySelector('#btn-stop-bulk').style.display = 'inline-flex';
     container.querySelector('#queue-live-status-text').textContent = '🟢 Fila em execução com proteção Anti-Ban ativa.';
 
-    appendLog(`🚀 Fila iniciada: Meta ${totalDailyLimit} envios em blocos de ${batchSize} com delay de ${minDelaySec}s a ${maxDelaySec}s.`, 'info');
+    appendLog(`🚀 Fila iniciada com ${activeExecutionQueue.length} contatos: Meta ${totalDailyLimit} envios em blocos de ${batchSize} com delay de ${minDelaySec}s a ${maxDelaySec}s.`, 'info');
     updateProgressUI();
     processNextInQueue();
   }
