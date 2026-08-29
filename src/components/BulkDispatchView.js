@@ -8,6 +8,43 @@ import { executeDispatch } from '../firebase/dispatchEngine.js';
 import { resolveSpintax } from '../firebase/evolutionApi.js';
 import { showToast } from '../utils/feedback.js';
 
+/**
+ * Dicionário inteligente para enriquecer textos normais em Spintax rico em português.
+ */
+function autoTransformTextToSpintax(text) {
+  if (!text) return '';
+  let res = text;
+
+  const replacements = [
+    // Saudações
+    { regex: /\b(olá|ola)\b/gi, spintax: '{Olá|Oi|Como vai|Tudo bem|Olá, tudo bom}' },
+    { regex: /\b(bom dia)\b/gi, spintax: '{Bom dia|Ótimo dia|Um excelente dia}' },
+    { regex: /\b(boa tarde)\b/gi, spintax: '{Boa tarde|Ótima tarde|Uma excelente tarde}' },
+    { regex: /\b(boa noite)\b/gi, spintax: '{Boa noite|Ótima noite}' },
+    { regex: /\b(tudo bem\??|tudo bem com você\??)/gi, spintax: '{Tudo bem?|Tudo certo por aí?|Espero que esteja tendo um ótimo dia!|Como vão as coisas?}' },
+    
+    // Verbos e intenções comuns
+    { regex: /\b(gostaria de saber|gostaríamos de saber)\b/gi, spintax: '{gostaria de saber|queria entender|gostaríamos de consultar|temos interesse em saber}' },
+    { regex: /\b(gostaria de contar|gostaríamos de contar)\b/gi, spintax: '{gostaríamos de contar|queremos muito contar|seria uma honra contar|esperamos contar}' },
+    { regex: /\b(estamos acompanhando)\b/gi, spintax: '{estamos acompanhando|estamos de olho|estamos atentos|estamos monitorando}' },
+    { regex: /\b(estamos realizando|estamos fazendo)\b/gi, spintax: '{estamos realizando|estamos desenvolvendo|estamos conduzindo|estamos promovendo}' },
+    { regex: /\b(sua opinião|sua visão)\b/gi, spintax: '{sua opinião|sua visão|seu ponto de vista|sua avaliação}' },
+
+    // Despedidas e Call-To-Actions
+    { regex: /\b(qualquer dúvida me avise\.?|qualquer dúvida estou à disposição\.?)/gi, spintax: '{Qualquer dúvida me avise!|Fico à sua disposição!|Podemos conversar por aqui?|Me avise se tiver alguma dúvida!|Estou por aqui para o que precisar!}' },
+    { regex: /\b(um abraço\.?|abraço\.?|abraços\.?)/gi, spintax: '{Um grande abraço!|Abraços!|Até logo!|Seguimos em contato!}' },
+    { regex: /\b(muito obrigado\.?|obrigado\.?|obrigada\.?)/gi, spintax: '{Muito obrigado!|Agradeço desde já!|Obrigado pela atenção!|Gratidão!}' }
+  ];
+
+  replacements.forEach(r => {
+    if (r.regex.test(res)) {
+      res = res.replace(r.regex, r.spintax);
+    }
+  });
+
+  return res;
+}
+
 export function renderBulkDispatchView(container, currentUser, onNavigate) {
   let allContacts = [];
   let allTeams = [];
@@ -25,6 +62,9 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
   let coolingMinutes = 20;
   let numPreviewVariations = 3;
 
+  // Lista de Versões de Mensagens para Alternância
+  let messageVersions = [];
+
   // Estado da Fila de Disparo
   let isRunning = false;
   let isPaused = false;
@@ -39,7 +79,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
 
   let activeCountdownInterval = null;
 
-  // Template Spintax padrão com variáveis dinâmicas
+  // Template Spintax padrão inicial
   let defaultTemplate = `{Olá|Oi|Como vai}, {primeiro_nome}! {Tudo bem?|Espero que esteja tendo um bom dia.}\n\nEstamos acompanhando as novidades da nossa região e gostaríamos de saber sua opinião.\n\n{Qualquer dúvida me avise.|Fico à disposição!|Podemos nos falar por aqui?}`;
 
   container.innerHTML = `
@@ -53,14 +93,14 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
               🛡️ DISPARO EM MASSA ANTI-BAN
             </span>
             <span class="pill-btn" style="background: #DCFCE7; color: #15803D; font-weight: 700; font-size: 0.75rem; padding: 2px 8px;">
-              ⚡ 100% PERSONALIZÁVEL
+              ⚡ MULTI-VARIAÇÕES & SPINTAX
             </span>
           </div>
           <h2 style="font-size: 1.6rem; font-weight: 800; color: #0F172A; letter-spacing: -0.5px; margin: 0.35rem 0 0 0;">
             Disparo em Massa & Prevenção a Ban
           </h2>
           <p style="font-size: 0.85rem; color: #64748B; margin: 3px 0 0 0;">
-            Configure livremente os blocos de envio, delays randômicos, tempos de pausa e variações dinâmicas de mensagem.
+            Escreva sua mensagem, gere versões similares para alternar automaticamente e configure os blocos de disparo com total liberdade.
           </p>
         </div>
 
@@ -116,8 +156,8 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
 
       </div>
 
-      <!-- Configuração de Parâmetros & Editor Spintax -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+      <!-- Configuração de Parâmetros & Editor com Gerador de Variações -->
+      <div style="display: grid; grid-template-columns: 1fr 1.15fr; gap: 1.5rem; margin-bottom: 1.5rem;">
         
         <!-- Coluna 1: Parâmetros de Disparo & Filtro da Fila -->
         <div class="main-panel-card" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.5rem;">
@@ -170,7 +210,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
             </label>
             <div style="display: flex; align-items: center; gap: 0.75rem;">
               <input type="number" id="input-cooling-minutes" class="topbar-search-input" style="width: 110px; background: #F8FAFC;" value="20" min="0" max="360">
-              <span style="font-size: 0.8rem; color: #64748B;">minutos de descanso para atendimento e segurança</span>
+              <span style="font-size: 0.8rem; color: #64748B;">minutos de descanso para atendimento</span>
             </div>
           </div>
 
@@ -206,40 +246,57 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
           </div>
         </div>
 
-        <!-- Coluna 2: Editor Spintax & Variação Anti-Hash -->
+        <!-- Coluna 2: Editor de Mensagem com Gerador de Versões -->
         <div class="main-panel-card" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
-            <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.4rem;">
-              💬 Mensagem com Spintax
-            </h3>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.4rem;">
+                💬 Mensagem Principal & Variações
+              </h3>
+              <p style="font-size: 0.78rem; color: #64748B; margin: 2px 0 0 0;">
+                Escreva o texto original e clique no botão mágico para gerar versões similares automáticas.
+              </p>
+            </div>
+          </div>
+
+          <textarea id="bulk-message-template" class="form-control" style="width: 100%; min-height: 120px; font-family: monospace; font-size: 0.85rem; line-height: 1.4; padding: 0.75rem; background: #FAFAFA; border: 1px solid #CBD5E1; resize: vertical; margin-bottom: 0.75rem;" placeholder="Escreva sua mensagem aqui... Use {primeiro_nome}, {nome}, {cidade}, {bairro} ou Spintax {Olá|Oi}...">${defaultTemplate}</textarea>
+
+          <!-- Barra de Ações para Gerar Variações -->
+          <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; background: #F8FAFC; padding: 0.75rem; border-radius: 8px; border: 1px solid #E2E8F0;">
+            <span style="font-size: 0.8rem; font-weight: 700; color: #334155;">🪄 Gerar:</span>
+            <select id="select-num-variations" style="padding: 0.35rem 0.55rem; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 0.8rem; font-weight: 700; background: #FFFFFF;">
+              <option value="3" selected>3 Versões Similares</option>
+              <option value="5">5 Versões Similares</option>
+              <option value="8">8 Versões Similares</option>
+              <option value="10">10 Versões Similares</option>
+            </select>
+
+            <button id="btn-generate-variations" class="btn-primary-blue" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem;">
+              ✨ Gerar Versões Alternativas
+            </button>
+
+            <button id="btn-auto-spintax" class="btn-outline-white" style="font-size: 0.78rem; padding: 0.4rem 0.75rem; font-weight: 700;" title="Adiciona automaticamente chaves Spintax no texto acima">
+              ⚡ Inserir Spintax no Texto
+            </button>
+          </div>
+
+          <!-- Lista de Versões Geradas para Alternância -->
+          <div id="spintax-previews-container" style="display: flex; flex-direction: column; flex: 1;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
+              <span id="variations-header-title" style="font-size: 0.78rem; font-weight: 800; color: #1E293B; text-transform: uppercase;">
+                VERSÕES DE MENSAGEM CONFIGURADAS PARA O DISPARO (3)
+              </span>
+              <span style="font-size: 0.72rem; color: #059669; font-weight: 700;">
+                ✓ Alternância Ativa por Contato
+              </span>
+            </div>
             
-            <div style="display: flex; align-items: center; gap: 0.45rem;">
-              <select id="select-num-variations" style="padding: 0.25rem 0.5rem; border-radius: 6px; border: 1px solid #CBD5E1; font-size: 0.75rem; font-weight: 700; background: #FFFFFF;">
-                <option value="3" selected>3 Variações</option>
-                <option value="5">5 Variações</option>
-                <option value="10">10 Variações</option>
-              </select>
-              <button id="btn-preview-spintax" class="btn-outline-white" style="font-size: 0.75rem; padding: 0.3rem 0.65rem; font-weight: 700;">
-                🎲 Gerar Prévias
-              </button>
+            <div id="spintax-previews-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto;">
+              <!-- Versões geradas dinamicamente -->
             </div>
           </div>
 
-          <p style="font-size: 0.78rem; color: #64748B; margin: 0 0 0.75rem 0;">
-            Use chaves <code>{opção1|opção2|opção3}</code> para variar frases. Tags: <code>{nome}</code>, <code>{primeiro_nome}</code>, <code>{cidade}</code>, <code>{bairro}</code>.
-          </p>
-
-          <textarea id="bulk-message-template" class="form-control" style="flex: 1; min-height: 140px; font-family: monospace; font-size: 0.85rem; line-height: 1.4; padding: 0.75rem; background: #FAFAFA; border: 1px solid #CBD5E1; resize: vertical;" placeholder="Digite o texto com Spintax...">${defaultTemplate}</textarea>
-
-          <!-- Prévias Dinâmicas de Spintax -->
-          <div id="spintax-previews-container" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
-            <div style="font-size: 0.75rem; font-weight: 800; color: #64748B; text-transform: uppercase;">
-              Exemplo de Variações Geradas (Anti-Hash):
-            </div>
-            <div id="spintax-previews-list" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 200px; overflow-y: auto;">
-              <!-- Prévias geradas dinamicamente -->
-            </div>
-          </div>
         </div>
 
       </div>
@@ -339,6 +396,55 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     </div>
   `;
 
+  // Gera X versões completas a partir do texto base (com Spintax resolvido)
+  function generateAndRenderVersions() {
+    let raw = container.querySelector('#bulk-message-template')?.value.trim() || defaultTemplate;
+    
+    // Se o texto não tem Spintax, aplica auto-transformação
+    if (!raw.includes('{') || !raw.includes('|')) {
+      raw = autoTransformTextToSpintax(raw);
+    }
+
+    numPreviewVariations = parseInt(container.querySelector('#select-num-variations')?.value, 10) || 3;
+    const listEl = container.querySelector('#spintax-previews-list');
+    const headerTitle = container.querySelector('#variations-header-title');
+
+    if (headerTitle) {
+      headerTitle.textContent = `VERSÕES DE MENSAGEM CONFIGURADAS PARA O DISPARO (${numPreviewVariations})`;
+    }
+
+    const sampleNames = ['Mariana Moura', 'Carlos Eduardo', 'Fernanda Lima', 'Rodrigo Silva', 'Juliana Costa', 'Paulo Cezar', 'Renata Souza', 'Felipe Santos', 'Beatriz Alves', 'Lucas Rocha'];
+    const sampleCities = ['Niterói', 'São Gonçalo', 'Rio de Janeiro', 'Maricá', 'Itaboraí', 'Nova Iguaçu', 'Duque de Caxias', 'Petrópolis', 'Campos', 'Belford Roxo'];
+
+    messageVersions = Array.from({ length: numPreviewVariations }, (_, index) => {
+      return resolveSpintax(raw);
+    });
+
+    if (listEl) {
+      listEl.innerHTML = messageVersions.map((textVersion, index) => {
+        const i = index + 1;
+        const name = sampleNames[index % sampleNames.length];
+        const firstName = name.split(' ')[0];
+        const city = sampleCities[index % sampleCities.length];
+
+        let sampleRendered = textVersion.replace(/\{primeiro_nome\}|\{primeironome\}|\{first_name\}/gi, firstName);
+        sampleRendered = sampleRendered.replace(/\{nome\}/gi, firstName);
+        sampleRendered = sampleRendered.replace(/\{cidade\}/gi, city);
+        sampleRendered = sampleRendered.replace(/\{bairro\}/gi, 'Centro');
+
+        return `
+          <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 0.75rem 0.85rem; font-size: 0.82rem; color: #166534; line-height: 1.4; display: flex; flex-direction: column; gap: 0.35rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #DCFCE7; padding-bottom: 4px;">
+              <strong style="color: #15803D;">Versão #${i} (Exemplo com ${firstName} · ${city})</strong>
+              <span style="font-size: 0.7rem; background: #DCFCE7; color: #166534; font-weight: 700; padding: 1px 6px; border-radius: 4px;">Payload Único</span>
+            </div>
+            <div style="white-space: pre-wrap; word-break: break-word;">${sampleRendered}</div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
   // Atualiza em tempo real as estimativas matemáticas da campanha conforme o usuário digita
   function updateRealtimeSimulations() {
     totalDailyLimit = parseInt(container.querySelector('#input-daily-limit')?.value, 10) || 60;
@@ -394,35 +500,6 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
         simSafetyBadge.style.color = '#15803D';
       }
     }
-  }
-
-  function renderSpintaxPreviews() {
-    const raw = container.querySelector('#bulk-message-template')?.value || defaultTemplate;
-    const listEl = container.querySelector('#spintax-previews-list');
-    numPreviewVariations = parseInt(container.querySelector('#select-num-variations')?.value, 10) || 3;
-    if (!listEl) return;
-
-    const sampleNames = ['Mariana Moura', 'Carlos Eduardo', 'Fernanda Lima', 'Rodrigo Silva', 'Juliana Costa', 'Paulo Cezar', 'Renata Souza', 'Felipe Santos', 'Beatriz Alves', 'Lucas Rocha'];
-    const sampleCities = ['Niterói', 'São Gonçalo', 'Rio de Janeiro', 'Maricá', 'Itaboraí', 'Nova Iguaçu', 'Duque de Caxias', 'Petrópolis', 'Campos', 'Belford Roxo'];
-
-    listEl.innerHTML = Array.from({ length: numPreviewVariations }, (_, index) => {
-      const i = index + 1;
-      const name = sampleNames[index % sampleNames.length];
-      const firstName = name.split(' ')[0];
-      const city = sampleCities[index % sampleCities.length];
-
-      let rendered = resolveSpintax(raw);
-      rendered = rendered.replace(/\{primeiro_nome\}|\{primeironome\}|\{first_name\}/gi, firstName);
-      rendered = rendered.replace(/\{nome\}/gi, firstName);
-      rendered = rendered.replace(/\{cidade\}/gi, city);
-      rendered = rendered.replace(/\{bairro\}/gi, 'Centro');
-
-      return `
-        <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 6px; padding: 0.6rem 0.75rem; font-size: 0.8rem; color: #166534; line-height: 1.35; white-space: pre-wrap;">
-          <strong>Variação #${i} (para ${firstName}):</strong>\n${rendered}
-        </div>
-      `;
-    }).join('');
   }
 
   function updateQueuePreview() {
@@ -536,7 +613,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
   async function processNextInQueue() {
     if (!isRunning || isPaused) return;
 
-    // Verifica limite diário atingido
+    // Verifica limite total atingido
     if (totalSentToday >= totalDailyLimit) {
       appendLog(`🎉 Meta de ${totalDailyLimit} envios concluída com sucesso! Fila finalizada.`, 'success');
       showToast('Disparos em massa concluídos com sucesso!', 'success');
@@ -581,7 +658,10 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     const contact = queue[currentContactIndex];
     currentContactIndex++;
 
-    const templateRaw = container.querySelector('#bulk-message-template')?.value || defaultTemplate;
+    // Alternância de Versões: seleciona uma das versões geradas ou o template ativo
+    const selectedVersion = messageVersions.length > 0 
+      ? messageVersions[currentContactIndex % messageVersions.length]
+      : (container.querySelector('#bulk-message-template')?.value || defaultTemplate);
 
     // 1. Simula digitando (Composing)
     const typingTime = typingSec * 1000;
@@ -611,7 +691,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
           contactPhone: contact.phone,
           user: currentUser,
           strategy: 'evolution_api',
-          templateBody: templateRaw
+          templateBody: selectedVersion
         });
 
         consecutiveErrors = 0;
@@ -720,9 +800,22 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     container.querySelector(id)?.addEventListener('change', updateRealtimeSimulations);
   });
 
-  container.querySelector('#select-num-variations')?.addEventListener('change', renderSpintaxPreviews);
-  container.querySelector('#btn-preview-spintax')?.addEventListener('click', renderSpintaxPreviews);
-  container.querySelector('#bulk-message-template')?.addEventListener('input', renderSpintaxPreviews);
+  container.querySelector('#btn-generate-variations')?.addEventListener('click', () => {
+    generateAndRenderVersions();
+    showToast(`${numPreviewVariations} versões alternativas geradas com sucesso!`, 'success');
+  });
+
+  container.querySelector('#btn-auto-spintax')?.addEventListener('click', () => {
+    const textEl = container.querySelector('#bulk-message-template');
+    if (textEl) {
+      textEl.value = autoTransformTextToSpintax(textEl.value);
+      generateAndRenderVersions();
+      showToast('Spintax automático inserido no texto!', 'success');
+    }
+  });
+
+  container.querySelector('#select-num-variations')?.addEventListener('change', generateAndRenderVersions);
+  container.querySelector('#bulk-message-template')?.addEventListener('input', generateAndRenderVersions);
 
   container.querySelector('#bulk-team-select')?.addEventListener('change', (e) => {
     selectedTeamFilter = e.target.value;
@@ -764,9 +857,9 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     populateDropdowns();
   });
 
-  // Inicializa cálculo e prévias
+  // Inicializa cálculo e versões geradas
   updateRealtimeSimulations();
-  renderSpintaxPreviews();
+  generateAndRenderVersions();
 
   return () => {
     if (activeCountdownInterval) clearInterval(activeCountdownInterval);
