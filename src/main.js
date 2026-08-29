@@ -12,6 +12,7 @@ import { renderDispatchHistoryView } from './components/DispatchHistoryView.js';
 import { renderCsvImportWizard } from './components/CsvImportWizard.js';
 import { renderEvolutionManager } from './components/EvolutionManager.js';
 import { renderTemplatesManager } from './components/TemplatesManager.js';
+import { renderBulkDispatchView } from './components/BulkDispatchView.js';
 import { renderSettingsGeneral } from './components/SettingsGeneral.js';
 import { renderRolesManagement } from './components/RolesManagement.js';
 import { renderSecuritySettings } from './components/SecuritySettings.js';
@@ -255,6 +256,11 @@ function renderProtectedApp(currentUser) {
     });
   } else if (currentView === 'history') {
     activeCleanup = renderDispatchHistoryView(mainMount, currentUserState, (newView) => {
+      currentView = newView;
+      renderProtectedApp(currentUserState);
+    });
+  } else if (currentView === 'bulk-dispatch') {
+    activeCleanup = renderBulkDispatchView(mainMount, currentUserState, (newView) => {
       currentView = newView;
       renderProtectedApp(currentUserState);
     });

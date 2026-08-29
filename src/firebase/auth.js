@@ -5,12 +5,21 @@ import {
   signOut as firebaseSignOut, 
   sendPasswordResetEmail,
   onAuthStateChanged,
-  updateProfile
+  updateProfile,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, getDocs, collection, query, where, serverTimestamp, updateDoc, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export const DEFAULT_TENANT_ID = 'tenant_main';
+
+// Garante persistência permanente da sessão no navegador (LocalStorage / IndexedDB)
+try {
+  setPersistence(auth, browserLocalPersistence).catch((err) => {
+    console.warn('Falha ao configurar browserLocalPersistence:', err);
+  });
+} catch (e) {}
 
 /**
  * Busca ou cria o documento do perfil do usuário na coleção 'users'.
@@ -275,9 +284,12 @@ export async function createUserProfileDirectly({
 }
 
 /**
- * Autentica com e-mail e senha.
+ * Autentica com e-mail e senha com sessão persistente permanente.
  */
 export async function loginWithEmail(email, password) {
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+  } catch (e) {}
   const credential = await signInWithEmailAndPassword(auth, email, password);
   return await syncUserProfile(credential.user);
 }

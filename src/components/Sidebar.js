@@ -70,6 +70,13 @@ export function renderSidebar(container, currentUser, currentView, onViewChange,
           Disparo de Mensagens
         </a>
 
+        ${!isMember ? `
+          <a class="nav-item ${currentView === 'bulk-dispatch' ? 'active' : ''}" data-view="bulk-dispatch" style="color: #D97706; font-weight: 700;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            Disparo em Massa
+          </a>
+        ` : ''}
+
         <a class="nav-item ${currentView === 'history' ? 'active' : ''}" data-view="history">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
           Histórico de Envios
