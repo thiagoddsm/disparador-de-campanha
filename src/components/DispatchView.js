@@ -89,12 +89,16 @@ export function renderDispatchView(container, currentUser, onNavigate) {
         ` : ''}
 
         <!-- Leader Personal Coverage Progress Card -->
-        <div id="leader-mobile-goal-card" style="background: #FFFFFF; border-radius: 10px; padding: 0.65rem 0.85rem; border: 1px solid #CBD5E1; margin-bottom: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; font-size: 0.8rem;">
-            <span style="font-weight: 700; color: #1E293B;">
-              🎯 Sua Meta de Abordagens: <span id="leader-goal-text">0 / 0</span>
+        <div id="leader-mobile-goal-card" style="background: #FFFFFF; border-radius: 10px; padding: 0.75rem 0.85rem; border: 1px solid #CBD5E1; margin-bottom: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; font-size: 0.82rem;">
+            <span style="font-weight: 800; color: #1E293B;">
+              Olá, ${currentUser?.name ? currentUser.name.split(' ')[0] : 'Líder'} 👋
             </span>
             <span id="leader-goal-pct" style="font-weight: 800; color: #008069; font-size: 0.82rem;">0%</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.4rem;">
+            <span>Meta: <strong id="leader-goal-text" style="color: var(--text-main);">0 / 0</strong> abordados</span>
+            <span id="leader-goal-pend-text">0 pendentes</span>
           </div>
           <div style="width: 100%; height: 6px; background: #E2E8F0; border-radius: 99px; overflow: hidden;">
             <div id="leader-goal-prog-bar" style="width: 0%; height: 100%; background: #25D366; transition: width 0.3s ease;"></div>
@@ -151,6 +155,17 @@ export function renderDispatchView(container, currentUser, onNavigate) {
             <span id="wa-bubble-clock">14:02</span>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#53BDEB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline><polyline points="20 12 14 18"></polyline></svg>
           </div>
+        </div>
+
+        <!-- Banner de Sucesso & Continuidade -->
+        <div id="wa-continuation-banner" style="display: none; background: #F0FDF4; border: 1.5px solid #86EFAC; border-radius: 12px; padding: 1rem; margin-top: 0.85rem; margin-bottom: 0.5rem; text-align: center; box-shadow: 0 2px 8px rgba(16,185,129,0.1);">
+          <div style="font-size: 1.25rem; margin-bottom: 0.25rem;">🎉</div>
+          <div id="wa-continuation-title" style="font-weight: 800; font-size: 0.95rem; color: #15803D; margin-bottom: 0.25rem;">Contato abordado com sucesso!</div>
+          <div id="wa-continuation-subtext" style="font-size: 0.78rem; color: #475569; margin-bottom: 0.75rem;">Você está avançando na meta da sua carteira.</div>
+          <button id="btn-advance-next-contact" style="background: #16A34A; color: #FFFFFF; border: none; font-size: 0.88rem; font-weight: 800; padding: 0.55rem 1.25rem; border-radius: 9999px; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; box-shadow: 0 2px 6px rgba(22,163,74,0.25);">
+            <span>Próximo Contato da Fila</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
         </div>
 
       </div>
@@ -220,6 +235,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
     // Atualiza barra de progresso da meta individual do líder
     const goalText = container.querySelector('#leader-goal-text');
     const goalPct = container.querySelector('#leader-goal-pct');
+    const goalPendText = container.querySelector('#leader-goal-pend-text');
     const goalProgBar = container.querySelector('#leader-goal-prog-bar');
     const coverage = calculateNetworkCoverage(rawContacts, historyMessages);
     const memberGoal = currentUser?.daily_goal || (rawContacts.length > 0 ? rawContacts.length : 30);
@@ -227,6 +243,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
 
     if (goalText) goalText.textContent = `${coverage.abordados} / ${memberGoal}`;
     if (goalPct) goalPct.textContent = `${progressPct}%`;
+    if (goalPendText) goalPendText.textContent = `${coverage.pendentes} pendentes`;
     if (goalProgBar) goalProgBar.style.width = `${progressPct}%`;
 
     if (!listMount) return;
@@ -340,6 +357,9 @@ export function renderDispatchView(container, currentUser, onNavigate) {
           } else {
             showToast(`Conversa aberta no WhatsApp para ${contactName}!`, 'success');
           }
+
+          // Exibe banner de continuidade e incentivo pós-disparo
+          showContinuationBanner(contactName);
         } catch (err) {
           console.warn('Erro ao enviar contato:', err);
           showToast('Erro no envio: ' + err.message, 'error');
@@ -350,6 +370,41 @@ export function renderDispatchView(container, currentUser, onNavigate) {
       });
     });
   }
+
+  // Função para exibir o banner de continuidade pós-disparo
+  function showContinuationBanner(lastContactName) {
+    const banner = container.querySelector('#wa-continuation-banner');
+    const titleEl = container.querySelector('#wa-continuation-title');
+    const subEl = container.querySelector('#wa-continuation-subtext');
+    if (!banner) return;
+
+    const pendingCount = rawContacts.filter(c => c.status === 'pending').length;
+    if (titleEl) titleEl.textContent = `🎉 Contato ${lastContactName || ''} abordado com sucesso!`;
+    if (subEl) subEl.textContent = pendingCount > 0 
+      ? `Restam ${pendingCount} contatos pendentes na sua fila. Continue avançando!`
+      : `Parabéns! Todos os contatos da sua carteira foram abordados! 🏆`;
+
+    banner.style.display = 'block';
+    banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Handler do botão "Próximo Contato da Fila"
+  container.querySelector('#btn-advance-next-contact')?.addEventListener('click', () => {
+    const banner = container.querySelector('#wa-continuation-banner');
+    if (banner) banner.style.display = 'none';
+
+    const nextPending = contacts.find(c => c.status === 'pending');
+    if (!nextPending) {
+      showToast('Parabéns! Todos os contatos da sua fila já foram abordados! 🏆', 'success');
+      return;
+    }
+
+    selectedContactIds = new Set([nextPending.id]);
+    renderQueueList();
+    renderMessagePreview(templateText || textarea?.value);
+    if (textarea) textarea.focus();
+    showToast(`Próximo contato selecionado: ${nextPending.name}`, 'info');
+  });
 
   // Listener Selecionar Todos
   container.querySelector('#chk-select-all-contacts')?.addEventListener('change', (e) => {
