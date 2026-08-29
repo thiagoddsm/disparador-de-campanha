@@ -117,6 +117,9 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
         <button class="nav-tab-btn" id="tab-btn-users" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); white-space: nowrap;">
           👤 Usuários & Cargos
         </button>
+        <button class="nav-tab-btn" id="tab-btn-whatsapp" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); white-space: nowrap;">
+          📡 Saúde do WhatsApp
+        </button>
         <button class="nav-tab-btn" id="tab-btn-audit" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); white-space: nowrap;">
           📜 Logs de Auditoria
         </button>
@@ -814,6 +817,125 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
           </div>
         </div>
       `;
+    } else if (currentTab === 'whatsapp') {
+      const validUsers = allUsers.filter(u => u.email || u.name);
+      const connectedCount = validUsers.filter(u => u.whatsapp?.status === 'CONNECTED' || u.whatsapp_connected === true).length;
+      const createdOfflineCount = validUsers.filter(u => (u.whatsapp?.instanceName || u.whatsapp_instance) && !(u.whatsapp?.status === 'CONNECTED' || u.whatsapp_connected === true)).length;
+      const notConfiguredCount = validUsers.filter(u => !u.whatsapp?.instanceName && !u.whatsapp_instance).length;
+
+      contentEl.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+          
+          <!-- 3 WhatsApp Health Summary Cards -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+            <div class="kpi-card" style="border-top: 3px solid #10B981; background: #FFFFFF; padding: 1.25rem; border-radius: 12px; border: 1px solid #E2E8F0;">
+              <span class="kpi-card-title" style="color: #059669; font-weight: 700; font-size: 0.75rem;">🟢 CONECTADAS (ONLINE)</span>
+              <div style="font-size: 2rem; font-weight: 900; color: #0F172A; margin: 0.35rem 0;">${connectedCount}</div>
+              <span style="font-size: 0.75rem; color: #64748B;">Prontas para disparo via API</span>
+            </div>
+
+            <div class="kpi-card" style="border-top: 3px solid #F59E0B; background: #FFFFFF; padding: 1.25rem; border-radius: 12px; border: 1px solid #E2E8F0;">
+              <span class="kpi-card-title" style="color: #D97706; font-weight: 700; font-size: 0.75rem;">🟡 DESCONECTADAS (OFFLINE)</span>
+              <div style="font-size: 2rem; font-weight: 900; color: #0F172A; margin: 0.35rem 0;">${createdOfflineCount}</div>
+              <span style="font-size: 0.75rem; color: #64748B;">Aguardando leitura do QR Code</span>
+            </div>
+
+            <div class="kpi-card" style="border-top: 3px solid #94A3B8; background: #FFFFFF; padding: 1.25rem; border-radius: 12px; border: 1px solid #E2E8F0;">
+              <span class="kpi-card-title" style="color: #64748B; font-weight: 700; font-size: 0.75rem;">⚪ NÃO CONFIGURADAS</span>
+              <div style="font-size: 2rem; font-weight: 900; color: #0F172A; margin: 0.35rem 0;">${notConfiguredCount}</div>
+              <span style="font-size: 0.75rem; color: #64748B;">Utilizam envio via WhatsApp Web</span>
+            </div>
+          </div>
+
+          <!-- Tabela de Instâncias da Rede -->
+          <div class="main-panel-card" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;">
+            <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #FAFAFA;">
+              <div>
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin: 0;">Central de Instâncias WhatsApp da Rede</h3>
+                <p style="font-size: 0.78rem; color: var(--text-muted); margin: 2px 0 0 0;">Monitore e audite as conexões Evolution API de todos os líderes e coordenadores.</p>
+              </div>
+              <button id="btn-goto-whatsapp-manager" class="btn-green-action" style="font-size: 0.82rem; padding: 0.45rem 0.95rem;">
+                📱 Minha Conexão WhatsApp
+              </button>
+            </div>
+
+            <div class="table-container">
+              <table class="panel-table" style="font-size: 0.83rem;">
+                <thead>
+                  <tr>
+                    <th>OPERADOR / LÍDER</th>
+                    <th>EQUIPE</th>
+                    <th>INSTÂNCIA EVOLUTION</th>
+                    <th>NÚMERO CONECTADO</th>
+                    <th style="text-align: center;">STATUS</th>
+                    <th style="text-align: right;">AÇÕES</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${validUsers.map(u => {
+                    const initials = ((u.name || u.email || 'U')).substring(0, 2).toUpperCase();
+                    const isConnected = u.whatsapp?.status === 'CONNECTED' || u.whatsapp_connected === true;
+                    const instanceName = u.whatsapp?.instanceName || u.whatsapp_instance || null;
+                    const phone = u.whatsapp?.phoneNumber || u.whatsapp_phone || null;
+                    const team = allTeams.find(t => t.id === u.team_id || t.name === u.team_name);
+                    const teamName = team ? team.name : (u.team_name || 'Global');
+
+                    return `
+                      <tr>
+                        <td>
+                          <div class="user-identity-cell">
+                            <div class="user-identity-initials" style="background: #EFF6FF; color: #1D4ED8;">${initials}</div>
+                            <div>
+                              <span class="user-identity-name">${u.name || u.email.split('@')[0]}</span>
+                              <div style="font-size: 0.72rem; color: var(--text-muted);">${u.email || ''}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span class="pill-btn" style="background: #F1F5F9; color: #334155; font-weight: 700; font-size: 0.75rem;">
+                            👥 ${teamName}
+                          </span>
+                        </td>
+                        <td style="font-family: monospace; font-size: 0.8rem; color: #475569;">
+                          ${instanceName ? `<code>${instanceName}</code>` : '<span style="color: var(--text-muted);">—</span>'}
+                        </td>
+                        <td style="font-size: 0.82rem; font-weight: 600; color: #059669;">
+                          ${phone ? `📱 ${phone}` : '<span style="color: var(--text-muted); font-weight: normal;">—</span>'}
+                        </td>
+                        <td style="text-align: center;">
+                          ${isConnected ? `
+                            <span class="pill-btn" style="background: #DCFCE7; color: #15803D; font-weight: 800; font-size: 0.72rem; padding: 2px 10px; border-radius: 9999px;">
+                              🟢 Aberta (Open)
+                            </span>
+                          ` : instanceName ? `
+                            <span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-weight: 800; font-size: 0.72rem; padding: 2px 10px; border-radius: 9999px;">
+                              🟡 Offline (Close)
+                            </span>
+                          ` : `
+                            <span class="pill-btn" style="background: #F1F5F9; color: #94A3B8; font-weight: 700; font-size: 0.72rem; padding: 2px 10px; border-radius: 9999px;">
+                              ⚪ Não criada
+                            </span>
+                          `}
+                        </td>
+                        <td style="text-align: right;">
+                          <button class="btn-direct-whatsapp-setup btn-outline-white" data-uid="${u.uid}" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                            ⚙️ Gerenciar
+                          </button>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+
+      contentEl.querySelector('#btn-goto-whatsapp-manager')?.addEventListener('click', () => onNavigate('whatsapp'));
+      contentEl.querySelectorAll('.btn-direct-whatsapp-setup').forEach(btn => {
+        btn.addEventListener('click', () => onNavigate('whatsapp'));
+      });
     }
   }
 
@@ -887,7 +1009,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
 
   function switchTab(tabName) {
     currentTab = tabName;
-    ['overview', 'teams', 'users', 'audit'].forEach(t => {
+    ['overview', 'teams', 'users', 'whatsapp', 'audit'].forEach(t => {
       const btn = container.querySelector(`#tab-btn-${t}`);
       if (btn) {
         if (t === tabName) {
@@ -908,6 +1030,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
   container.querySelector('#tab-btn-overview')?.addEventListener('click', () => switchTab('overview'));
   container.querySelector('#tab-btn-teams')?.addEventListener('click', () => switchTab('teams'));
   container.querySelector('#tab-btn-users')?.addEventListener('click', () => switchTab('users'));
+  container.querySelector('#tab-btn-whatsapp')?.addEventListener('click', () => switchTab('whatsapp'));
   container.querySelector('#tab-btn-audit')?.addEventListener('click', () => switchTab('audit'));
 
   // Modal Nova Equipe

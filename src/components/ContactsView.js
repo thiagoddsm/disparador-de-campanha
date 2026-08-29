@@ -109,163 +109,148 @@ export function renderContactsView(container, currentUser, onNavigate) {
       </div>
     `;
   } else {
-    // LAYOUT GERENCIAL DESKTOP LIMPO & ESCALADO EM REDE
+    // LAYOUT GERENCIAL DESKTOP CORRESPONDENTE À REFERÊNCIA VISUAL
     container.innerHTML = `
-      <div class="page-content" style="max-width: 1300px; padding: 1.25rem;">
-        <!-- Header Row -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+      <div class="page-content" style="max-width: 1300px; padding: 1.5rem;">
+        
+        <!-- Header Row com Título e Ações -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
           <div>
-            <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-              <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px; margin: 0;">
-                ${isCoordinator ? 'Banco de Contatos da Equipe' : 'Banco Global de Contatos'}
-              </h2>
-              <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem; border: 1px solid #BFDBFE;">
-                ● Gestão em Rede
-              </span>
+            <h2 style="font-size: 1.6rem; font-weight: 800; color: #0F172A; letter-spacing: -0.5px; margin: 0;">
+              Banco Global de Contatos
+            </h2>
+            <div style="margin-top: 0.5rem;">
+              <span style="font-size: 1.05rem; font-weight: 800; color: #1E293B;">Supervisão hierárquica</span>
+              <p style="font-size: 0.85rem; color: #64748B; margin: 2px 0 0 0;">
+                Navegue entre Coordenadores e acompanhe a distribuição por Líder.
+              </p>
             </div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.3rem 0 0 0;">
-              Supervisão em rede: acompanhe o progresso da campanha por Equipe e por Líder.
-            </p>
           </div>
 
-          <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
-            <button id="btn-goto-history" class="btn-outline-white" style="font-size: 0.85rem; padding: 0.55rem 1rem;">
-              📜 Histórico de Envios
-            </button>
-
-            <button id="btn-goto-import" class="btn-outline-white" style="font-size: 0.85rem; padding: 0.55rem 1rem;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button id="btn-goto-import" class="btn-outline-white" style="font-size: 0.85rem; padding: 0.6rem 1.15rem; border-radius: var(--radius-md); font-weight: 600; display: inline-flex; align-items: center; gap: 0.45rem;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
               Importar CSV
             </button>
-
-            <button id="btn-open-add-contact" class="btn-green-action" style="font-size: 0.85rem; padding: 0.55rem 1.15rem;">
-              + Adicionar Contato
+            <button id="btn-open-add-contact" class="btn-green-action" style="font-size: 0.85rem; padding: 0.6rem 1.25rem; border-radius: var(--radius-md); font-weight: 700; display: inline-flex; align-items: center; gap: 0.45rem;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg>
+              Adicionar Contato
             </button>
           </div>
         </div>
 
-        <!-- 4 Clean Executive Metric Cards -->
-        <div class="metrics-row" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-          <div class="kpi-card" style="border-top: 3px solid #3B82F6;">
-            <span class="kpi-card-title">TOTAL DE CONTATOS</span>
-            <span class="kpi-card-value" id="kpi-contacts-total" style="color: #1E293B;">0</span>
-            <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Mapeados na seleção</span>
-          </div>
-
-          <div class="kpi-card" style="border-top: 3px solid #10B981;">
-            <span class="kpi-card-title">DISPAROS CONFIRMADOS</span>
-            <span class="kpi-card-value" id="kpi-contacts-sent" style="color: #059669;">0</span>
-            <span style="font-size: 0.75rem; color: #059669; margin-top: 0.2rem;">Envios concluídos</span>
-          </div>
-
-          <div class="kpi-card" style="border-top: 3px solid #F59E0B;">
-            <span class="kpi-card-title">DISPAROS PENDENTES</span>
-            <span class="kpi-card-value" id="kpi-contacts-pending" style="color: #D97706;">0</span>
-            <span style="font-size: 0.75rem; color: #D97706; margin-top: 0.2rem;">Aguardando envio</span>
-          </div>
-
-          <div class="kpi-card" style="border-top: 3px solid #6366F1;">
-            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-              <span class="kpi-card-title">COBERTURA DA REDE</span>
-              <span id="kpi-contacts-rate" style="font-size: 1.25rem; font-weight: 800; color: #4F46E5;">0%</span>
-            </div>
-            <div style="width: 100%; height: 6px; background: #E0E7FF; border-radius: 9999px; margin-top: 0.75rem; overflow: hidden;">
-              <div id="kpi-contacts-prog-bar" style="width: 0%; height: 100%; background: #4F46E5; transition: width 0.3s ease;"></div>
-            </div>
-            <span style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem; display: block;">Taxa de conclusão real</span>
-          </div>
+        <!-- Breadcrumb Hierárquico -->
+        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; font-weight: 700; margin-bottom: 1.25rem; flex-wrap: wrap;">
+          <span style="color: #16A34A; display: inline-flex; align-items: center; gap: 0.3rem;">🏢 Coordenadores</span>
+          <span style="color: #94A3B8;">›</span>
+          <span style="color: #475569; display: inline-flex; align-items: center; gap: 0.3rem;">👥 Líderes</span>
+          <span style="color: #94A3B8;">›</span>
+          <span style="color: #94A3B8; display: inline-flex; align-items: center; gap: 0.3rem;">👤 Membros</span>
         </div>
 
-        <!-- Clean Hierarchy Network Filter Bar -->
-        <div class="main-panel-card" style="padding: 1.25rem; margin-bottom: 1.5rem; background: #FFFFFF;">
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; align-items: flex-end;">
+        <!-- Barra de Filtros com Pills em Destaque & Dropdown de Coordenadores -->
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
             
-            <!-- Seletor de Equipe / Coordenação -->
-            <div>
-              <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
-                🏢 Equipe / Coordenação
-              </label>
-              <select id="filter-team-select" class="topbar-search-input" style="width: 100%; background: #F8FAFC; font-size: 0.82rem;">
-                <option value="all">🌐 Todas as Equipes (Geral)</option>
-                <option value="mine">⭐ Minha Base Pessoal</option>
-              </select>
+            <!-- Pill Minha Base -->
+            <div id="pill-filter-mine" style="border: 2px solid #CBD5E1; background: #FFFFFF; border-radius: 12px; padding: 0.65rem 1.15rem; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; min-width: 170px; transition: all 0.15s ease;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                  <span style="color: #16A34A; font-weight: 800; font-size: 0.9rem;">⭐ Minha Base</span>
+                  <span id="pill-mine-count" style="background: #E2E8F0; color: #475569; font-size: 0.72rem; font-weight: 800; padding: 1px 7px; border-radius: 99px;">0</span>
+                </div>
+                <div style="font-size: 0.75rem; color: #64748B; margin-top: 1px;">Contatos diretos</div>
+              </div>
             </div>
 
-            <!-- Seletor de Líder / Operador -->
-            <div>
-              <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
-                👤 Líder / Operador
-              </label>
-              <select id="filter-member-select" class="topbar-search-input" style="width: 100%; background: #F8FAFC; font-size: 0.82rem;">
-                <option value="all">👥 Todos os Membros</option>
-              </select>
+            <!-- Pill Visão Geral -->
+            <div id="pill-filter-all" style="border: 2px solid #16A34A; background: #F0FDF4; border-radius: 12px; padding: 0.65rem 1.15rem; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; min-width: 170px; transition: all 0.15s ease;">
+              <div>
+                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                  <span style="color: #1E293B; font-weight: 800; font-size: 0.9rem;">🌐 Visão Geral</span>
+                  <span id="pill-all-count" style="background: #16A34A; color: #FFFFFF; font-size: 0.72rem; font-weight: 800; padding: 1px 7px; border-radius: 99px;">0</span>
+                </div>
+                <div style="font-size: 0.75rem; color: #64748B; margin-top: 1px;">Todos os contatos</div>
+              </div>
             </div>
 
-            <!-- Seletor de Status -->
-            <div>
-              <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
-                📊 Status do Contato
-              </label>
-              <select id="filter-status-select" class="topbar-search-input" style="width: 100%; background: #F8FAFC; font-size: 0.82rem;">
-                <option value="all">Todos os Status</option>
-                <option value="pending">⏳ Pendente</option>
-                <option value="confirmed">✓ Confirmado / Enviado</option>
-                <option value="opened">📱 Aberto no WhatsApp</option>
-              </select>
-            </div>
+          </div>
 
-            <!-- Seletor de Cidade / Bairro do RJ (Menu Suspenso com Digitação) -->
-            <div>
-              <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
-                📍 Cidade / Bairro (RJ)
-              </label>
-              <input type="text" id="filter-location-select" class="topbar-search-input" placeholder="Digite cidade ou bairro..." style="width: 100%; background: #F8FAFC; font-size: 0.82rem;" autocomplete="off">
-            </div>
-
-            <!-- Busca Rápida de Texto -->
-            <div>
-              <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
-                🔍 Pesquisar Nome / Tel
-              </label>
-              <input type="text" id="contacts-search" class="topbar-search-input" placeholder="Buscar texto..." style="width: 100%; background: #F8FAFC; font-size: 0.82rem;">
-            </div>
-
+          <!-- Dropdown Filtrar por Coordenador/Líder -->
+          <div style="min-width: 280px; flex: 1; max-width: 380px;">
+            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748B; margin-bottom: 0.25rem;">
+              Filtrar por Coordenador/Líder
+            </label>
+            <select id="filter-team-select" class="form-control" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border: 1px solid #CBD5E1; font-weight: 600; outline: none;">
+              <option value="all">Todos os Coordenadores</option>
+              <option value="mine">Minha Base Pessoal</option>
+            </select>
           </div>
         </div>
 
-        <!-- Resumo em Rede por Equipe (Network Performance Breakdown) -->
-        <div id="network-breakdown-card" class="main-panel-card" style="padding: 1.25rem; margin-bottom: 1.5rem; background: #FAFAFA; display: none;">
-          <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
-            <span>🌐 Desempenho da Rede por Equipe</span>
-            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">Clique em uma equipe para filtrar</span>
+        <!-- 3 KPI Cards da Referência Visual -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
+          
+          <!-- Card 1: Total na Seleção -->
+          <div class="kpi-card" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+            <div style="display: flex; align-items: center; gap: 0.45rem; color: #2563EB; font-size: 0.82rem; font-weight: 700; margin-bottom: 0.65rem;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M9 3v18"></path></svg>
+              <span>Total na Seleção</span>
+            </div>
+            <div id="kpi-contacts-total" style="font-size: 2.3rem; font-weight: 900; color: #0F172A; line-height: 1;">0</div>
+            <div style="font-size: 0.78rem; color: #2563EB; margin-top: 0.65rem; font-weight: 600;">Contatos mapeados</div>
           </div>
-          <div id="network-breakdown-mount" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;"></div>
+
+          <!-- Card 2: Disparos Confirmados -->
+          <div class="kpi-card" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+            <div style="display: flex; align-items: center; gap: 0.45rem; color: #16A34A; font-size: 0.82rem; font-weight: 700; margin-bottom: 0.65rem;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Disparos Confirmados</span>
+            </div>
+            <div id="kpi-contacts-sent" style="font-size: 2.3rem; font-weight: 900; color: #0F172A; line-height: 1;">0</div>
+            <div style="font-size: 0.78rem; color: #64748B; margin-top: 0.65rem;">Envios confirmados</div>
+          </div>
+
+          <!-- Card 3: Taxa de Conclusão -->
+          <div class="kpi-card" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+            <div style="display: flex; align-items: center; gap: 0.45rem; color: #D97706; font-size: 0.82rem; font-weight: 700; margin-bottom: 0.65rem;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>Taxa de Conclusão</span>
+            </div>
+            <div id="kpi-contacts-rate" style="font-size: 2.3rem; font-weight: 900; color: #0F172A; line-height: 1;">0%</div>
+            <div style="width: 100%; height: 7px; background: #FEF3C7; border-radius: 99px; overflow: hidden; margin-top: 0.75rem;">
+              <div id="kpi-contacts-prog-bar" style="width: 0%; height: 100%; background: #F59E0B; transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+
         </div>
 
-        <!-- Contacts Table Panel -->
-        <div class="main-panel-card" style="background: #FFFFFF; overflow: hidden;">
-          <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #FAFAFA;">
-            <span id="contacts-count-label" style="font-size: 0.83rem; font-weight: 700; color: var(--text-main);">
-              Carregando contatos...
-            </span>
-          </div>
+        <!-- Campo de Busca Arredondado -->
+        <div style="position: relative; margin-bottom: 1.25rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.5" style="position: absolute; left: 1.15rem; top: 50%; transform: translateY(-50%);">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="contacts-search" placeholder="Buscar por nome ou telefone..." style="width: 100%; padding: 0.8rem 1.25rem 0.8rem 3rem; border-radius: 9999px; border: 1.5px solid #E2E8F0; background: #FFFFFF; font-size: 0.88rem; outline: none; box-sizing: border-box; box-shadow: 0 1px 2px rgba(0,0,0,0.03); color: var(--text-main);">
+        </div>
 
-          <!-- Tabela Desktop -->
+        <!-- Contacts Table Card -->
+        <div class="main-panel-card" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;">
           <div class="table-container">
-            <table class="panel-table" style="font-size: 0.83rem;">
+            <table class="panel-table" style="font-size: 0.85rem; width: 100%; border-collapse: collapse;">
               <thead>
-                <tr>
-                  <th style="width: 240px;">NOME DO CONTATO</th>
-                  <th style="width: 150px;">WHATSAPP</th>
-                  <th style="width: 140px;">CIDADE</th>
-                  <th style="width: 140px;">BAIRRO</th>
-                  <th style="width: 180px;">RESPONSÁVEL</th>
-                  <th style="width: 120px; text-align: center;">STATUS</th>
-                  <th style="width: 100px; text-align: right;">AÇÕES</th>
+                <tr style="border-bottom: 1px solid #E2E8F0; background: #F8FAFC;">
+                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase;">NOME</th>
+                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase;">TELEFONE</th>
+                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase;">CIDADE</th>
+                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase;">BAIRRO</th>
+                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase;">LÍDER ATRIBUÍDO</th>
+                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: center; font-size: 0.75rem; text-transform: uppercase;">STATUS</th>
+                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: right; font-size: 0.75rem; text-transform: uppercase;">AÇÕES</th>
                 </tr>
               </thead>
               <tbody id="contacts-tbody">
@@ -274,44 +259,45 @@ export function renderContactsView(container, currentUser, onNavigate) {
             </table>
           </div>
         </div>
+
       </div>
 
       <!-- Modal Adicionar Contato Desktop -->
       <div id="add-contact-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 500px;">
           <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin: 0;">Adicionar Novo Contato</h3>
+            <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 0;">Adicionar Novo Contato</h3>
             <button id="btn-close-contact-modal" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);">✕</button>
           </div>
           <form id="add-contact-form" style="padding: 1.5rem;">
             <div style="margin-bottom: 1rem;">
-              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Nome Completo</label>
-              <input type="text" id="input-contact-name" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: João da Silva" required>
+              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Nome Completo *</label>
+              <input type="text" id="input-contact-name" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md);" placeholder="Ex: Thiago Lopes" required>
             </div>
             <div style="margin-bottom: 1rem;">
-              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">WhatsApp / Telefone (DDD + Número)</label>
-              <input type="tel" inputmode="tel" id="input-contact-phone" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Ex: 5521999998888" required>
+              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">WhatsApp / Telefone *</label>
+              <input type="tel" inputmode="tel" id="input-contact-phone" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md);" placeholder="Ex: 21991591272" required>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
               <div>
-                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Cidade (RJ)</label>
-                <input type="text" id="input-contact-city" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Digite para buscar cidade..." autocomplete="off">
+                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Cidade</label>
+                <input type="text" id="input-contact-city" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md);" placeholder="Digite cidade..." autocomplete="off">
               </div>
               <div>
-                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Bairro (RJ)</label>
-                <input type="text" id="input-contact-neighborhood" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" placeholder="Digite para buscar bairro..." autocomplete="off">
+                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Bairro</label>
+                <input type="text" id="input-contact-neighborhood" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md);" placeholder="Digite bairro..." autocomplete="off">
               </div>
             </div>
 
-            <!-- Atribuição a Membro (Admin / Coordenador) -->
+            <!-- Atribuição a Líder / Membro -->
             ${!isMember ? `
               <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Atribuir a Líder / Membro</label>
-                <select id="select-contact-assignee" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;"></select>
+                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Atribuir ao Líder</label>
+                <select id="select-contact-assignee" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md);"></select>
               </div>
             ` : ''}
 
-            <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
               <button type="button" id="btn-cancel-contact-modal" class="btn-outline-white">Cancelar</button>
               <button type="submit" id="btn-save-contact-submit" class="btn-green-action">Salvar Contato</button>
             </div>
@@ -324,20 +310,20 @@ export function renderContactsView(container, currentUser, onNavigate) {
   // Modal Reatribuição
   const reassignModalHtml = `
     <div id="modal-reassign" class="modal-overlay" style="display: none;">
-      <div class="modal-content">
+      <div class="modal-content" style="max-width: 480px;">
         <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin: 0;">Reatribuir Contato</h3>
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 0;">Reatribuir Contato</h3>
           <button id="btn-close-reassign" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);">✕</button>
         </div>
         <form id="form-reassign" style="padding: 1.5rem;">
           <input type="hidden" id="reassign-contact-id">
           <div style="margin-bottom: 1.5rem;">
-            <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Selecione o Novo Membro / Líder</label>
-            <select id="select-reassign-member" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem;" required></select>
+            <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Selecione o Novo Líder Responsável</label>
+            <select id="select-reassign-member" class="form-control" style="width: 100%; background: #FFFFFF; font-size: 0.88rem; padding: 0.6rem 0.85rem;" required></select>
           </div>
-          <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+          <div style="display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
             <button type="button" id="btn-cancel-reassign" class="btn-outline-white">Cancelar</button>
-            <button type="submit" class="btn-primary-blue">Confirmar Reatribuição</button>
+            <button type="submit" class="btn-primary-blue" style="font-weight: 700;">Confirmar Reatribuição</button>
           </div>
         </form>
       </div>
@@ -345,126 +331,31 @@ export function renderContactsView(container, currentUser, onNavigate) {
   `;
   container.insertAdjacentHTML('beforeend', reassignModalHtml);
 
-  // Popula os Selects de Equipe e Membro
+  // Popula os Selects de Equipe e Coordenador
   function populateTeamDropdown() {
     const teamSel = container.querySelector('#filter-team-select');
+    const pillMineCount = container.querySelector('#pill-mine-count');
+    const pillAllCount = container.querySelector('#pill-all-count');
+
+    const myTotalCount = allContacts.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name)).length;
+    if (pillMineCount) pillMineCount.textContent = myTotalCount;
+    if (pillAllCount) pillAllCount.textContent = allContacts.length;
+
     if (!teamSel) return;
 
-    let options = '<option value="all">🌐 Todas as Equipes (Geral)</option>';
-    const myTotalCount = allContacts.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name)).length;
-    options += `<option value="mine" ${selectedTeamId === 'mine' ? 'selected' : ''}>⭐ Minha Base Pessoal (${myTotalCount})</option>`;
+    let options = '<option value="all">Todos os Coordenadores</option>';
+    options += `<option value="mine" ${selectedTeamId === 'mine' ? 'selected' : ''}>⭐ Minha Base (${myTotalCount})</option>`;
 
     if (isAdmin) {
       allTeams.forEach(t => {
-        const teamUserUids = new Set(allUsers.filter(u => u.team_id === t.id || u.team_name === t.name).map(u => u.uid));
-        const teamUserEmails = new Set(allUsers.filter(u => u.team_id === t.id || u.team_name === t.name).map(u => u.email?.toLowerCase()).filter(Boolean));
-        const teamUserNames = new Set(allUsers.filter(u => u.team_id === t.id || u.team_name === t.name).map(u => u.name?.toLowerCase()).filter(Boolean));
-
-        const teamContactsCount = allContacts.filter(c => 
-          c.team_id === t.id || 
-          c.team_id === t.name || 
-          c.team_name === t.name ||
-          teamUserUids.has(c.assigned_to) || 
-          (c.assigned_to && teamUserEmails.has(c.assigned_to.toLowerCase())) ||
-          (c.assigned_to_name && teamUserNames.has(c.assigned_to_name.toLowerCase()))
-        ).length;
-
-        options += `<option value="${t.id}" ${selectedTeamId === t.id ? 'selected' : ''}>👥 ${t.name} (${teamContactsCount})</option>`;
+        const teamContactsCount = allContacts.filter(c => c.team_id === t.id || c.team_name === t.name).length;
+        options += `<option value="${t.id}" ${selectedTeamId === t.id ? 'selected' : ''}>👥 ${t.name} (${t.coordinator_name || 'Coordenador'})</option>`;
       });
     } else if (isCoordinator) {
       options += `<option value="${currentUser.team_id}" ${selectedTeamId === currentUser.team_id ? 'selected' : ''}>👥 ${currentUser.team_name || 'Minha Equipe'}</option>`;
     }
 
     teamSel.innerHTML = options;
-  }
-
-  function populateMemberDropdown() {
-    const memberSel = container.querySelector('#filter-member-select');
-    if (!memberSel) return;
-
-    let targetUsers = allUsers;
-    let targetContacts = allContacts;
-
-    if (selectedTeamId === 'mine') {
-      targetContacts = allContacts.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name));
-    } else if (selectedTeamId !== 'all') {
-      const team = allTeams.find(t => t.id === selectedTeamId);
-      const teamUserUids = new Set(allUsers.filter(u => u.team_id === selectedTeamId || (team && (u.team_id === team.id || u.team_name === team.name))).map(u => u.uid));
-      const teamUserEmails = new Set(allUsers.filter(u => u.team_id === selectedTeamId || (team && (u.team_id === team.id || u.team_name === team.name))).map(u => u.email?.toLowerCase()).filter(Boolean));
-      const teamUserNames = new Set(allUsers.filter(u => u.team_id === selectedTeamId || (team && (u.team_id === team.id || u.team_name === team.name))).map(u => u.name?.toLowerCase()).filter(Boolean));
-
-      targetUsers = allUsers.filter(u => u.team_id === selectedTeamId || (team && (u.team_id === team.id || u.team_name === team.name)));
-      targetContacts = allContacts.filter(c => 
-        c.team_id === selectedTeamId || 
-        (team && (c.team_id === team.name || c.team_name === team.name)) ||
-        teamUserUids.has(c.assigned_to) || 
-        (c.assigned_to && teamUserEmails.has(c.assigned_to.toLowerCase())) ||
-        (c.assigned_to_name && teamUserNames.has(c.assigned_to_name.toLowerCase()))
-      );
-    } else if (isCoordinator) {
-      targetUsers = teamMembers.length > 0 ? teamMembers : allUsers.filter(u => u.team_id === currentUser.team_id || u.coordinator_id === currentUser.uid);
-      targetContacts = allContacts.filter(c => c.team_id === currentUser.team_id);
-    }
-
-    let options = '<option value="all">👥 Todos os Membros</option>';
-    const myCount = targetContacts.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name)).length;
-    options += `<option value="${currentUser.uid}" ${selectedMemberUid === currentUser.uid ? 'selected' : ''}>⭐ Atribuídos a Mim (${myCount})</option>`;
-
-    targetUsers.filter(u => u.uid !== currentUser.uid).forEach(u => {
-      const count = targetContacts.filter(c => {
-        if (c.assigned_to === u.uid) return true;
-        if (c.assigned_to && c.assigned_to === u.email) return true;
-        if (c.assigned_to_name && u.name && c.assigned_to_name.trim().toLowerCase() === u.name.trim().toLowerCase()) return true;
-        if (c.assigned_to_name && u.email && c.assigned_to_name.trim().toLowerCase() === u.email.trim().toLowerCase()) return true;
-        return false;
-      }).length;
-      options += `<option value="${u.uid}" ${selectedMemberUid === u.uid ? 'selected' : ''}>👤 ${u.name || u.email} (${count})</option>`;
-    });
-
-    memberSel.innerHTML = options;
-  }
-
-  function renderNetworkBreakdown() {
-    const breakdownCard = container.querySelector('#network-breakdown-card');
-    const breakdownMount = container.querySelector('#network-breakdown-mount');
-    if (!breakdownCard || !breakdownMount) return;
-
-    if (!isAdmin || allTeams.length === 0 || selectedTeamId !== 'all') {
-      breakdownCard.style.display = 'none';
-      return;
-    }
-
-    breakdownCard.style.display = 'block';
-    breakdownMount.innerHTML = allTeams.map(t => {
-      const teamContacts = allContacts.filter(c => c.team_id === t.id);
-      const total = teamContacts.length;
-      const sent = teamContacts.filter(c => c.status === 'user_confirmed' || c.status === 'confirmed').length;
-      const rate = total > 0 ? Math.round((sent / total) * 100) : 0;
-
-      return `
-        <div class="team-breakdown-pill" data-team-id="${t.id}" style="background: #FFFFFF; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem 1rem; cursor: pointer; transition: all 0.15s ease;" title="Filtrar por esta equipe">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-            <strong style="font-size: 0.85rem; color: var(--text-main);">👥 ${t.name}</strong>
-            <span class="pill-btn" style="font-size: 0.72rem; font-weight: 700; background: #ECFDF5; color: #059669;">${rate}%</span>
-          </div>
-          <div style="font-size: 0.78rem; color: var(--text-muted);">
-            ${sent} de ${total} concluídos
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    breakdownMount.querySelectorAll('.team-breakdown-pill').forEach(card => {
-      card.addEventListener('click', () => {
-        const teamId = card.getAttribute('data-team-id');
-        selectedTeamId = teamId;
-        selectedMemberUid = 'all';
-        const teamSel = container.querySelector('#filter-team-select');
-        if (teamSel) teamSel.value = teamId;
-        populateMemberDropdown();
-        applyFiltersAndRender();
-      });
-    });
   }
 
   function updateAssigneesSelect() {
@@ -484,45 +375,12 @@ export function renderContactsView(container, currentUser, onNavigate) {
   function applyFiltersAndRender() {
     let filtered = [...allContacts];
 
-    // Filtro por Equipe
+    // Filtro por Equipe / Seleção Pill
     if (selectedTeamId === 'mine') {
       filtered = filtered.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name));
     } else if (selectedTeamId !== 'all') {
       const team = allTeams.find(t => t.id === selectedTeamId);
-      const teamUserUids = new Set(allUsers.filter(u => u.team_id === selectedTeamId || (team && (u.team_id === team.id || u.team_name === team.name))).map(u => u.uid));
-      const teamUserEmails = new Set(allUsers.filter(u => u.team_id === selectedTeamId || (team && (u.team_id === team.id || u.team_name === team.name))).map(u => u.email?.toLowerCase()).filter(Boolean));
-      const teamUserNames = new Set(allUsers.filter(u => u.team_id === selectedTeamId || (team && (u.team_id === team.id || u.team_name === team.name))).map(u => u.name?.toLowerCase()).filter(Boolean));
-
-      filtered = filtered.filter(c => 
-        c.team_id === selectedTeamId || 
-        (team && (c.team_id === team.name || c.team_name === team.name)) ||
-        teamUserUids.has(c.assigned_to) || 
-        (c.assigned_to && teamUserEmails.has(c.assigned_to.toLowerCase())) ||
-        (c.assigned_to_name && teamUserNames.has(c.assigned_to_name.toLowerCase()))
-      );
-    }
-
-    // Filtro por Líder / Operador (Membro)
-    if (selectedMemberUid !== 'all') {
-      const targetUser = allUsers.find(u => u.uid === selectedMemberUid);
-      filtered = filtered.filter(c => {
-        if (c.assigned_to === selectedMemberUid) return true;
-        if (targetUser) {
-          if (c.assigned_to && (c.assigned_to === targetUser.email || c.assigned_to === targetUser.uid)) return true;
-          if (c.assigned_to_name && targetUser.name && c.assigned_to_name.trim().toLowerCase() === targetUser.name.trim().toLowerCase()) return true;
-          if (c.assigned_to_name && targetUser.email && c.assigned_to_name.trim().toLowerCase() === targetUser.email.trim().toLowerCase()) return true;
-        }
-        return false;
-      });
-    }
-
-    // Filtro de Busca por Localização (Cidade / Bairro do RJ)
-    if (locationFilter.trim().length > 0) {
-      const loc = locationFilter.toLowerCase().trim();
-      filtered = filtered.filter(c => 
-        (c.city && c.city.toLowerCase().includes(loc)) ||
-        ((c.neighborhood || c.bairro) && (c.neighborhood || c.bairro).toLowerCase().includes(loc))
-      );
+      filtered = filtered.filter(c => c.team_id === selectedTeamId || (team && (c.team_id === team.name || c.team_name === team.name)));
     }
 
     // Filtro de Busca por Texto (Nome / Tel)
@@ -537,54 +395,65 @@ export function renderContactsView(container, currentUser, onNavigate) {
       );
     }
 
-    // Filtro por Status
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'confirmed') {
-        filtered = filtered.filter(c => c.status === 'user_confirmed' || c.status === 'confirmed');
+    // Atualiza Pills visuais
+    const pillMine = container.querySelector('#pill-filter-mine');
+    const pillAll = container.querySelector('#pill-filter-all');
+    if (pillMine && pillAll) {
+      if (selectedTeamId === 'mine') {
+        pillMine.style.border = '2px solid #16A34A';
+        pillMine.style.background = '#F0FDF4';
+        pillAll.style.border = '2px solid #CBD5E1';
+        pillAll.style.background = '#FFFFFF';
       } else {
-        filtered = filtered.filter(c => c.status === statusFilter);
+        pillAll.style.border = '2px solid #16A34A';
+        pillAll.style.background = '#F0FDF4';
+        pillMine.style.border = '2px solid #CBD5E1';
+        pillMine.style.background = '#FFFFFF';
       }
     }
 
     renderKPIs(filtered);
     renderTable(filtered);
-    renderNetworkBreakdown();
   }
 
   function renderKPIs(list) {
     const totalEl = container.querySelector('#kpi-contacts-total');
     const sentEl = container.querySelector('#kpi-contacts-sent');
-    const pendingEl = container.querySelector('#kpi-contacts-pending');
     const rateEl = container.querySelector('#kpi-contacts-rate');
     const progBar = container.querySelector('#kpi-contacts-prog-bar');
 
     const total = list.length;
-    const confirmedCount = list.filter(c => c.status === 'user_confirmed' || c.status === 'confirmed').length;
-    const pendingCount = total - confirmedCount;
+    const confirmedCount = list.filter(c => c.status === 'user_confirmed' || c.status === 'confirmed' || c.status === 'opened').length;
     const rate = total > 0 ? Math.round((confirmedCount / total) * 100) : 0;
 
     if (totalEl) totalEl.textContent = total;
     if (sentEl) sentEl.textContent = confirmedCount;
-    if (pendingEl) pendingEl.textContent = pendingCount;
     if (rateEl) rateEl.textContent = `${rate}%`;
     if (progBar) progBar.style.width = `${rate}%`;
   }
 
+  function formatPhoneDisplay(phone) {
+    if (!phone) return '—';
+    const clean = phone.replace(/\D/g, '');
+    if (clean.length === 11) {
+      return `${clean.substring(0, 2)} ${clean.substring(2, 7)}-${clean.substring(7)}`;
+    }
+    if (clean.length === 13 && clean.startsWith('55')) {
+      return `${clean.substring(2, 4)} ${clean.substring(4, 9)}-${clean.substring(9)}`;
+    }
+    return phone;
+  }
+
   function renderTable(list) {
     const tbody = container.querySelector('#contacts-tbody');
-    const countLabel = container.querySelector('#contacts-count-label');
     const mobileList = container.querySelector('#contacts-mobile-list');
-
-    if (countLabel) {
-      countLabel.textContent = `Mostrando ${list.length} contato(s) ${locationFilter ? `em "${locationFilter}"` : ''}`;
-    }
 
     if (tbody) {
       if (list.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 3rem;">
-              Nenhum contato encontrado nesta seleção ou filtro.
+            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 3.5rem;">
+              Nenhum contato encontrado nesta seleção.
             </td>
           </tr>
         `;
@@ -595,34 +464,53 @@ export function renderContactsView(container, currentUser, onNavigate) {
           const initials = (c.name || 'C').substring(0, 2).toUpperCase();
 
           const statusBadge = isConfirmed
-            ? '<span class="status-pill ativo">CONFIRMADO</span>'
+            ? '<span class="pill-btn" style="background: #DCFCE7; color: #15803D; font-weight: 800; font-size: 0.72rem; padding: 3px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 4px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #16A34A; display: inline-block;"></span> CONFIRMADO</span>'
             : isOpened
-            ? '<span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-size: 0.72rem; font-weight: 700;">ABERTO (WA)</span>'
-            : '<span class="status-pill inativo">PENDENTE</span>';
+            ? '<span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-weight: 800; font-size: 0.72rem; padding: 3px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 4px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #F59E0B; display: inline-block;"></span> ABERTO (WA)</span>'
+            : '<span class="pill-btn" style="background: #F1F5F9; color: #64748B; font-weight: 700; font-size: 0.72rem; padding: 3px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 4px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #94A3B8; display: inline-block;"></span> PENDENTE</span>';
+
+          const isMine = c.assigned_to === currentUser.uid || (currentUser.name && c.assigned_to_name === currentUser.name);
+          const leaderLabel = isMine ? 'Você' : (c.assigned_to_name || 'Henrique Nelas');
 
           return `
-            <tr>
-              <td>
-                <div class="user-identity-cell">
-                  <div class="user-identity-initials">${initials}</div>
-                  <span class="user-identity-name">${c.name}</span>
+            <tr style="border-bottom: 1px solid #F1F5F9;">
+              <td style="padding: 0.85rem 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <div style="width: 34px; height: 34px; border-radius: 50%; background: #E2E8F0; color: #475569; font-weight: 800; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    ${initials}
+                  </div>
+                  <strong style="color: #0F172A; font-size: 0.88rem;">${c.name}</strong>
                 </div>
               </td>
-              <td style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem;">${c.phone}</td>
-              <td style="color: var(--text-main); font-size: 0.85rem; font-weight: 500;">${c.city || '—'}</td>
-              <td style="color: #64748B; font-size: 0.85rem;">${c.neighborhood || c.bairro || '—'}</td>
-              <td style="font-size: 0.82rem; color: var(--text-main); font-weight: 600;">
-                👤 ${c.assigned_to_name || (c.assigned_to === currentUser.uid ? 'Você' : 'Não Atribuído')}
+              <td style="padding: 0.85rem 1rem; font-family: monospace; color: #334155; font-size: 0.85rem;">
+                ${formatPhoneDisplay(c.phone)}
               </td>
-              <td style="text-align: center;">${statusBadge}</td>
-              <td style="text-align: right;">
-                <button class="btn-reassign-action btn-outline-white" data-id="${c.id}" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
+              <td style="padding: 0.85rem 1rem; color: #64748B; font-size: 0.85rem;">${c.city || '—'}</td>
+              <td style="padding: 0.85rem 1rem; color: #64748B; font-size: 0.85rem;">${c.neighborhood || c.bairro || '—'}</td>
+              <td style="padding: 0.85rem 1rem; font-size: 0.83rem; color: #0F172A; font-weight: 600;">
+                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                  <span>${leaderLabel}</span>
+                </div>
+              </td>
+              <td style="padding: 0.85rem 1rem; text-align: center;">${statusBadge}</td>
+              <td style="padding: 0.85rem 1rem; text-align: right;">
+                <button class="btn-reassign-action" data-id="${c.id}" style="border: 1px solid #CBD5E1; background: #FFFFFF; border-radius: 9999px; padding: 0.35rem 0.9rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; color: #334155; transition: all 0.15s ease;">
                   Reatribuir
                 </button>
               </td>
             </tr>
           `;
         }).join('');
+
+        // Reatribuir button listeners
+        tbody.querySelectorAll('.btn-reassign-action').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-id');
+            container.querySelector('#reassign-contact-id').value = id;
+            container.querySelector('#modal-reassign').style.display = 'flex';
+          });
+        });
       }
     }
 
@@ -632,21 +520,11 @@ export function renderContactsView(container, currentUser, onNavigate) {
           <div style="text-align: center; background: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 12px; padding: 3rem 1.5rem; color: var(--text-muted); margin: 1rem;">
             <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">👥</div>
             <strong style="font-size: 1rem; color: var(--text-main);">Nenhum contato encontrado</strong>
-            <p style="font-size: 0.82rem; margin-top: 0.25rem;">Nenhum registro para este filtro de localização ou busca.</p>
+            <p style="font-size: 0.82rem; margin-top: 0.25rem;">Nenhum registro para esta busca.</p>
           </div>
         `;
       } else {
         mobileList.innerHTML = `
-          <!-- WhatsApp Sub-Tabs Bar -->
-          <div style="background: #008069; color: #FFFFFF; display: flex; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.1); margin: -0.5rem -1rem 0.5rem -1rem; padding: 0 0.5rem;">
-            <div style="padding: 0.75rem 1rem; color: rgba(255,255,255,0.7); display: flex; align-items: center;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-            </div>
-            <div style="flex: 1; text-align: center; padding: 0.75rem 0.5rem; color: #FFFFFF; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #FFFFFF; letter-spacing: 0.5px;">
-              CONVERSAS (${list.length})
-            </div>
-          </div>
-
           <div style="display: flex; flex-direction: column; background: #FFFFFF;">
             ${list.map(c => {
               const isConfirmed = c.status === 'user_confirmed' || c.status === 'confirmed';
@@ -654,16 +532,13 @@ export function renderContactsView(container, currentUser, onNavigate) {
               const locationInfo = [c.city, c.neighborhood || c.bairro].filter(Boolean).join(' · ');
 
               return `
-                <div class="wa-contact-item-row" style="display: flex; align-items: center; gap: 0.95rem; padding: 0.85rem 0.75rem; border-bottom: 1px solid #F1F5F9; cursor: pointer; transition: background 0.15s ease;">
-                  <!-- Gray Avatar Silhouette -->
-                  <div style="width: 46px; height: 46px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; color: #94A3B8; flex-shrink: 0;">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
+                <div class="wa-contact-item-row" style="display: flex; align-items: center; gap: 0.95rem; padding: 0.85rem 0.75rem; border-bottom: 1px solid #F1F5F9; cursor: pointer;">
+                  <div style="width: 44px; height: 44px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; color: #64748B; font-weight: 800; font-size: 0.85rem; flex-shrink: 0;">
+                    ${(c.name || 'C').substring(0, 2).toUpperCase()}
                   </div>
-
-                  <!-- Info -->
                   <div style="flex: 1; min-width: 0;">
                     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
-                      <span style="font-weight: 700; font-size: 0.98rem; color: #1E293B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                      <span style="font-weight: 700; font-size: 0.95rem; color: #1E293B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                         ${c.name}
                       </span>
                       ${isConfirmed ? `
@@ -672,11 +547,11 @@ export function renderContactsView(container, currentUser, onNavigate) {
                         <span style="font-size: 0.72rem; color: #B45309; font-weight: 700;">Aberto</span>
                       ` : ''}
                     </div>
-                    <div style="font-size: 0.85rem; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace;">
+                    <div style="font-size: 0.82rem; color: #64748B; font-family: monospace;">
                       ${c.phone}
                     </div>
                     ${locationInfo ? `
-                      <div style="font-size: 0.75rem; color: #0284C7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px;">
+                      <div style="font-size: 0.75rem; color: #0284C7; margin-top: 1px;">
                         📍 ${locationInfo}
                       </div>
                     ` : ''}
@@ -690,21 +565,24 @@ export function renderContactsView(container, currentUser, onNavigate) {
     }
   }
 
+  // Pill filter clicks
+  container.querySelector('#pill-filter-mine')?.addEventListener('click', () => {
+    selectedTeamId = 'mine';
+    const teamSel = container.querySelector('#filter-team-select');
+    if (teamSel) teamSel.value = 'mine';
+    applyFiltersAndRender();
+  });
+
+  container.querySelector('#pill-filter-all')?.addEventListener('click', () => {
+    selectedTeamId = 'all';
+    const teamSel = container.querySelector('#filter-team-select');
+    if (teamSel) teamSel.value = 'all';
+    applyFiltersAndRender();
+  });
+
   // Filter Listeners
   container.querySelector('#filter-team-select')?.addEventListener('change', (e) => {
     selectedTeamId = e.target.value;
-    selectedMemberUid = 'all';
-    populateMemberDropdown();
-    applyFiltersAndRender();
-  });
-
-  container.querySelector('#filter-member-select')?.addEventListener('change', (e) => {
-    selectedMemberUid = e.target.value;
-    applyFiltersAndRender();
-  });
-
-  container.querySelector('#filter-status-select')?.addEventListener('change', (e) => {
-    statusFilter = e.target.value;
     applyFiltersAndRender();
   });
 
@@ -717,79 +595,6 @@ export function renderContactsView(container, currentUser, onNavigate) {
     searchQuery = e.target.value;
     applyFiltersAndRender();
   });
-
-  // Filtros de Localização com Menu Suspenso Pesquisável
-  const mobileLocInput = container.querySelector('#contacts-location-filter-mobile');
-  if (mobileLocInput) {
-    setupSearchableLocationInput({
-      inputEl: mobileLocInput,
-      type: 'all',
-      placeholder: '📍 Filtrar por Cidade ou Bairro (RJ)...',
-      onSelect: ({ value }) => {
-        locationFilter = value;
-        applyFiltersAndRender();
-      }
-    });
-    mobileLocInput.addEventListener('input', (e) => {
-      locationFilter = e.target.value;
-      applyFiltersAndRender();
-    });
-  }
-
-  const desktopLocInput = container.querySelector('#filter-location-select');
-  if (desktopLocInput) {
-    setupSearchableLocationInput({
-      inputEl: desktopLocInput,
-      type: 'all',
-      placeholder: 'Digite cidade ou bairro do RJ...',
-      onSelect: ({ value }) => {
-        locationFilter = value;
-        applyFiltersAndRender();
-      }
-    });
-    desktopLocInput.addEventListener('input', (e) => {
-      locationFilter = e.target.value;
-      applyFiltersAndRender();
-    });
-  }
-
-  // Setup dos Campos de Cidade e Bairro no Modal de Adicionar Contato
-  const modalCityInput = container.querySelector('#input-contact-city');
-  const modalNeighInput = container.querySelector('#input-contact-neighborhood');
-
-  if (modalCityInput) {
-    setupSearchableLocationInput({
-      inputEl: modalCityInput,
-      type: 'cities',
-      placeholder: 'Digite para buscar cidade...'
-    });
-  }
-
-  if (modalNeighInput) {
-    setupSearchableLocationInput({
-      inputEl: modalNeighInput,
-      type: 'neighborhoods',
-      placeholder: 'Digite para buscar bairro...',
-      onSelect: ({ value, category }) => {
-        if (modalCityInput && (!modalCityInput.value || modalCityInput.value === 'Rio de Janeiro')) {
-          if (category.includes('Niterói')) {
-            modalCityInput.value = 'Niterói';
-          } else if (category.includes('Baixada')) {
-            if (value.includes('Caxias')) modalCityInput.value = 'Duque de Caxias';
-            else if (value.includes('Nova Iguaçu')) modalCityInput.value = 'Nova Iguaçu';
-            else if (value.includes('Meriti')) modalCityInput.value = 'São João de Meriti';
-            else if (value.includes('Belford Roxo')) modalCityInput.value = 'Belford Roxo';
-            else if (value.includes('Nilópolis')) modalCityInput.value = 'Nilópolis';
-            else if (value.includes('Mesquita')) modalCityInput.value = 'Mesquita';
-            else if (value.includes('Queimados')) modalCityInput.value = 'Queimados';
-            else modalCityInput.value = 'Duque de Caxias';
-          } else {
-            modalCityInput.value = 'Rio de Janeiro';
-          }
-        }
-      }
-    });
-  }
 
   container.querySelector('#btn-goto-import')?.addEventListener('click', () => onNavigate('import'));
   container.querySelector('#btn-goto-history')?.addEventListener('click', () => onNavigate('history'));
@@ -877,32 +682,27 @@ export function renderContactsView(container, currentUser, onNavigate) {
     unsubContacts = subscribeToAllContacts((realContacts) => {
       allContacts = realContacts;
       populateTeamDropdown();
-      populateMemberDropdown();
       applyFiltersAndRender();
     });
 
     unsubTeams = subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
       allTeams = teams;
       populateTeamDropdown();
-      renderNetworkBreakdown();
     });
 
     unsubUsers = subscribeToAllUsers((users) => {
       allUsers = users;
-      populateMemberDropdown();
       updateAssigneesSelect();
     });
   } else if (isCoordinator) {
     unsubContacts = subscribeToTeamContacts(currentUser.team_id, (teamContacts) => {
       allContacts = teamContacts;
       populateTeamDropdown();
-      populateMemberDropdown();
       applyFiltersAndRender();
     });
 
     unsubMembers = subscribeToTeamMembers(currentUser.team_id, currentUser.uid, (members) => {
       teamMembers = members;
-      populateMemberDropdown();
       updateAssigneesSelect();
     });
   } else {
