@@ -17,6 +17,7 @@ import {
 } from '../firebase/evolutionApi.js';
 import { logoutUser } from '../firebase/auth.js';
 import { showToast } from '../utils/feedback.js';
+import { calculateNetworkCoverage } from '../utils/metricsEngine.js';
 
 export function renderDispatchView(container, currentUser, onNavigate) {
   let rawContacts = [];
@@ -86,6 +87,19 @@ export function renderDispatchView(container, currentUser, onNavigate) {
             </select>
           </div>
         ` : ''}
+
+        <!-- Leader Personal Coverage Progress Card -->
+        <div id="leader-mobile-goal-card" style="background: #FFFFFF; border-radius: 10px; padding: 0.65rem 0.85rem; border: 1px solid #CBD5E1; margin-bottom: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; font-size: 0.8rem;">
+            <span style="font-weight: 700; color: #1E293B;">
+              🎯 Sua Meta de Abordagens: <span id="leader-goal-text">0 / 0</span>
+            </span>
+            <span id="leader-goal-pct" style="font-weight: 800; color: #008069; font-size: 0.82rem;">0%</span>
+          </div>
+          <div style="width: 100%; height: 6px; background: #E2E8F0; border-radius: 99px; overflow: hidden;">
+            <div id="leader-goal-prog-bar" style="width: 0%; height: 100%; background: #25D366; transition: width 0.3s ease;"></div>
+          </div>
+        </div>
 
         <!-- Quick Controls Top Bar inside Chat -->
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
@@ -202,6 +216,18 @@ export function renderDispatchView(container, currentUser, onNavigate) {
       selectAllChk.checked = contacts.length > 0 && selectedContactIds.size === contacts.length;
       selectAllChk.indeterminate = selectedContactIds.size > 0 && selectedContactIds.size < contacts.length;
     }
+
+    // Atualiza barra de progresso da meta individual do líder
+    const goalText = container.querySelector('#leader-goal-text');
+    const goalPct = container.querySelector('#leader-goal-pct');
+    const goalProgBar = container.querySelector('#leader-goal-prog-bar');
+    const coverage = calculateNetworkCoverage(rawContacts, historyMessages);
+    const memberGoal = currentUser?.daily_goal || (rawContacts.length > 0 ? rawContacts.length : 30);
+    const progressPct = memberGoal > 0 ? Math.min(100, Math.round((coverage.abordados / memberGoal) * 100)) : 0;
+
+    if (goalText) goalText.textContent = `${coverage.abordados} / ${memberGoal}`;
+    if (goalPct) goalPct.textContent = `${progressPct}%`;
+    if (goalProgBar) goalProgBar.style.width = `${progressPct}%`;
 
     if (!listMount) return;
 

@@ -13,6 +13,7 @@ import {
 } from '../firebase/realtime.js';
 import { createUserProfileDirectly } from '../firebase/auth.js';
 import { showToast } from '../utils/feedback.js';
+import { calculateNetworkCoverage, calculateLeadersPerformance, generateManagementAlerts } from '../utils/metricsEngine.js';
 
 export function renderManagerialDashboard(container, currentUser, currentTeamId, onTeamChange) {
   let teamMembers = [];
@@ -259,11 +260,8 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
   `;
 
   function updateKpis() {
+    const coverage = calculateNetworkCoverage(teamContacts, teamMessages);
     const totalMembers = teamMembers.length;
-    const totalContacts = teamContacts.length;
-    const openedContacts = Math.max(teamMessages.length, teamContacts.filter(c => c.status === 'opened' || c.status === 'user_confirmed' || c.status === 'confirmed').length);
-    const pendingContacts = Math.max(0, totalContacts - openedContacts);
-    const completionRate = totalContacts > 0 ? Math.min(100, Math.round((openedContacts / totalContacts) * 100)) : 0;
 
     const memEl = container.querySelector('#coord-kpi-members');
     const conEl = container.querySelector('#coord-kpi-contacts');
@@ -273,11 +271,11 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
     const rateBar = container.querySelector('#coord-kpi-rate-bar');
 
     if (memEl) memEl.textContent = totalMembers;
-    if (conEl) conEl.textContent = totalContacts;
-    if (openEl) openEl.textContent = openedContacts;
-    if (penEl) penEl.textContent = pendingContacts;
-    if (rateEl) rateEl.textContent = `${completionRate}%`;
-    if (rateBar) rateBar.style.width = `${completionRate}%`;
+    if (conEl) conEl.textContent = coverage.total;
+    if (openEl) openEl.textContent = coverage.abordados;
+    if (penEl) penEl.textContent = coverage.pendentes;
+    if (rateEl) rateEl.textContent = coverage.rateFormatted;
+    if (rateBar) rateBar.style.width = coverage.rateFormatted;
   }
 
   function renderTabContent() {
@@ -285,30 +283,8 @@ export function renderManagerialDashboard(container, currentUser, currentTeamId,
     if (!mount) return;
 
     if (activeTab === 'performance') {
-      // Top 3 Ranking e Métricas com base no Histórico de Envios
-      const sortedByAbordados = [...teamMembers].map(m => {
-        // Disparos registrados no histórico de mensagens (/messages) para este membro
-        const memberMessages = teamMessages.filter(msg => 
-          msg.user_uid === m.uid ||
-          (m.email && msg.user_email && msg.user_email.toLowerCase() === m.email.toLowerCase()) ||
-          (m.name && msg.user_name && msg.user_name.trim().toLowerCase() === m.name.trim().toLowerCase())
-        );
-
-        // Contatos atribuídos a este membro
-        const memberContacts = teamContacts.filter(c => 
-          c.assigned_to === m.uid ||
-          (m.email && c.assigned_to === m.email) ||
-          (m.name && c.assigned_to_name && c.assigned_to_name.trim().toLowerCase() === m.name.trim().toLowerCase())
-        );
-
-        const contactsSent = memberContacts.filter(c => c.status === 'opened' || c.status === 'user_confirmed' || c.status === 'confirmed').length;
-
-        // Disparos efetivos computados a partir do histórico de envio real
-        const abordados = Math.max(memberMessages.length, contactsSent);
-        const goal = m.daily_goal || 30;
-        const pct = Math.min(100, Math.round((abordados / goal) * 100));
-        return { ...m, memberContacts, memberMessages, abordados, goal, pct };
-      }).sort((a, b) => b.abordados - a.abordados);
+      // Desempenho e Ranking dos Líderes da Equipe calculado via metricsEngine
+      const sortedByAbordados = calculateLeadersPerformance(teamMembers, teamContacts, teamMessages);
 
       mount.innerHTML = `
         <div class="main-panel-card">
