@@ -176,7 +176,7 @@ function renderProtectedApp(currentUser) {
               ` : ''}
             </div>
             
-            ${role === 'admin' && isManagerView ? `
+            ${role === 'admin' && currentView === 'manager' ? `
               <select id="topbar-team-select" class="team-selector-pill" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; font-weight: 700; border-radius: 9999px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: inherit; cursor: pointer; outline: none;">
                 ${tenantTeams.length === 0 ? `
                   <option value="" style="color: black;">Nenhuma equipe</option>

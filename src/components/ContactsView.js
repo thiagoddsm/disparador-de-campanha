@@ -184,28 +184,59 @@ export function renderContactsView(container, currentUser, onNavigate) {
 
           </div>
 
-          <!-- Filtros em Cascata: Coordenador & Líder -->
+          <!-- Filtros em Cascata: Coordenador & Líder com Busca por Digitação -->
           <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; flex: 1; justify-content: flex-end;">
             
-            <!-- Dropdown Filtrar por Coordenador -->
-            <div style="min-width: 220px; flex: 1; max-width: 280px;">
+            <!-- Dropdown Pesquisável Filtrar por Coordenador -->
+            <div style="min-width: 220px; flex: 1; max-width: 280px; position: relative;">
               <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748B; margin-bottom: 0.25rem;">
                 Filtrar por Coordenador
               </label>
-              <select id="filter-coordinator-select" class="form-control" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border: 1px solid #CBD5E1; font-weight: 600; outline: none;">
-                <option value="all">Todos os Coordenadores</option>
-                <option value="mine">Minha Base Pessoal</option>
-              </select>
+              <div id="coord-searchable-combobox" style="position: relative;">
+                <div id="coord-combo-trigger" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-size: 0.83rem; padding: 0.6rem 0.85rem; border: 1px solid #CBD5E1; font-weight: 600; text-align: left; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; box-sizing: border-box;">
+                  <span id="coord-combo-label" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #0F172A;">Todos os Coordenadores</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color: #64748B; flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                
+                <div id="coord-combo-popover" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 10px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08); z-index: 100; padding: 0.5rem; flex-direction: column;">
+                  <div style="position: relative; margin-bottom: 0.45rem;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.5" style="position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%);">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="coord-combo-search" placeholder="Digitar para buscar coordenador..." style="width: 100%; padding: 0.45rem 0.65rem 0.45rem 2rem; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 0.8rem; outline: none; box-sizing: border-box; background: #F8FAFC;">
+                  </div>
+                  <div id="coord-combo-list" style="overflow-y: auto; max-height: 230px; display: flex; flex-direction: column; gap: 2px;">
+                    <!-- Itens gerados dinamicamente -->
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <!-- Dropdown Filtrar por Líder / Operador -->
-            <div style="min-width: 220px; flex: 1; max-width: 280px;">
+            <!-- Dropdown Pesquisável Filtrar por Líder / Operador -->
+            <div style="min-width: 220px; flex: 1; max-width: 280px; position: relative;">
               <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748B; margin-bottom: 0.25rem;">
                 Filtrar por Líder
               </label>
-              <select id="filter-leader-select" class="form-control" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border: 1px solid #CBD5E1; font-weight: 600; outline: none;">
-                <option value="all">Todos os Líderes</option>
-              </select>
+              <div id="leader-searchable-combobox" style="position: relative;">
+                <div id="leader-combo-trigger" style="width: 100%; border-radius: var(--radius-md); background: #FFFFFF; font-size: 0.83rem; padding: 0.6rem 0.85rem; border: 1px solid #CBD5E1; font-weight: 600; text-align: left; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; box-sizing: border-box;">
+                  <span id="leader-combo-label" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #0F172A;">Todos os Líderes</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color: #64748B; flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                
+                <div id="leader-combo-popover" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 10px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08); z-index: 100; padding: 0.5rem; flex-direction: column;">
+                  <div style="position: relative; margin-bottom: 0.45rem;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.5" style="position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%);">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="leader-combo-search" placeholder="Digitar para buscar líder..." style="width: 100%; padding: 0.45rem 0.65rem 0.45rem 2rem; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 0.8rem; outline: none; box-sizing: border-box; background: #F8FAFC;">
+                  </div>
+                  <div id="leader-combo-list" style="overflow-y: auto; max-height: 230px; display: flex; flex-direction: column; gap: 2px;">
+                    <!-- Itens gerados dinamicamente -->
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Dropdown Filtrar por Status -->
@@ -391,9 +422,89 @@ export function renderContactsView(container, currentUser, onNavigate) {
   `;
   container.insertAdjacentHTML('beforeend', reassignModalHtml);
 
-  // Popula os Selects de Coordenadores e Líderes em Cascata
+  let coordinatorOptionsData = [];
+  let leaderOptionsData = [];
+
+  function renderCoordComboItems(filterText = '') {
+    const listEl = container.querySelector('#coord-combo-list');
+    if (!listEl) return;
+
+    const q = filterText.toLowerCase().trim();
+    const filtered = coordinatorOptionsData.filter(item => item.label.toLowerCase().includes(q) || (item.sub && item.sub.toLowerCase().includes(q)));
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<div style="padding: 0.75rem; text-align: center; color: #94A3B8; font-size: 0.78rem;">Nenhum coordenador encontrado</div>';
+      return;
+    }
+
+    listEl.innerHTML = filtered.map(item => {
+      const isSelected = selectedCoordinatorUid === item.value;
+      return `
+        <div class="coord-combo-item" data-value="${item.value}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.65rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; background: ${isSelected ? '#F0FDF4' : 'transparent'}; color: ${isSelected ? '#15803D' : '#1E293B'}; font-weight: ${isSelected ? '700' : '500'}; transition: background 0.1s ease;">
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">${item.label}</span>
+          ${item.count !== null ? `<span style="font-size: 0.72rem; color: #64748B; background: #E2E8F0; padding: 1px 6px; border-radius: 99px;">${item.count}</span>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('.coord-combo-item').forEach(el => {
+      el.addEventListener('mouseenter', () => { if (el.dataset.value !== selectedCoordinatorUid) el.style.background = '#F8FAFC'; });
+      el.addEventListener('mouseleave', () => { if (el.dataset.value !== selectedCoordinatorUid) el.style.background = 'transparent'; });
+      el.addEventListener('click', () => {
+        selectedCoordinatorUid = el.dataset.value;
+        selectedLeaderUid = 'all';
+        const activeItem = coordinatorOptionsData.find(i => i.value === selectedCoordinatorUid);
+        const labelEl = container.querySelector('#coord-combo-label');
+        if (labelEl && activeItem) labelEl.textContent = activeItem.label;
+        const popover = container.querySelector('#coord-combo-popover');
+        if (popover) popover.style.display = 'none';
+        populateLeaderDropdown();
+        currentPage = 1;
+        applyFiltersAndRender();
+      });
+    });
+  }
+
+  function renderLeaderComboItems(filterText = '') {
+    const listEl = container.querySelector('#leader-combo-list');
+    if (!listEl) return;
+
+    const q = filterText.toLowerCase().trim();
+    const filtered = leaderOptionsData.filter(item => item.label.toLowerCase().includes(q));
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<div style="padding: 0.75rem; text-align: center; color: #94A3B8; font-size: 0.78rem;">Nenhum líder encontrado</div>';
+      return;
+    }
+
+    listEl.innerHTML = filtered.map(item => {
+      const isSelected = selectedLeaderUid === item.value;
+      return `
+        <div class="leader-combo-item" data-value="${item.value}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.65rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; background: ${isSelected ? '#F0FDF4' : 'transparent'}; color: ${isSelected ? '#15803D' : '#1E293B'}; font-weight: ${isSelected ? '700' : '500'}; transition: background 0.1s ease;">
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">${item.label}</span>
+          ${item.count !== null ? `<span style="font-size: 0.72rem; color: #64748B; background: #E2E8F0; padding: 1px 6px; border-radius: 99px;">${item.count}</span>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('.leader-combo-item').forEach(el => {
+      el.addEventListener('mouseenter', () => { if (el.dataset.value !== selectedLeaderUid) el.style.background = '#F8FAFC'; });
+      el.addEventListener('mouseleave', () => { if (el.dataset.value !== selectedLeaderUid) el.style.background = 'transparent'; });
+      el.addEventListener('click', () => {
+        selectedLeaderUid = el.dataset.value;
+        const activeItem = leaderOptionsData.find(i => i.value === selectedLeaderUid);
+        const labelEl = container.querySelector('#leader-combo-label');
+        if (labelEl && activeItem) labelEl.textContent = activeItem.label;
+        const popover = container.querySelector('#leader-combo-popover');
+        if (popover) popover.style.display = 'none';
+        currentPage = 1;
+        applyFiltersAndRender();
+      });
+    });
+  }
+
+  // Popula os Comboboxes Pesquisáveis de Coordenadores e Líderes
   function populateCoordinatorDropdown() {
-    const coordSel = container.querySelector('#filter-coordinator-select');
     const pillMineCount = container.querySelector('#pill-mine-count');
     const pillAllCount = container.querySelector('#pill-all-count');
 
@@ -401,28 +512,37 @@ export function renderContactsView(container, currentUser, onNavigate) {
     if (pillMineCount) pillMineCount.textContent = myTotalCount;
     if (pillAllCount) pillAllCount.textContent = allContacts.length;
 
-    if (!coordSel) return;
-
-    let options = '<option value="all">Todos os Coordenadores</option>';
-    options += `<option value="mine" ${selectedCoordinatorUid === 'mine' ? 'selected' : ''}>⭐ Minha Base (${myTotalCount})</option>`;
+    coordinatorOptionsData = [
+      { value: 'all', label: 'Todos os Coordenadores', count: allContacts.length },
+      { value: 'mine', label: `⭐ Minha Base (${currentUser.name || 'Pessoal'})`, count: myTotalCount }
+    ];
 
     if (isAdmin) {
       allTeams.forEach(t => {
         const teamContactsCount = allContacts.filter(c => c.team_id === t.id || c.team_name === t.name).length;
-        options += `<option value="${t.id}" ${selectedCoordinatorUid === t.id ? 'selected' : ''}>👔 ${t.coordinator_name || 'Coordenador'} (${t.name} · ${teamContactsCount})</option>`;
+        coordinatorOptionsData.push({
+          value: t.id,
+          label: `👔 ${t.coordinator_name || 'Coordenador'} (${t.name})`,
+          count: teamContactsCount
+        });
       });
     } else if (isCoordinator) {
-      options += `<option value="${currentUser.team_id}" ${selectedCoordinatorUid === currentUser.team_id ? 'selected' : ''}>👥 ${currentUser.team_name || 'Minha Equipe'}</option>`;
+      coordinatorOptionsData.push({
+        value: currentUser.team_id,
+        label: `👥 ${currentUser.team_name || 'Minha Equipe'}`,
+        count: allContacts.length
+      });
     }
 
-    coordSel.innerHTML = options;
+    const activeCoord = coordinatorOptionsData.find(i => i.value === selectedCoordinatorUid) || coordinatorOptionsData[0];
+    const labelEl = container.querySelector('#coord-combo-label');
+    if (labelEl && activeCoord) labelEl.textContent = activeCoord.label;
+
+    renderCoordComboItems();
     populateLeaderDropdown();
   }
 
   function populateLeaderDropdown() {
-    const leaderSel = container.querySelector('#filter-leader-select');
-    if (!leaderSel) return;
-
     let availableUsers = allUsers.filter(u => u.role === 'member' || !u.role);
     if (selectedCoordinatorUid === 'mine') {
       availableUsers = allUsers.filter(u => u.uid === currentUser.uid);
@@ -433,15 +553,27 @@ export function renderContactsView(container, currentUser, onNavigate) {
       availableUsers = teamMembers.length > 0 ? teamMembers : allUsers.filter(u => u.team_id === currentUser.team_id);
     }
 
-    let options = '<option value="all">Todos os Líderes</option>';
-    options += `<option value="${currentUser.uid}" ${selectedLeaderUid === currentUser.uid ? 'selected' : ''}>⭐ Você (${currentUser.name || currentUser.email})</option>`;
+    const myCount = allContacts.filter(c => c.assigned_to === currentUser.uid || c.assigned_to === currentUser.email || (currentUser.name && c.assigned_to_name === currentUser.name)).length;
+
+    leaderOptionsData = [
+      { value: 'all', label: 'Todos os Líderes', count: null },
+      { value: currentUser.uid, label: `⭐ Você (${currentUser.name || currentUser.email})`, count: myCount }
+    ];
 
     availableUsers.filter(u => u.uid !== currentUser.uid).forEach(u => {
       const leaderCount = allContacts.filter(c => c.assigned_to === u.uid || c.assigned_to === u.email || (u.name && c.assigned_to_name === u.name)).length;
-      options += `<option value="${u.uid}" ${selectedLeaderUid === u.uid ? 'selected' : ''}>👤 ${u.name || u.email} (${leaderCount})</option>`;
+      leaderOptionsData.push({
+        value: u.uid,
+        label: `👤 ${u.name || u.email}`,
+        count: leaderCount
+      });
     });
 
-    leaderSel.innerHTML = options;
+    const activeLeader = leaderOptionsData.find(i => i.value === selectedLeaderUid) || leaderOptionsData[0];
+    const labelEl = container.querySelector('#leader-combo-label');
+    if (labelEl && activeLeader) labelEl.textContent = activeLeader.label;
+
+    renderLeaderComboItems();
   }
 
   function updateAssigneesSelect() {
@@ -718,37 +850,73 @@ export function renderContactsView(container, currentUser, onNavigate) {
   container.querySelector('#pill-filter-mine')?.addEventListener('click', () => {
     selectedCoordinatorUid = 'mine';
     selectedLeaderUid = 'all';
-    const coordSel = container.querySelector('#filter-coordinator-select');
-    if (coordSel) coordSel.value = 'mine';
+    populateCoordinatorDropdown();
     currentPage = 1;
-    populateLeaderDropdown();
     applyFiltersAndRender();
   });
 
   container.querySelector('#pill-filter-all')?.addEventListener('click', () => {
     selectedCoordinatorUid = 'all';
     selectedLeaderUid = 'all';
-    const coordSel = container.querySelector('#filter-coordinator-select');
-    if (coordSel) coordSel.value = 'all';
+    populateCoordinatorDropdown();
     currentPage = 1;
-    populateLeaderDropdown();
     applyFiltersAndRender();
   });
 
-  // Filter Listeners
-  container.querySelector('#filter-coordinator-select')?.addEventListener('change', (e) => {
-    selectedCoordinatorUid = e.target.value;
-    selectedLeaderUid = 'all';
-    currentPage = 1;
-    populateLeaderDropdown();
-    applyFiltersAndRender();
+  // Combobox Handlers: Coordenador
+  const coordTrigger = container.querySelector('#coord-combo-trigger');
+  const coordPopover = container.querySelector('#coord-combo-popover');
+  const coordSearch = container.querySelector('#coord-combo-search');
+
+  coordTrigger?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isVisible = coordPopover.style.display === 'flex';
+    // Fecha o de líder se estiver aberto
+    if (leaderPopover) leaderPopover.style.display = 'none';
+    coordPopover.style.display = isVisible ? 'none' : 'flex';
+    if (!isVisible && coordSearch) {
+      coordSearch.value = '';
+      renderCoordComboItems('');
+      setTimeout(() => coordSearch.focus(), 50);
+    }
   });
 
-  container.querySelector('#filter-leader-select')?.addEventListener('change', (e) => {
-    selectedLeaderUid = e.target.value;
-    currentPage = 1;
-    applyFiltersAndRender();
+  coordSearch?.addEventListener('input', (e) => {
+    renderCoordComboItems(e.target.value);
   });
+
+  // Combobox Handlers: Líder
+  const leaderTrigger = container.querySelector('#leader-combo-trigger');
+  const leaderPopover = container.querySelector('#leader-combo-popover');
+  const leaderSearch = container.querySelector('#leader-combo-search');
+
+  leaderTrigger?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isVisible = leaderPopover.style.display === 'flex';
+    // Fecha o de coordenador se estiver aberto
+    if (coordPopover) coordPopover.style.display = 'none';
+    leaderPopover.style.display = isVisible ? 'none' : 'flex';
+    if (!isVisible && leaderSearch) {
+      leaderSearch.value = '';
+      renderLeaderComboItems('');
+      setTimeout(() => leaderSearch.focus(), 50);
+    }
+  });
+
+  leaderSearch?.addEventListener('input', (e) => {
+    renderLeaderComboItems(e.target.value);
+  });
+
+  // Fecha comboboxes ao clicar fora
+  const onDocumentClick = (e) => {
+    if (coordPopover && !container.querySelector('#coord-searchable-combobox')?.contains(e.target)) {
+      coordPopover.style.display = 'none';
+    }
+    if (leaderPopover && !container.querySelector('#leader-searchable-combobox')?.contains(e.target)) {
+      leaderPopover.style.display = 'none';
+    }
+  };
+  document.addEventListener('click', onDocumentClick);
 
   container.querySelector('#filter-status-select')?.addEventListener('change', (e) => {
     statusFilter = e.target.value;
@@ -908,6 +1076,7 @@ export function renderContactsView(container, currentUser, onNavigate) {
   }
 
   return () => {
+    document.removeEventListener('click', onDocumentClick);
     if (unsubContacts) unsubContacts();
     if (unsubTeams) unsubTeams();
     if (unsubUsers) unsubUsers();
