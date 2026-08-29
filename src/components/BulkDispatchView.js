@@ -1,5 +1,6 @@
 import { 
   subscribeToAllContacts, 
+  subscribeToTeamContacts,
   subscribeToTenantTeams, 
   subscribeToAllUsers, 
   DEFAULT_TENANT_ID 
@@ -245,15 +246,18 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
               Filtro de Status dos Contatos
             </label>
             <select id="bulk-status-select" class="form-control" style="background: #F8FAFC; padding: 0.5rem 0.75rem; font-size: 0.82rem;">
-              <option value="pending" selected>⏳ Apenas Pendentes (Não abordados)</option>
-              <option value="all">🌐 Todos os Contatos da Carteira (Reengajamento)</option>
+              <option value="all" selected>🌐 Todos os Contatos da Seleção</option>
+              <option value="pending">⏳ Apenas Pendentes (Não abordados)</option>
               <option value="opened">📱 Abertos / Aguardando</option>
+              <option value="confirmed">✓ Confirmados</option>
             </select>
           </div>
 
           <div id="bulk-queue-preview" style="background: #F1F5F9; border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.82rem; color: #334155; display: flex; justify-content: space-between; align-items: center;">
-            <span>Contatos prontos para a fila:</span>
-            <strong id="bulk-queue-count" style="font-size: 1.1rem; color: #0F172A;">0</strong>
+            <div>
+              <div style="font-weight: 700; color: #1E293B;">Contatos na fila de envio: <strong style="font-size: 1.15rem; color: #15803D;">0</strong></div>
+              <div style="font-size: 0.73rem; color: #64748B; margin-top: 2px;">Carregando contatos da base...</div>
+            </div>
           </div>
         </div>
 
@@ -513,19 +517,12 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
     }
   }
 
-  let selectedStatusFilter = 'pending';
+  let selectedStatusFilter = 'all';
 
   function updateQueuePreview() {
     let filteredContacts = [...allContacts];
 
-    // Filtro por Status
-    if (selectedStatusFilter === 'pending') {
-      filteredContacts = filteredContacts.filter(c => !c.status || c.status === 'pending');
-    } else if (selectedStatusFilter === 'opened') {
-      filteredContacts = filteredContacts.filter(c => c.status === 'opened');
-    }
-
-    // Filtro por Equipe / Coordenador
+    // 1. Filtro por Equipe / Coordenador
     if (selectedTeamFilter !== 'all') {
       const team = allTeams.find(t => t.id === selectedTeamFilter || t.coordinator_uid === selectedTeamFilter || t.name === selectedTeamFilter);
       const coordUser = allUsers.find(u => u.uid === selectedTeamFilter || (team && u.uid === team.coordinator_uid));
@@ -549,7 +546,7 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
       });
     }
 
-    // Filtro por Líder / Operador
+    // 2. Filtro por Líder / Operador
     if (selectedLeaderFilter !== 'all') {
       const leader = allUsers.find(u => u.uid === selectedLeaderFilter);
       filteredContacts = filteredContacts.filter(c => {
@@ -564,9 +561,33 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
       });
     }
 
+    // 3. Contadores para o resumo visual
+    const totalInFilter = filteredContacts.length;
+    const pendingInFilter = filteredContacts.filter(c => !c.status || c.status === 'pending').length;
+    const confirmedInFilter = filteredContacts.filter(c => c.status === 'confirmed' || c.status === 'user_confirmed').length;
+    const openedInFilter = filteredContacts.filter(c => c.status === 'opened').length;
+
+    // 4. Aplica filtro de status selecionado
+    if (selectedStatusFilter === 'pending') {
+      filteredContacts = filteredContacts.filter(c => !c.status || c.status === 'pending');
+    } else if (selectedStatusFilter === 'opened') {
+      filteredContacts = filteredContacts.filter(c => c.status === 'opened');
+    } else if (selectedStatusFilter === 'confirmed') {
+      filteredContacts = filteredContacts.filter(c => c.status === 'confirmed' || c.status === 'user_confirmed');
+    }
+
     queue = filteredContacts;
-    const countEl = container.querySelector('#bulk-queue-count');
-    if (countEl) countEl.textContent = queue.length;
+    const previewBox = container.querySelector('#bulk-queue-preview');
+    if (previewBox) {
+      previewBox.innerHTML = `
+        <div>
+          <div style="font-weight: 700; color: #1E293B;">Contatos na fila de envio: <strong style="font-size: 1.15rem; color: #15803D;">${queue.length}</strong></div>
+          <div style="font-size: 0.73rem; color: #64748B; margin-top: 2px;">
+            ${pendingInFilter} pendentes · ${openedInFilter} abertos · ${confirmedInFilter} confirmados (Total na seleção: ${totalInFilter})
+          </div>
+        </div>
+      `;
+    }
   }
 
   function populateDropdowns() {
@@ -894,19 +915,29 @@ export function renderBulkDispatchView(container, currentUser, onNavigate) {
   });
 
   // Subscriptions em tempo real
-  const unsubContacts = subscribeToAllContacts((contacts) => {
-    allContacts = contacts;
-    updateQueuePreview();
-  });
+  let unsubContacts = null;
+  if (currentUser?.role === 'coordinator' && currentUser?.team_id) {
+    unsubContacts = subscribeToTeamContacts(currentUser.team_id, (contacts) => {
+      allContacts = contacts;
+      updateQueuePreview();
+    });
+  } else {
+    unsubContacts = subscribeToAllContacts((contacts) => {
+      allContacts = contacts;
+      updateQueuePreview();
+    });
+  }
 
   const unsubTeams = subscribeToTenantTeams(DEFAULT_TENANT_ID, (teams) => {
     allTeams = teams;
     populateDropdowns();
+    updateQueuePreview();
   });
 
   const unsubUsers = subscribeToAllUsers((users) => {
     allUsers = users;
     populateDropdowns();
+    updateQueuePreview();
   });
 
   // Inicializa cálculo e versões geradas
