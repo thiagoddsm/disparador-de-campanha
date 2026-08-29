@@ -17,6 +17,13 @@ import { createUserProfileDirectly } from '../firebase/auth.js';
 import { showToast } from '../utils/feedback.js';
 import { db } from '../firebase/config.js';
 import { doc, updateDoc } from 'firebase/firestore';
+import { 
+  calculateNetworkCoverage, 
+  calculateCoordinatorsRanking, 
+  calculateLeadersPerformance, 
+  generateManagementAlerts, 
+  calculateTimelineEvolution 
+} from '../utils/metricsEngine.js';
 
 export function renderAdminPanel(container, currentUser, onNavigate) {
   let allUsers = [];
@@ -24,7 +31,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
   let allContacts = [];
   let allMessages = [];
   let auditLogs = [];
-  let currentTab = 'teams'; // 'teams' | 'users' | 'audit'
+  let currentTab = 'overview'; // 'overview' | 'teams' | 'users' | 'audit'
 
   container.innerHTML = `
     <div class="page-content">
@@ -33,9 +40,9 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
         <div>
           <div style="display: flex; align-items: center; gap: 0.5rem;">
             <span class="pill-btn" style="background: #FEE2E2; color: #DC2626; font-weight: 700; font-size: 0.72rem;">Painel Global</span>
-            <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">Administração Central</h2>
+            <h2 style="font-size: 1.4rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.4px;">Gestão Central da Rede</h2>
           </div>
-          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">Gestão de coordenadores, equipes e governança do sistema.</p>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">Painel executivo de cobertura, coordenadores, equipes e governança.</p>
         </div>
 
         <div style="display: flex; gap: 0.75rem;">
@@ -48,67 +55,70 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
         </div>
       </div>
 
-      <!-- 4 Strategic Enterprise KPIs -->
-      <div class="metrics-row">
-        <!-- KPI 1: Coordenadores -->
+      <!-- 4 Strategic Mobilization KPIs -->
+      <div class="metrics-row" style="margin-bottom: 1.5rem;">
+        <!-- KPI 1: Estrutura da Rede -->
         <div class="metric-box">
           <div class="metric-info">
-            <span class="metric-label">COORDENADORES</span>
-            <span class="metric-big-num" id="adm-kpi-coordinators">0</span>
-            <span class="metric-subtext">Gestores de Equipe</span>
-          </div>
-          <div class="metric-icon-bubble">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
-          </div>
-        </div>
-
-        <!-- KPI 2: Equipes Ativas -->
-        <div class="metric-box">
-          <div class="metric-info">
-            <span class="metric-label">EQUIPES ATIVAS</span>
-            <span class="metric-big-num" id="adm-kpi-teams">0</span>
-            <span class="metric-subtext" style="color: var(--primary-blue); font-weight: 600;">Estrutura operacional</span>
+            <span class="metric-label">ESTRUTURA DA REDE</span>
+            <span class="metric-big-num" id="adm-kpi-structure">0 / 0</span>
+            <span class="metric-subtext" id="adm-kpi-structure-sub">0 Coordenadores · 0 Líderes</span>
           </div>
           <div class="metric-icon-bubble">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
           </div>
         </div>
 
-        <!-- KPI 3: Total de Contatos -->
+        <!-- KPI 2: Cobertura da Rede -->
         <div class="metric-box">
           <div class="metric-info">
-            <span class="metric-label">TOTAL DE CONTATOS</span>
-            <span class="metric-big-num" id="adm-kpi-contacts">0</span>
-            <span class="metric-subtext">Base cadastrada</span>
+            <span class="metric-label">COBERTURA DA REDE</span>
+            <span class="metric-big-num" id="adm-kpi-coverage" style="color: var(--whatsapp-green);">0%</span>
+            <span class="metric-subtext" id="adm-kpi-coverage-sub">0 abordados · 0 pendentes</span>
           </div>
-          <div class="metric-icon-bubble gray">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M7 15h0M2 9.5h20"></path></svg>
+          <div class="metric-icon-bubble" style="background: #F0FDF4; color: var(--whatsapp-green);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
           </div>
         </div>
 
-        <!-- KPI 4: Disparos Confirmados -->
+        <!-- KPI 3: Atividade Recente -->
         <div class="metric-box">
           <div class="metric-info">
-            <span class="metric-label">DISPAROS CONFIRMADOS</span>
-            <span class="metric-big-num" id="adm-kpi-dispatches">0</span>
-            <span class="metric-subtext" style="color: var(--whatsapp-green);">Sucesso</span>
+            <span class="metric-label">ATIVIDADE (7 DIAS)</span>
+            <span class="metric-big-num" id="adm-kpi-activity">0</span>
+            <span class="metric-subtext" id="adm-kpi-activity-sub">0 abordagens hoje</span>
           </div>
-          <div class="metric-icon-bubble" style="background: #F0FDF4; color: var(--whatsapp-green);">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <div class="metric-icon-bubble" style="background: #EFF6FF; color: var(--primary-blue);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
+        </div>
+
+        <!-- KPI 4: Saúde do WhatsApp -->
+        <div class="metric-box">
+          <div class="metric-info">
+            <span class="metric-label">INSTÂNCIAS WHATSAPP</span>
+            <span class="metric-big-num" id="adm-kpi-whatsapp" style="font-size: 1.35rem;">0 / 0</span>
+            <span class="metric-subtext" id="adm-kpi-whatsapp-sub">🟢 0 Conectadas · 🔴 0 Offline</span>
+          </div>
+          <div class="metric-icon-bubble" style="background: #ECFDF5; color: #059669;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21"></path><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"></path></svg>
           </div>
         </div>
       </div>
 
       <!-- Navigation Tabs -->
-      <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-        <button class="nav-tab-btn" id="tab-btn-teams" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid var(--primary-blue); color: var(--primary-blue);">
-          Equipes Cadastradas
+      <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem; overflow-x: auto;">
+        <button class="nav-tab-btn" id="tab-btn-overview" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; font-weight: 700; border: none; background: none; cursor: pointer; border-bottom: 2px solid var(--primary-blue); color: var(--primary-blue); white-space: nowrap;">
+          📊 Visão Geral & Cobertura
         </button>
-        <button class="nav-tab-btn" id="tab-btn-users" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted);">
-          Usuários & Coordenadores
+        <button class="nav-tab-btn" id="tab-btn-teams" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); white-space: nowrap;">
+          👥 Equipes Cadastradas
         </button>
-        <button class="nav-tab-btn" id="tab-btn-audit" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted);">
-          Logs de Auditoria
+        <button class="nav-tab-btn" id="tab-btn-users" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); white-space: nowrap;">
+          👤 Usuários & Cargos
+        </button>
+        <button class="nav-tab-btn" id="tab-btn-audit" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; font-weight: 600; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; color: var(--text-muted); white-space: nowrap;">
+          📜 Logs de Auditoria
         </button>
       </div>
 
@@ -211,26 +221,262 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
   function updateKpis() {
     const validUsers = allUsers.filter(u => u.email || u.name);
     const coordsCount = validUsers.filter(u => u.role === 'coordinator' || u.role === 'admin').length;
+    const leadersCount = validUsers.filter(u => u.role === 'member' || !u.role).length;
     const teamsCount = allTeams.length;
-    const contactsCount = allContacts.length;
-    const dispatchesCount = allMessages.length;
+    
+    // Motor de métricas
+    const coverage = calculateNetworkCoverage(allContacts, allMessages);
+    const timeline = calculateTimelineEvolution(allMessages, 7);
+    
+    // Status do WhatsApp
+    const connectedWhatsapp = validUsers.filter(u => u.whatsapp?.status === 'CONNECTED' || u.whatsapp_connected === true).length;
+    const totalWithWhatsapp = validUsers.filter(u => u.whatsapp?.instanceName || u.whatsapp_instance).length;
+    const offlineWhatsapp = Math.max(0, validUsers.length - connectedWhatsapp);
 
-    const kpiCoords = container.querySelector('#adm-kpi-coordinators');
-    const kpiTeams = container.querySelector('#adm-kpi-teams');
-    const kpiContacts = container.querySelector('#adm-kpi-contacts');
-    const kpiDispatches = container.querySelector('#adm-kpi-dispatches');
+    // KPI 1: Estrutura da Rede
+    const kpiStructure = container.querySelector('#adm-kpi-structure');
+    const kpiStructureSub = container.querySelector('#adm-kpi-structure-sub');
+    if (kpiStructure) kpiStructure.textContent = `${coordsCount} / ${leadersCount}`;
+    if (kpiStructureSub) kpiStructureSub.textContent = `${coordsCount} Coords · ${leadersCount} Líderes · ${coverage.total} Contatos`;
 
-    if (kpiCoords) kpiCoords.textContent = coordsCount;
-    if (kpiTeams) kpiTeams.textContent = teamsCount;
-    if (kpiContacts) kpiContacts.textContent = contactsCount;
-    if (kpiDispatches) kpiDispatches.textContent = dispatchesCount;
+    // KPI 2: Cobertura da Rede
+    const kpiCoverage = container.querySelector('#adm-kpi-coverage');
+    const kpiCoverageSub = container.querySelector('#adm-kpi-coverage-sub');
+    if (kpiCoverage) kpiCoverage.textContent = coverage.rateFormatted;
+    if (kpiCoverageSub) kpiCoverageSub.textContent = `${coverage.abordados} abordados · ${coverage.pendentes} pendentes`;
+
+    // KPI 3: Atividade Recente (7 dias)
+    const kpiActivity = container.querySelector('#adm-kpi-activity');
+    const kpiActivitySub = container.querySelector('#adm-kpi-activity-sub');
+    if (kpiActivity) kpiActivity.textContent = timeline.weekCount;
+    if (kpiActivitySub) kpiActivitySub.textContent = `${timeline.todayCount} abordagens hoje (${timeline.totalCount} total)`;
+
+    // KPI 4: Instâncias WhatsApp
+    const kpiWhatsapp = container.querySelector('#adm-kpi-whatsapp');
+    const kpiWhatsappSub = container.querySelector('#adm-kpi-whatsapp-sub');
+    if (kpiWhatsapp) kpiWhatsapp.textContent = `${connectedWhatsapp} / ${validUsers.length}`;
+    if (kpiWhatsappSub) kpiWhatsappSub.textContent = `🟢 ${connectedWhatsapp} Conectadas · 🔴 ${offlineWhatsapp} Offline`;
   }
 
   function renderTabContent() {
     const contentEl = container.querySelector('#admin-tab-content');
     if (!contentEl) return;
 
-    if (currentTab === 'teams') {
+    if (currentTab === 'overview') {
+      const coverage = calculateNetworkCoverage(allContacts, allMessages);
+      const coordsRanking = calculateCoordinatorsRanking(allTeams, allUsers, allContacts, allMessages);
+      const leadersPerf = calculateLeadersPerformance(allUsers.filter(u => u.role === 'member' || !u.role), allContacts, allMessages);
+      const alerts = generateManagementAlerts(leadersPerf, coverage);
+      const timeline = calculateTimelineEvolution(allMessages, 7);
+
+      const maxTimelineCount = Math.max(...timeline.byDay.map(d => d.count), 1);
+
+      contentEl.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+          
+          <!-- Central de Alertas Inteligentes de Gestão -->
+          ${alerts.length > 0 ? `
+            <div class="main-panel-card" style="padding: 1.25rem; border-left: 4px solid #F59E0B;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 1.2rem;">🔔</span>
+                  <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main);">Alertas Operacionais da Rede</h3>
+                </div>
+                <span class="pill-btn" style="background: #FEF3C7; color: #B45309; font-weight: 700; font-size: 0.75rem;">
+                  ${alerts.length} alerta(s) de atenção
+                </span>
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.85rem;">
+                ${alerts.map(a => `
+                  <div style="background: ${a.type === 'danger' ? '#FEF2F2' : a.type === 'warning' ? '#FFFBEB' : a.type === 'success' ? '#F0FDF4' : '#EFF6FF'}; border: 1px solid ${a.type === 'danger' ? '#FECACA' : a.type === 'warning' ? '#FDE68A' : a.type === 'success' ? '#BBF7D0' : '#BFDBFE'}; border-radius: var(--radius-md); padding: 0.85rem 1rem; display: flex; align-items: flex-start; gap: 0.75rem;">
+                    <span style="font-size: 1.3rem; line-height: 1;">${a.icon}</span>
+                    <div style="flex: 1; min-width: 0;">
+                      <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px;">${a.title}</div>
+                      <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.3;">${a.message}</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Grid: Cobertura da Rede & Evolução Temporal dos Últimos 7 Dias -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+            
+            <!-- Card 1: Cobertura da Rede -->
+            <div class="main-panel-card" style="padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                  <span style="font-weight: 800; font-size: 0.95rem; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px;">
+                    📈 Cobertura da Rede
+                  </span>
+                  <span class="pill-btn" style="background: #F0FDF4; color: #15803D; font-weight: 800; font-size: 0.85rem;">
+                    ${coverage.rateFormatted}
+                  </span>
+                </div>
+
+                <div style="margin-bottom: 1.25rem;">
+                  <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 0.45rem; color: var(--text-muted);">
+                    <span>${coverage.abordados} Abordados</span>
+                    <span>${coverage.pendentes} Pendentes</span>
+                  </div>
+                  <div style="width: 100%; height: 12px; background: #E2E8F0; border-radius: 999px; overflow: hidden;">
+                    <div style="width: ${coverage.rateFormatted}; height: 100%; background: linear-gradient(90deg, #10B981 0%, #059669 100%); transition: width 0.4s ease;"></div>
+                  </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; background: #F8FAFC; padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid #E2E8F0;">
+                  <div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">TOTAL DE CONTATOS</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: var(--text-main);">${coverage.total}</div>
+                  </div>
+                  <div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">TOTAL DE LÍDERES</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: var(--text-main);">${leadersPerf.length}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 2: Evolução Temporal (Últimos 7 Dias) -->
+            <div class="main-panel-card" style="padding: 1.5rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <span style="font-weight: 800; font-size: 0.95rem; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px;">
+                  📅 Ritmo das Abordagens (7 Dias)
+                </span>
+                <span style="font-size: 0.78rem; font-weight: 700; color: var(--primary-blue);">
+                  ${timeline.weekCount} envios
+                </span>
+              </div>
+
+              <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 0.5rem; height: 110px; padding-top: 1rem; border-bottom: 1px solid #E2E8F0; padding-bottom: 0.5rem;">
+                ${timeline.byDay.map(d => {
+                  const barHeightPct = Math.max(8, Math.round((d.count / maxTimelineCount) * 100));
+                  return `
+                    <div style="display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: flex-end; gap: 4px;">
+                      <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-main);">${d.count}</span>
+                      <div style="width: 100%; max-width: 28px; height: ${barHeightPct}%; background: #3B82F6; border-radius: 4px 4px 0 0; transition: height 0.3s ease;"></div>
+                      <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 600; white-space: nowrap; margin-top: 2px;">${d.label.split(' ')[0]}</span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabela: Ranking Comparativo de Coordenadores & Equipes -->
+          <div class="main-panel-card">
+            <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+              <div>
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-main);">Ranking Comparativo de Coordenadores</h3>
+                <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Desempenho agregado das equipes e ritmo de cobertura dos contatos.</p>
+              </div>
+              <span class="pill-btn" style="background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.78rem;">
+                ${coordsRanking.length} Coordenações Ativas
+              </span>
+            </div>
+
+            <!-- Tabela Desktop -->
+            <div class="table-container desktop-only">
+              <table class="panel-table">
+                <thead>
+                  <tr>
+                    <th style="width: 5%;">POS</th>
+                    <th>COORDENADOR RESPONSÁVEL</th>
+                    <th>EQUIPE</th>
+                    <th style="text-align: center;">LÍDERES</th>
+                    <th style="text-align: center;">CONTATOS</th>
+                    <th style="text-align: center;">ABORDADOS</th>
+                    <th style="text-align: center;">PENDENTES</th>
+                    <th style="width: 22%;">COBERTURA DA EQUIPE</th>
+                    <th style="text-align: right;">AÇÕES</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${coordsRanking.length === 0 ? `
+                    <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhuma equipe cadastrada no momento.</td></tr>
+                  ` : coordsRanking.map((item, idx) => {
+                    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+                    return `
+                      <tr>
+                        <td style="font-weight: 800; font-size: 1.1rem; color: var(--text-main);">${medal}</td>
+                        <td>
+                          <div style="font-weight: 700; color: var(--text-main);">${item.coordinatorName}</div>
+                          <div style="font-size: 0.72rem; color: var(--text-muted);">${item.coordinatorEmail || 'E-mail não informado'}</div>
+                        </td>
+                        <td>
+                          <span class="pill-btn" style="background: #F1F5F9; color: #334155; font-weight: 700; font-size: 0.75rem;">
+                            👥 ${item.teamName}
+                          </span>
+                        </td>
+                        <td style="text-align: center; font-weight: 600;">${item.totalLeaders}</td>
+                        <td style="text-align: center; font-weight: 700; color: var(--text-main);">${item.totalContacts}</td>
+                        <td style="text-align: center; font-weight: 700; color: #15803D;">${item.abordados}</td>
+                        <td style="text-align: center; font-weight: 600; color: #DC2626;">${item.pendentes}</td>
+                        <td>
+                          <div style="display: flex; align-items: center; gap: 0.65rem;">
+                            <div style="flex: 1; height: 8px; background: #E2E8F0; border-radius: 999px; overflow: hidden;">
+                              <div style="width: ${item.rateFormatted}; height: 100%; background: ${item.rate >= 70 ? '#10B981' : item.rate >= 30 ? '#F59E0B' : '#EF4444'};"></div>
+                            </div>
+                            <span style="font-weight: 800; font-size: 0.8rem; color: var(--text-main); min-width: 38px;">${item.rateFormatted}</span>
+                          </div>
+                        </td>
+                        <td style="text-align: right;">
+                          <button class="btn-drill-team btn-primary-blue" data-team-id="${item.teamId}" style="font-size: 0.75rem; padding: 0.35rem 0.75rem; font-weight: 700;">
+                            📊 Ver Equipe
+                          </button>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Cards Mobile -->
+            <div class="team-mobile-card-list mobile-only" style="padding: 1rem;">
+              ${coordsRanking.map((item, idx) => `
+                <div class="team-mobile-card" style="margin-bottom: 0.85rem;">
+                  <div class="team-mobile-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                      <div style="font-weight: 800; font-size: 0.95rem; color: var(--text-main);">
+                        ${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`} ${item.coordinatorName}
+                      </div>
+                      <div style="font-size: 0.75rem; color: var(--text-muted);">👥 ${item.teamName} · ${item.totalLeaders} líderes</div>
+                    </div>
+                    <span class="pill-btn" style="background: #F0FDF4; color: #15803D; font-weight: 800; font-size: 0.78rem;">
+                      ${item.rateFormatted}
+                    </span>
+                  </div>
+                  <div style="margin: 0.75rem 0;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 0.25rem;">
+                      <span>${item.abordados} abordados</span>
+                      <span>${item.pendentes} pendentes (${item.totalContacts} total)</span>
+                    </div>
+                    <div style="width: 100%; height: 6px; background: #E2E8F0; border-radius: 99px; overflow: hidden;">
+                      <div style="width: ${item.rateFormatted}; height: 100%; background: #10B981;"></div>
+                    </div>
+                  </div>
+                  <button class="btn-drill-team btn-primary-blue" data-team-id="${item.teamId}" style="width: 100%; font-size: 0.8rem; padding: 0.5rem; justify-content: center; font-weight: 700; border-radius: var(--radius-md);">
+                    📊 Ver Detalhes da Equipe
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+        </div>
+      `;
+
+      // Drill-down listener
+      contentEl.querySelectorAll('.btn-drill-team').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const teamId = btn.getAttribute('data-team-id');
+          onNavigate('manager', teamId);
+        });
+      });
+
+    } else if (currentTab === 'teams') {
       contentEl.innerHTML = `
         <div class="main-panel-card">
           <!-- Desktop Table -->
@@ -449,17 +695,17 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
                       </td>
                       <td>
                         <span class="status-pill ${isActive ? 'ativo' : 'inativo'}">
-                          ${isActive ? 'ATIVO' : 'DESATIVADO'}
+                          ${isActive ? 'ATIVO' : 'BLOQUEADO'}
                         </span>
                       </td>
                       <td style="text-align: right;">
                         <div style="display: inline-flex; align-items: center; gap: 0.4rem;">
-                          <button class="btn-toggle-active btn-outline-white" data-uid="${u.uid}" data-active="${isActive}" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;">
-                            ${isActive ? 'Desativar' : 'Ativar'}
+                          <button class="btn-toggle-active btn-outline-white" data-uid="${u.uid}" data-active="${isActive}" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;">
+                            ${isActive ? 'Bloquear' : 'Ativar'}
                           </button>
                           ${!isSuperAdmin ? `
-                            <button class="btn-delete-user" data-uid="${u.uid}" data-name="${u.name || u.email}" style="background: none; border: none; cursor: pointer; color: #EF4444; padding: 4px;" title="Excluir Usuário">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            <button class="btn-delete-user btn-outline-white" data-uid="${u.uid}" data-name="${u.name || u.email}" style="font-size: 0.75rem; padding: 0.35rem 0.55rem; color: #DC2626; border-color: #FECACA;" title="Excluir Usuário">
+                              🗑️
                             </button>
                           ` : ''}
                         </div>
@@ -470,120 +716,47 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
               </tbody>
             </table>
           </div>
-
-          <!-- Smartphone Mobile Cards for Users -->
-          <div class="team-mobile-card-list mobile-only" style="padding: 1rem;">
-            ${validUsers.length === 0 ? `
-              <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem;">Nenhum usuário cadastrado.</div>
-            ` : validUsers.map(u => {
-              const initials = ((u.name || u.email || 'U')).substring(0, 2).toUpperCase();
-              const isActive = u.is_active !== false;
-              const isSuperAdmin = (u.email || '').toLowerCase() === 'thiagoddsm@gmail.com';
-              const currentRole = isSuperAdmin ? 'admin' : (u.role || 'member');
-
-              const roleLabel = currentRole === 'admin' 
-                ? '👑 Administrador' 
-                : currentRole === 'coordinator' 
-                ? '👔 Coordenador' 
-                : '🎯 Membro';
-
-              return `
-                <div class="team-mobile-card">
-                  <div class="team-mobile-card-header">
-                    <div style="display: flex; align-items: center; gap: 0.65rem;">
-                      <div class="user-identity-initials" style="background: #EFF6FF; color: #1D4ED8; width: 38px; height: 38px; font-size: 0.88rem;">${initials}</div>
-                      <div>
-                        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">${u.name || u.email.split('@')[0]}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">${u.email || ''}</div>
-                      </div>
-                    </div>
-                    <span class="status-pill ${isActive ? 'ativo' : 'inativo'}">${isActive ? 'ATIVO' : 'DESATIVADO'}</span>
-                  </div>
-
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.8rem;">
-                    <div>
-                      <label style="display: block; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 2px;">Cargo:</label>
-                      <button class="btn-open-role-modal btn-outline-white" data-uid="${u.uid}" data-name="${u.name || u.email}" data-role="${currentRole}" style="width: 100%; font-size: 0.78rem; font-weight: 700; padding: 0.35rem 0.5rem; justify-content: center;">
-                        ${roleLabel} ▾
-                      </button>
-                    </div>
-                    <div>
-                      <label style="display: block; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 2px;">Equipe:</label>
-                      <select class="user-team-select form-control" data-uid="${u.uid}" style="padding: 0.35rem 0.5rem; font-size: 0.78rem; font-weight: 600;">
-                        <option value="" ${!u.team_id ? 'selected' : ''}>Sem Equipe</option>
-                        ${allTeams.map(t => `
-                          <option value="${t.id}" ${u.team_id === t.id ? 'selected' : ''}>${t.name}</option>
-                        `).join('')}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div class="team-mobile-card-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem;">
-                    <button class="btn-toggle-active btn-outline-white" data-uid="${u.uid}" data-active="${isActive}" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;">
-                      ${isActive ? 'Desativar' : 'Ativar'}
-                    </button>
-                    ${!isSuperAdmin ? `
-                      <button class="btn-delete-user" data-uid="${u.uid}" data-name="${u.name || u.email}" style="background: #FEE2E2; border: 1px solid #FECACA; border-radius: var(--radius-sm); cursor: pointer; color: #DC2626; padding: 0.35rem 0.65rem; font-size: 0.78rem;" title="Excluir Usuário">
-                        Excluir
-                      </button>
-                    ` : ''}
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
         </div>
       `;
 
-      // Seletor de Equipe do Usuário
-      contentEl.querySelectorAll('.user-team-select').forEach(sel => {
-        sel.addEventListener('change', async () => {
-          const uid = sel.getAttribute('data-uid');
-          const newTeamId = sel.value;
-          const selectedOption = sel.options[sel.selectedIndex];
-          const newTeamName = newTeamId ? (selectedOption.text || '').replace(/^👥\s*/, '').trim() : null;
-          sel.disabled = true;
-          try {
-            await updateUserTeam(uid, newTeamId, newTeamName);
-            await recordSystemAuditLog({
-              actor_uid: currentUser.uid,
-              actor_name: currentUser.name,
-              action: newTeamId ? 'user_assigned_team' : 'user_removed_team',
-              target_id: uid,
-              metadata: { team_id: newTeamId, team_name: newTeamName }
-            });
-          } catch (e) {
-            console.warn('Erro ao atualizar equipe:', e);
-          } finally {
-            sel.disabled = false;
-          }
-        });
-      });
-
-      // Modal de Alteração de Cargo
+      // Event listeners para Usuários
       contentEl.querySelectorAll('.btn-open-role-modal').forEach(btn => {
         btn.addEventListener('click', () => {
           const uid = btn.getAttribute('data-uid');
           const name = btn.getAttribute('data-name');
           container.querySelector('#modal-target-user-uid').value = uid;
-          container.querySelector('#modal-change-role-username').textContent = `Definir novo cargo para: ${name}`;
-          container.querySelector('#modal-change-role').style.display = 'flex';
+          container.querySelector('#modal-change-role-username').textContent = `Definir cargo para: ${name}`;
+          roleModal.style.display = 'flex';
+        });
+      });
+
+      contentEl.querySelectorAll('.user-team-select').forEach(sel => {
+        sel.addEventListener('change', async (e) => {
+          const uid = sel.getAttribute('data-uid');
+          const teamId = e.target.value || null;
+          const targetTeam = allTeams.find(t => t.id === teamId);
+          const teamName = targetTeam ? targetTeam.name : null;
+
+          try {
+            await updateUserTeam(uid, teamId, teamName);
+            showToast('Equipe do usuário atualizada!', 'success');
+          } catch (err) {
+            console.error('Erro ao atualizar equipe:', err);
+            showToast('Erro ao atualizar equipe do usuário.', 'error');
+          }
         });
       });
 
       contentEl.querySelectorAll('.btn-toggle-active').forEach(btn => {
         btn.addEventListener('click', async () => {
           const uid = btn.getAttribute('data-uid');
-          const active = btn.getAttribute('data-active') === 'true';
-          btn.disabled = true;
+          const currentActive = btn.getAttribute('data-active') === 'true';
           try {
-            await toggleUserActiveStatus(uid, active);
-            showToast(`Status do usuário atualizado para ${!active ? 'Ativo' : 'Inativo'}.`, 'success');
+            await toggleUserActiveStatus(uid, !currentActive);
+            showToast(`Usuário ${!currentActive ? 'ativado' : 'bloqueado'} com sucesso!`, 'success');
           } catch (err) {
-            console.error('Erro ao alternar status:', err);
-            showToast('Erro ao atualizar status do usuário.', 'error');
-          } finally {
-            btn.disabled = false;
+            console.error('Erro ao alterar status:', err);
+            showToast('Erro ao alterar status do usuário.', 'error');
           }
         });
       });
@@ -592,10 +765,16 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
         btn.addEventListener('click', async () => {
           const uid = btn.getAttribute('data-uid');
           const name = btn.getAttribute('data-name');
-          if (confirm(`Deseja realmente excluir o usuário "${name}"?`)) {
+          if (confirm(`Tem certeza que deseja excluir o usuário "${name}" do sistema?`)) {
             try {
               await deleteUserFromFirestore(uid);
-              showToast(`Usuário "${name}" excluído com sucesso.`, 'success');
+              await recordSystemAuditLog({
+                actor_uid: currentUser.uid,
+                actor_name: currentUser.name,
+                action: 'user_deleted',
+                metadata: { target_uid: uid, target_name: name }
+              });
+              showToast(`Usuário "${name}" excluído com sucesso!`, 'success');
             } catch (err) {
               console.error('Erro ao excluir usuário:', err);
               showToast('Erro ao excluir usuário do Firestore.', 'error');
@@ -676,6 +855,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
   const unsubContacts = subscribeToAllContacts((contacts) => {
     allContacts = contacts;
     updateKpis();
+    if (currentTab === 'overview') renderTabContent();
   });
 
   const unsubAudit = subscribeToAuditLogs((logs) => {
@@ -686,6 +866,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
   const unsubMessages = subscribeToMessagesHistory(null, (msgs) => {
     allMessages = msgs;
     updateKpis();
+    if (currentTab === 'overview') renderTabContent();
   });
 
   function updateCoordinatorSelect() {
@@ -706,15 +887,17 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
 
   function switchTab(tabName) {
     currentTab = tabName;
-    ['teams', 'users', 'audit'].forEach(t => {
+    ['overview', 'teams', 'users', 'audit'].forEach(t => {
       const btn = container.querySelector(`#tab-btn-${t}`);
       if (btn) {
         if (t === tabName) {
           btn.style.borderBottom = '2px solid var(--primary-blue)';
           btn.style.color = 'var(--primary-blue)';
+          btn.style.fontWeight = '700';
         } else {
           btn.style.borderBottom = '2px solid transparent';
           btn.style.color = 'var(--text-muted)';
+          btn.style.fontWeight = '600';
         }
       }
     });
@@ -722,6 +905,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
   }
 
   // Tabs Listeners
+  container.querySelector('#tab-btn-overview')?.addEventListener('click', () => switchTab('overview'));
   container.querySelector('#tab-btn-teams')?.addEventListener('click', () => switchTab('teams'));
   container.querySelector('#tab-btn-users')?.addEventListener('click', () => switchTab('users'));
   container.querySelector('#tab-btn-audit')?.addEventListener('click', () => switchTab('audit'));
