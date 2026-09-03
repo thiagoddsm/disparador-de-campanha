@@ -31,7 +31,9 @@ import {
   logoutEvolutionInstance,
   generateHierarchicalInstanceName,
   sendSystemInviteNotification,
-  buildInviteNotificationText
+  buildInviteNotificationText,
+  applyNotificationPreservationSettings,
+  applyNotificationPreservationToAllInstances
 } from '../firebase/evolutionApi.js';
 
 export function renderAdminPanel(container, currentUser, onNavigate) {
@@ -375,6 +377,21 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
                 📋 Copiar Mensagem
               </button>
             </div>
+          </div>
+
+          <!-- Card de Preservação de Notificações no Celular -->
+          <div style="background: #F0FDF4; border: 1.5px solid #86EFAC; border-radius: 10px; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;">
+            <div>
+              <div style="font-size: 0.82rem; font-weight: 800; color: #15803D; display: flex; align-items: center; gap: 4px;">
+                🔔 Notificações no Celular Preservadas
+              </div>
+              <span style="font-size: 0.72rem; color: #166534; display: block; margin-top: 2px;">
+                A API não marca mensagens recebidas como lidas, garantindo que o celular vibre e receba notificações push normalmente.
+              </span>
+            </div>
+            <button type="button" id="btn-modal-reapply-notifications" class="btn-outline-white" style="font-size: 0.75rem; padding: 0.35rem 0.75rem; background: #FFFFFF; color: #15803D; border-color: #86EFAC; font-weight: 700; white-space: nowrap;">
+              🛡️ Reaplicar
+            </button>
           </div>
 
           <!-- Botão Desconectar se Conectado -->
@@ -1037,9 +1054,14 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
                 <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin: 0;">Central de Instâncias WhatsApp da Rede</h3>
                 <p style="font-size: 0.78rem; color: var(--text-muted); margin: 2px 0 0 0;">Monitore e audite as conexões Evolution API de todos os líderes e coordenadores.</p>
               </div>
-              <button id="btn-goto-whatsapp-manager" class="btn-green-action" style="font-size: 0.82rem; padding: 0.45rem 0.95rem;">
-                📱 Minha Conexão WhatsApp
-              </button>
+              <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <button id="btn-admin-shield-notifications" class="btn-outline-white" style="font-size: 0.82rem; padding: 0.45rem 0.95rem; color: #15803D; border-color: #86EFAC; background: #F0FDF4; font-weight: 700;" title="Garante que a Evolution API não marque mensagens como lidas para que o celular receba notificações normalmente">
+                  🛡️ Blindar Notificações na Rede
+                </button>
+                <button id="btn-goto-whatsapp-manager" class="btn-green-action" style="font-size: 0.82rem; padding: 0.45rem 0.95rem;">
+                  📱 Minha Conexão WhatsApp
+                </button>
+              </div>
             </div>
 
             <div class="table-container">
@@ -1116,6 +1138,27 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
       `;
 
       contentEl.querySelector('#btn-goto-whatsapp-manager')?.addEventListener('click', () => onNavigate('whatsapp'));
+      contentEl.querySelector('#btn-admin-shield-notifications')?.addEventListener('click', async () => {
+        const btn = contentEl.querySelector('#btn-admin-shield-notifications');
+        btn.disabled = true;
+        btn.textContent = '🛡️ Blindando...';
+        
+        try {
+          const allInstances = validUsers.map(u => u.whatsapp?.instanceName || u.whatsapp_instance).filter(Boolean);
+          if (allInstances.length === 0) {
+            showToast('Nenhuma instância cadastrada na rede para blindar.', 'info');
+            return;
+          }
+          await applyNotificationPreservationToAllInstances(allInstances);
+          showToast(`🛡️ ${allInstances.length} instâncias blindadas! Nenhuma mensagem recebida será marcada como lida.`, 'success');
+        } catch (e) {
+          showToast(`Erro ao blindar instâncias: ${e.message}`, 'error');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = '🛡️ Blindar Notificações na Rede';
+        }
+      });
+
       contentEl.querySelectorAll('.btn-direct-whatsapp-setup').forEach(btn => {
         btn.addEventListener('click', () => {
           const uid = btn.getAttribute('data-uid');
@@ -1398,6 +1441,28 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
       navigator.clipboard.writeText(inviteTextArea.value);
       showToast('Mensagem completa copiada para a área de transferência!', 'success');
     };
+
+    // Botão: Reaplicar Preservação de Notificações
+    const btnReapplyNotif = container.querySelector('#btn-modal-reapply-notifications');
+    if (btnReapplyNotif) {
+      btnReapplyNotif.onclick = async () => {
+        btnReapplyNotif.disabled = true;
+        btnReapplyNotif.textContent = 'Aplicando...';
+        try {
+          const res = await applyNotificationPreservationSettings(instanceName);
+          if (res.success) {
+            showToast('🛡️ Preservação de notificações aplicada! Mensagens recebidas não serão marcadas como lidas.', 'success');
+          } else {
+            showToast(`Aviso: ${res.error || 'Configuração enviada ao servidor.'}`, 'info');
+          }
+        } catch (err) {
+          showToast(`Erro: ${err.message}`, 'error');
+        } finally {
+          btnReapplyNotif.disabled = false;
+          btnReapplyNotif.textContent = '🛡️ Reaplicar';
+        }
+      };
+    }
 
     // Botão: Desconectar
     const btnDisconnect = container.querySelector('#btn-modal-disconnect-user');

@@ -2,6 +2,7 @@ import {
   getEvolutionConnectionState, 
   getEvolutionQrCode, 
   getEvolutionPairingCode,
+  applyNotificationPreservationSettings,
   logoutEvolutionInstance, 
   deleteEvolutionInstance,
   fetchEvolutionInstances,
@@ -353,6 +354,15 @@ export function renderEvolutionManager(container, currentUser) {
                 Suporte a variações como <code>{Olá|Oi|Bom dia}</code> gerando textos com hashes únicos.
               </p>
             </div>
+
+            <div style="background: #F0FDF4; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid #BBF7D0;">
+              <strong style="font-size: 0.85rem; color: #15803D; display: block; margin-bottom: 0.4rem;">
+                🔔 Preservação de Notificações
+              </strong>
+              <p style="font-size: 0.78rem; color: #166534; line-height: 1.4;">
+                A API não marca mensagens recebidas como lidas nem força status online 24h, garantindo que seu celular receba notificações normalmente.
+              </p>
+            </div>
           </div>
         </div>
       ` : ''}
@@ -386,6 +396,9 @@ export function renderEvolutionManager(container, currentUser) {
           <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Instância <strong>${activeInstanceName}</strong> vinculada e pronta para disparos.</p>
         </div>
       `;
+
+      // Garante que a preservação de notificações esteja ativa no servidor
+      applyNotificationPreservationSettings(activeInstanceName).catch(() => {});
 
       // Persiste no Firestore
       const stateKey = `${activeInstanceName}_open_${res.phoneNumber || ''}`;

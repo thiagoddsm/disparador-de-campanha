@@ -192,10 +192,76 @@ export async function createEvolutionInstanceIfNotExists(instanceName, customApi
       }
     }
 
+    // Aplica a política de preservação de notificações imediatamente
+    await applyNotificationPreservationSettings(instanceName, apiKey);
+
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message || 'Erro de rede ao criar instância.' };
   }
+}
+
+/**
+ * Aplica a política de Preservação de Notificações no celular (Não ler mensagens / Não ficar online 24h).
+ * Impede que a Evolution API marque mensagens recebidas como lidas e garanta que o celular receba notificações push.
+ */
+export async function applyNotificationPreservationSettings(instanceName, customApiKey) {
+  const { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
+
+  const payload = {
+    rejectCall: false,
+    msgCall: '',
+    groupsIgnore: false,
+    alwaysOnline: false,
+    readMessages: false,
+    readStatus: false,
+    syncFullHistory: false
+  };
+
+  try {
+    // Rota padrão Evolution v1/v2: POST /settings/set/:instance
+    let res = await fetch(`${baseUrl}/settings/set/${instanceName}`, {
+      method: 'POST',
+      headers: {
+        'apikey': apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    // Fallback: POST /instance/settings/:instance
+    if (!res.ok && (res.status === 404 || res.status === 405)) {
+      res = await fetch(`${baseUrl}/instance/settings/${instanceName}`, {
+        method: 'POST',
+        headers: {
+          'apikey': apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    const data = await res.json().catch(() => ({}));
+    return { success: res.ok, data };
+  } catch (err) {
+    console.warn(`[Evolution API] Falha ao aplicar configurações de notificação para ${instanceName}:`, err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Aplica a preservação de notificações para todas as instâncias da rede em lote.
+ */
+export async function applyNotificationPreservationToAllInstances(instancesList, customApiKey) {
+  const results = [];
+  for (const inst of instancesList) {
+    const name = typeof inst === 'string' ? inst : (inst.name || inst.whatsapp?.instanceName || inst.whatsapp_instance);
+    if (name) {
+      const res = await applyNotificationPreservationSettings(name, customApiKey);
+      results.push({ instanceName: name, success: res.success });
+    }
+  }
+  return results;
 }
 
 /**
