@@ -349,27 +349,45 @@ export async function getEvolutionPairingCode(instanceName, phoneNumber, customA
       };
     }
 
+    // Função interna com retry para aguardar o handshake do Baileys
+    async function requestConnectWithPolling(maxAttempts = 4, delayMs = 1200) {
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const res = await fetch(`${baseUrl}/instance/connect/${instanceName}?number=${cleanPhone}`, {
+            method: 'GET',
+            headers: {
+              'apikey': apiKey,
+              'Content-Type': 'application/json'
+            }
+          });
+          const d = await res.json().catch(() => ({}));
+          const pin = extractValidPairingPin(d);
+          if (pin) {
+            return { data: d, validPin: pin };
+          }
+          if (attempt < maxAttempts) {
+            await new Promise(r => setTimeout(r, delayMs));
+          }
+        } catch (e) {
+          if (attempt < maxAttempts) {
+            await new Promise(r => setTimeout(r, delayMs));
+          }
+        }
+      }
+      return { data: {}, validPin: null };
+    }
+
     // 2. Garante que a instância exista configurada com qrcode: false e o número do celular
     if (stateCheck.state === 'not_found') {
       await createEvolutionInstanceIfNotExists(instanceName, apiKey, cleanPhone, false);
+      // Aguarda 1s para o socket iniciar
+      await new Promise(r => setTimeout(r, 1000));
     }
 
-    // Função interna para solicitar o connect
-    async function requestConnect() {
-      const res = await fetch(`${baseUrl}/instance/connect/${instanceName}?number=${cleanPhone}`, {
-        method: 'GET',
-        headers: {
-          'apikey': apiKey,
-          'Content-Type': 'application/json'
-        }
-      });
-      return await res.json().catch(() => ({}));
-    }
-
-    let data = await requestConnect();
+    let { data, validPin } = await requestConnectWithPolling(2, 1000);
 
     // Se o pairingCode veio nulo (porque a instância foi criada anteriormente no modo QR), recriamos com qrcode: false
-    if (!data.pairingCode && !data.pairing_code) {
+    if (!validPin) {
       console.log(`[Evolution API] Inicializando ${instanceName} no modo Pairing Code (qrcode: false)...`);
       await fetch(`${baseUrl}/instance/delete/${instanceName}`, {
         method: 'DELETE',
@@ -392,11 +410,16 @@ export async function getEvolutionPairingCode(instanceName, phoneNumber, customA
       }).catch(() => {});
 
       await applyNotificationPreservationSettings(instanceName, apiKey);
-      data = await requestConnect();
+      // Aguarda 1.5s para o socket do Baileys registrar na Meta
+      await new Promise(r => setTimeout(r, 1500));
+
+      const retryResult = await requestConnectWithPolling(3, 1200);
+      data = retryResult.data;
+      validPin = retryResult.validPin;
     }
 
     // Se após a chamada o estado for open, o WhatsApp já conectou
-    if (data.instance?.state === 'open' || data.state === 'open') {
+    if (data?.instance?.state === 'open' || data?.state === 'open') {
       return {
         success: false,
         instanceName,
@@ -432,16 +455,18 @@ export async function getEvolutionPairingCode(instanceName, phoneNumber, customA
       return null;
     }
 
-    const validPin = extractValidPairingPin(data);
+    if (!validPin) {
+      validPin = extractValidPairingPin(data);
+    }
 
     if (!validPin) {
       // Se a API retornou QR Code em vez de PIN
-      const hasQr = !!(data.base64 || data.qrcode?.base64 || data.code?.startsWith('2@'));
+      const hasQr = !!(data?.base64 || data?.qrcode?.base64 || data?.code?.startsWith('2@'));
       return { 
         success: false, 
         instanceName, 
         isQrCodeOnly: hasQr,
-        base64: data.base64 || data.qrcode?.base64 || null,
+        base64: data?.base64 || data?.qrcode?.base64 || null,
         error: hasQr 
           ? 'O servidor Evolution API gerou a conexão em formato de QR Code. Por favor, clique no botão "Gerar QR Code" ao lado para escanear com a câmera.' 
           : 'A API não retornou o código de pareamento. Verifique se o número de telefone está correto com DDD (Ex: 5521999998888).'
@@ -453,7 +478,7 @@ export async function getEvolutionPairingCode(instanceName, phoneNumber, customA
       instanceName,
       phoneNumber: cleanPhone,
       pairingCode: validPin,
-      state: data.instance?.state || 'connecting'
+      state: data?.instance?.state || 'connecting'
     };
   } catch (error) {
     console.error(`[Evolution API] Erro ao obter Pairing Code para ${instanceName}:`, error);
