@@ -1277,6 +1277,21 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
         return;
       }
 
+      // Se a instância já estiver aberta/conectada, pergunta se deseja reconectar
+      const currentState = await getEvolutionConnectionState(instanceName);
+      if (currentState.state === 'open') {
+        const confirmReconnect = confirm(`Esta instância já está conectada (${currentState.phoneNumber || 'online'}).\n\nDeseja desconectar agora para gerar um novo PIN de 8 dígitos para o número ${inputPhone}?`);
+        if (!confirmReconnect) return;
+
+        btnGenPairing.disabled = true;
+        btnGenPairing.textContent = 'Desconectando...';
+        await logoutEvolutionInstance(instanceName);
+        try {
+          const userRef = doc(db, 'users', targetUser.uid);
+          await updateDoc(userRef, { 'whatsapp.status': 'DISCONNECTED', whatsapp_connected: false });
+        } catch (e) {}
+      }
+
       btnGenPairing.disabled = true;
       btnGenPairing.textContent = 'Gerando PIN...';
 

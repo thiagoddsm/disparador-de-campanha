@@ -332,11 +332,31 @@ export async function getEvolutionPairingCode(instanceName, phoneNumber, customA
   const cleanPhone = cleanDigits.startsWith('55') ? cleanDigits : `55${cleanDigits}`;
 
   try {
-    // Garante que a instância exista
-    await createEvolutionInstanceIfNotExists(instanceName, apiKey);
+    // 1. Verifica se já está conectada
+    const stateCheck = await getEvolutionConnectionState(instanceName, apiKey);
+    if (stateCheck.state === 'open') {
+      return {
+        success: false,
+        instanceName,
+        isAlreadyConnected: true,
+        error: `Esta instância (${instanceName}) já está CONECTADA (🟢 Aberta) com o número ${stateCheck.phoneNumber || 'atual'}. Se deseja parear outro número, desconecte-a primeiro.`
+      };
+    }
 
-    // Tentativa 1: Via rota GET com query param ?number=
-    let res = await fetch(`${baseUrl}/instance/connect/${instanceName}?number=${cleanPhone}`, {
+    // 2. Garante que a instância exista se não for encontrada
+    if (stateCheck.state === 'not_found') {
+      const createRes = await createEvolutionInstanceIfNotExists(instanceName, apiKey);
+      if (!createRes.success && !createRes.error?.includes('already in use')) {
+        return {
+          success: false,
+          instanceName,
+          error: `Não foi possível criar a instância "${instanceName}": ${createRes.error}`
+        };
+      }
+    }
+
+    // 3. Tentativa via rota GET com query params ?number= e &pairingCode=true
+    let res = await fetch(`${baseUrl}/instance/connect/${instanceName}?number=${cleanPhone}&pairingCode=true`, {
       method: 'GET',
       headers: {
         'apikey': apiKey,
@@ -356,16 +376,31 @@ export async function getEvolutionPairingCode(instanceName, phoneNumber, customA
       });
     }
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       if (res.status === 401) {
-        return { success: false, instanceName, error: 'Chave de API (apikey) não autorizada.' };
+        return { success: false, instanceName, error: 'Chave de API (apikey) não autorizada no servidor Evolution API.' };
       }
       return { success: false, instanceName, error: data.message || data.error || `Erro HTTP ${res.status} ao gerar Pairing Code.` };
     }
 
-    let pairingCode = data.pairingCode || data.code || data.pairing_code || (typeof data === 'string' ? data : null);
+    // Se após a chamada o estado for open, o WhatsApp já conectou
+    if (data.instance?.state === 'open' || data.state === 'open') {
+      return {
+        success: false,
+        instanceName,
+        isAlreadyConnected: true,
+        error: `A instância já está conectada no WhatsApp (${data.instance?.owner || 'chip ativo'}).`
+      };
+    }
+
+    let pairingCode = data.pairingCode || 
+                      data.code || 
+                      data.pairing_code || 
+                      data.qrcode?.pairingCode || 
+                      data.qrcode?.code || 
+                      (typeof data === 'string' && data.length <= 10 ? data : null);
 
     // Formata o código se vier em 8 caracteres sem traço (ex: ABCDEFGH -> ABCD-EFGH)
     if (pairingCode && typeof pairingCode === 'string' && pairingCode.length === 8 && !pairingCode.includes('-')) {
@@ -373,7 +408,11 @@ export async function getEvolutionPairingCode(instanceName, phoneNumber, customA
     }
 
     if (!pairingCode) {
-      return { success: false, instanceName, error: 'A API não retornou o código de pareamento. Verifique se a instância suporta Pairing Code.' };
+      return { 
+        success: false, 
+        instanceName, 
+        error: 'A API não retornou o código de pareamento. Verifique se o número de telefone está correto e se o chip possui WhatsApp ativo.' 
+      };
     }
 
     return {
