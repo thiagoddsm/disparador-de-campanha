@@ -1,6 +1,7 @@
 import { 
   getEvolutionConnectionState, 
   getEvolutionQrCode, 
+  getEvolutionPairingCode,
   logoutEvolutionInstance, 
   deleteEvolutionInstance,
   fetchEvolutionInstances,
@@ -47,10 +48,20 @@ export function renderEvolutionManager(container, currentUser) {
         </p>
       </div>
 
-      <!-- Card 1: Instructions Box (Matching Image 2) -->
-      <div class="main-panel-card" style="padding: 1.5rem; border-radius: var(--radius-lg); background: #FFFFFF; border: 1px solid #E2E8F0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 1.5rem;">
+      <!-- Navigation Tabs: Modo de Conexão (QR Code vs Pairing Code) -->
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 1px solid #E2E8F0;">
+        <button id="tab-mode-qr" class="nav-tab-btn" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; font-weight: 700; border: none; background: none; cursor: pointer; border-bottom: 2px solid #008069; color: #008069;">
+          📷 Conectar via QR Code
+        </button>
+        <button id="tab-mode-pairing" class="nav-tab-btn" style="padding: 0.65rem 1.25rem; font-size: 0.88rem; font-weight: 700; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; color: #64748B;">
+          🔢 Conectar via Código de 8 Dígitos (PIN)
+        </button>
+      </div>
+
+      <!-- Card 1: Instructions Box (QR Code Mode) -->
+      <div id="instructions-box-qr" class="main-panel-card" style="padding: 1.5rem; border-radius: var(--radius-lg); background: #FFFFFF; border: 1px solid #E2E8F0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 1.5rem;">
         <h3 style="font-size: 1.05rem; font-weight: 700; color: #1E293B; margin-bottom: 1.25rem; line-height: 1.4;">
-          Para usar o WhatsApp no seu computador:
+          Para conectar via QR Code:
         </h3>
 
         <div style="display: flex; flex-direction: column; gap: 1.15rem;">
@@ -90,15 +101,54 @@ export function renderEvolutionManager(container, currentUser) {
             </div>
           </div>
         </div>
+      </div>
 
-        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #F1F5F9;">
-          <a href="#" id="btn-help-link" style="color: #008069; font-weight: 700; font-size: 0.88rem; text-decoration: none;">
-            Precisa de ajuda para conectar?
-          </a>
+      <!-- Card 1B: Instructions Box (Pairing Code Mode) -->
+      <div id="instructions-box-pairing" class="main-panel-card" style="display: none; padding: 1.5rem; border-radius: var(--radius-lg); background: #F0FDF4; border: 1.5px solid #86EFAC; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1.05rem; font-weight: 800; color: #15803D; margin-bottom: 1.25rem; line-height: 1.4;">
+          Para conectar via Código de Telefone (Sem câmera):
+        </h3>
+
+        <div style="display: flex; flex-direction: column; gap: 1.15rem;">
+          <div style="display: flex; align-items: flex-start; gap: 0.85rem;">
+            <div style="width: 26px; height: 26px; border-radius: 50%; background: #16A34A; color: #FFFFFF; font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              1
+            </div>
+            <div style="font-size: 0.9rem; color: #166534; line-height: 1.4; font-weight: 500;">
+              Abra o WhatsApp no seu celular
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: flex-start; gap: 0.85rem;">
+            <div style="width: 26px; height: 26px; border-radius: 50%; background: #16A34A; color: #FFFFFF; font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              2
+            </div>
+            <div style="font-size: 0.9rem; color: #166534; line-height: 1.4; font-weight: 500;">
+              Vá em <strong>Aparelhos conectados</strong> > <strong>Conectar um aparelho</strong>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: flex-start; gap: 0.85rem;">
+            <div style="width: 26px; height: 26px; border-radius: 50%; background: #16A34A; color: #FFFFFF; font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              3
+            </div>
+            <div style="font-size: 0.9rem; color: #166534; line-height: 1.4; font-weight: 500;">
+              Em vez de usar a câmera, toque na opção inferior: <strong>"Conectar com número de telefone"</strong>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: flex-start; gap: 0.85rem;">
+            <div style="width: 26px; height: 26px; border-radius: 50%; background: #16A34A; color: #FFFFFF; font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              4
+            </div>
+            <div style="font-size: 0.9rem; color: #166534; line-height: 1.4; font-weight: 500;">
+              Digite o código de 8 dígitos gerado na tela abaixo!
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Card 2: Instance & QR Code (Matching Image 2) -->
+      <!-- Card 2: Instance & Connection Content -->
       <div class="main-panel-card" style="padding: 1.5rem; border-radius: var(--radius-lg); background: #FFFFFF; border: 1px solid #E2E8F0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 2rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
           <div>
@@ -116,29 +166,70 @@ export function renderEvolutionManager(container, currentUser) {
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-          <!-- QR Code Viewer -->
-          <div style="text-align: center; border: 2px dashed #CBD5E1; border-radius: var(--radius-lg); padding: 1.75rem; background: #F8FAFC;" id="qr-container">
-            <div id="qr-content-mount">
-              <div style="color: var(--text-muted); font-size: 0.9rem; padding: 2rem 0; line-height: 1.5;">
-                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📷</div>
-                Toque no botão verde <strong>"Gerar QR Code de Conexão"</strong> abaixo para conectar seu WhatsApp.
+          
+          <!-- Seção Modo QR Code -->
+          <div id="section-mode-qr" style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <!-- QR Code Viewer -->
+            <div style="text-align: center; border: 2px dashed #CBD5E1; border-radius: var(--radius-lg); padding: 1.75rem; background: #F8FAFC;" id="qr-container">
+              <div id="qr-content-mount">
+                <div style="color: var(--text-muted); font-size: 0.9rem; padding: 2rem 0; line-height: 1.5;">
+                  <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📷</div>
+                  Toque no botão verde <strong>"Gerar QR Code de Conexão"</strong> abaixo para conectar seu WhatsApp.
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Actions -->
-          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <!-- Actions QR Code -->
             <button id="btn-generate-qr" class="btn-wa-action" style="font-size: 1rem;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
               </svg>
               Gerar QR Code de Conexão
             </button>
+          </div>
 
-            <button id="btn-disconnect-instance" class="btn-outline-white" style="width: 100%; color: #DC2626; border-color: #FECACA; font-weight: 600; padding: 0.65rem; font-size: 0.85rem;">
-              Desconectar meu WhatsApp
+          <!-- Seção Modo Pairing Code -->
+          <div id="section-mode-pairing" style="display: none; flex-direction: column; gap: 1.25rem;">
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.25rem;">
+              <label style="display: block; font-size: 0.82rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem;">
+                Seu Número de WhatsApp (com DDD e DDI)
+              </label>
+              <input type="text" id="input-pairing-phone" class="topbar-search-input" style="width: 100%; background: #FFFFFF; border: 1.5px solid #CBD5E1; padding: 0.65rem 0.85rem; font-size: 1rem; font-weight: 700; border-radius: 8px;" placeholder="Ex: 5521998901302" value="${currentUser?.whatsapp?.phoneNumber || currentUser?.phone || ''}">
+              <span style="font-size: 0.72rem; color: #64748B; margin-top: 4px; display: block;">
+                Digite apenas os números (Ex: <strong>5521999998888</strong>).
+              </span>
+            </div>
+
+            <!-- PIN Display Box -->
+            <div id="pairing-pin-result-box" style="display: none; background: #F0FDF4; border: 2px solid #86EFAC; border-radius: 12px; padding: 1.5rem; text-align: center;">
+              <span style="font-size: 0.8rem; font-weight: 800; color: #15803D; text-transform: uppercase;">
+                🔑 Código PIN de Emparelhamento
+              </span>
+              <div id="pairing-pin-display" style="font-size: 2.4rem; font-weight: 900; letter-spacing: 4px; color: #0F172A; font-family: monospace; background: #FFFFFF; border: 1px dashed #22C55E; border-radius: 8px; padding: 0.75rem 1rem; margin: 0.75rem 0; user-select: all;">
+                ----
+              </div>
+              <button type="button" id="btn-copy-pairing-pin" class="btn-outline-white" style="font-size: 0.85rem; font-weight: 700; padding: 0.45rem 1.25rem; background: #FFFFFF;">
+                📋 Copiar Código PIN
+              </button>
+              <div style="font-size: 0.78rem; color: #166534; margin-top: 0.85rem; line-height: 1.4;">
+                ⏳ Digite este código no WhatsApp do seu celular em <strong>Aparelhos Conectados > Conectar com número de telefone</strong>.
+              </div>
+            </div>
+
+            <button id="btn-generate-pairing" class="btn-wa-action" style="font-size: 1rem; background: #16A34A;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                <line x1="12" y1="18" x2="12.01" y2="18"></line>
+              </svg>
+              Gerar Código de 8 Dígitos (PIN)
             </button>
           </div>
+
+          <!-- Botão Desconectar Compartilhado -->
+          <button id="btn-disconnect-instance" class="btn-outline-white" style="width: 100%; color: #DC2626; border-color: #FECACA; font-weight: 600; padding: 0.65rem; font-size: 0.85rem;">
+            Desconectar meu WhatsApp
+          </button>
+        </div>
 
           ${isAdmin ? `
             <!-- Advanced Config (Collapsible) -->
@@ -641,6 +732,86 @@ export function renderEvolutionManager(container, currentUser) {
       downloadBtn?.click();
     });
   }
+
+  // Alternância de Modo: QR Code vs Pairing Code (PIN)
+  const tabModeQr = container.querySelector('#tab-mode-qr');
+  const tabModePairing = container.querySelector('#tab-mode-pairing');
+  const instructionsQr = container.querySelector('#instructions-box-qr');
+  const instructionsPairing = container.querySelector('#instructions-box-pairing');
+  const sectionQr = container.querySelector('#section-mode-qr');
+  const sectionPairing = container.querySelector('#section-mode-pairing');
+
+  tabModeQr?.addEventListener('click', () => {
+    tabModeQr.style.borderBottom = '2px solid #008069';
+    tabModeQr.style.color = '#008069';
+    tabModePairing.style.borderBottom = '2px solid transparent';
+    tabModePairing.style.color = '#64748B';
+
+    instructionsQr.style.display = 'block';
+    instructionsPairing.style.display = 'none';
+    sectionQr.style.display = 'flex';
+    sectionPairing.style.display = 'none';
+  });
+
+  tabModePairing?.addEventListener('click', () => {
+    tabModePairing.style.borderBottom = '2px solid #16A34A';
+    tabModePairing.style.color = '#16A34A';
+    tabModeQr.style.borderBottom = '2px solid transparent';
+    tabModeQr.style.color = '#64748B';
+
+    instructionsPairing.style.display = 'block';
+    instructionsQr.style.display = 'none';
+    sectionPairing.style.display = 'flex';
+    sectionQr.style.display = 'none';
+  });
+
+  // Geração de Pairing Code (PIN 8 Dígitos)
+  const genPairingBtn = container.querySelector('#btn-generate-pairing');
+  const pairingPinResultBox = container.querySelector('#pairing-pin-result-box');
+  const pairingPinDisplay = container.querySelector('#pairing-pin-display');
+  const copyPairingPinBtn = container.querySelector('#btn-copy-pairing-pin');
+  let currentPairingPin = null;
+
+  genPairingBtn?.addEventListener('click', async () => {
+    const phoneInput = container.querySelector('#input-pairing-phone')?.value.trim();
+    if (!phoneInput) {
+      showToast('Digite seu número de telefone com DDD para gerar o código.', 'warning');
+      container.querySelector('#input-pairing-phone')?.focus();
+      return;
+    }
+
+    activeInstanceName = sanitizeInstanceSlug(slugInput?.value || activeInstanceName || defaultHierarchicalName);
+    localStorage.setItem('evolution_active_instance', activeInstanceName);
+
+    genPairingBtn.disabled = true;
+    genPairingBtn.innerHTML = 'Gerando Código PIN...';
+
+    try {
+      const res = await getEvolutionPairingCode(activeInstanceName, phoneInput);
+      if (res.success && res.pairingCode) {
+        currentPairingPin = res.pairingCode;
+        pairingPinDisplay.textContent = res.pairingCode;
+        pairingPinResultBox.style.display = 'block';
+        showToast(`Código ${res.pairingCode} gerado! Digite no WhatsApp do celular.`, 'success');
+        startPolling();
+      } else {
+        showToast(`Erro ao gerar código: ${res.error || 'Falha na Evolution API'}`, 'error');
+      }
+    } catch (err) {
+      console.error('Erro ao gerar pairing code:', err);
+      showToast(`Erro: ${err.message}`, 'error');
+    } finally {
+      genPairingBtn.disabled = false;
+      genPairingBtn.innerHTML = `Gerar Código de 8 Dígitos (PIN)`;
+    }
+  });
+
+  copyPairingPinBtn?.addEventListener('click', () => {
+    if (currentPairingPin) {
+      navigator.clipboard.writeText(currentPairingPin);
+      showToast(`PIN ${currentPairingPin} copiado!`, 'success');
+    }
+  });
 
   genQrBtn?.addEventListener('click', async () => {
     activeInstanceName = sanitizeInstanceSlug(slugInput?.value || activeInstanceName || defaultHierarchicalName);

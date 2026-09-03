@@ -249,6 +249,137 @@ export async function getEvolutionQrCode(instanceName, customApiKey) {
 }
 
 /**
+ * Solicita o Código de Pareamento (Pairing Code de 8 dígitos) por número de telefone.
+ * @param {string} instanceName - Nome único da instância
+ * @param {string} phoneNumber - Número de telefone com DDI e DDD (ex: 5521998901302)
+ * @param {string} [customApiKey] - Chave opcional
+ */
+export async function getEvolutionPairingCode(instanceName, phoneNumber, customApiKey) {
+  const { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
+
+  if (!phoneNumber) {
+    return { success: false, error: 'Número de telefone é obrigatório para gerar o código de pareamento.' };
+  }
+
+  // Sanitiza o telefone garantindo formato internacional sem caracteres especiais
+  const cleanDigits = phoneNumber.toString().replace(/\D/g, '');
+  const cleanPhone = cleanDigits.startsWith('55') ? cleanDigits : `55${cleanDigits}`;
+
+  try {
+    // Garante que a instância exista
+    await createEvolutionInstanceIfNotExists(instanceName, apiKey);
+
+    // Tentativa 1: Via rota GET com query param ?number=
+    let res = await fetch(`${baseUrl}/instance/connect/${instanceName}?number=${cleanPhone}`, {
+      method: 'GET',
+      headers: {
+        'apikey': apiKey,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    // Se GET retornar 404 ou 405, tenta via POST
+    if (!res.ok && (res.status === 404 || res.status === 405)) {
+      res = await fetch(`${baseUrl}/instance/connect/${instanceName}`, {
+        method: 'POST',
+        headers: {
+          'apikey': apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ number: cleanPhone })
+      });
+    }
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        return { success: false, instanceName, error: 'Chave de API (apikey) não autorizada.' };
+      }
+      return { success: false, instanceName, error: data.message || data.error || `Erro HTTP ${res.status} ao gerar Pairing Code.` };
+    }
+
+    let pairingCode = data.pairingCode || data.code || data.pairing_code || (typeof data === 'string' ? data : null);
+
+    // Formata o código se vier em 8 caracteres sem traço (ex: ABCDEFGH -> ABCD-EFGH)
+    if (pairingCode && typeof pairingCode === 'string' && pairingCode.length === 8 && !pairingCode.includes('-')) {
+      pairingCode = `${pairingCode.slice(0, 4)}-${pairingCode.slice(4)}`;
+    }
+
+    if (!pairingCode) {
+      return { success: false, instanceName, error: 'A API não retornou o código de pareamento. Verifique se a instância suporta Pairing Code.' };
+    }
+
+    return {
+      success: true,
+      instanceName,
+      phoneNumber: cleanPhone,
+      pairingCode: pairingCode.toUpperCase(),
+      state: data.instance?.state || 'connecting'
+    };
+  } catch (error) {
+    console.error(`[Evolution API] Erro ao obter Pairing Code para ${instanceName}:`, error);
+    return { success: false, instanceName, error: error.message || 'Erro de rede ao conectar por Pairing Code.' };
+  }
+}
+
+/**
+ * Gera o texto formatado do convite de conexão para a campanha.
+ */
+export function buildInviteNotificationText(leaderName, pairingCode) {
+  const cleanName = leaderName ? leaderName.split(' ')[0] : 'Líder';
+  const codeDisplay = pairingCode ? `👉 *${pairingCode}*` : '👉 _(Código enviado pelo coordenador)_';
+
+  return `Olá líder *${cleanName}*, você foi convidado a se conectar ao sistema de Envio de Mensagens da campanha do *Alex Amarante*.\n\nÉ bem simples:\n1. Abra o *WhatsApp* no seu celular\n2. Vá em *Configurações* (ou *Aparelhos Conectados*) > *Conectar um aparelho*\n3. Toque na opção *"Conectar com número de telefone"* (ou _"Link with phone number instead"_)\n4. Digite este código de 8 dígitos:\n${codeDisplay}\n\nAssim que você digitar, seu WhatsApp ficará conectado automaticamente! Qualquer dúvida, estamos à disposição.`;
+}
+
+/**
+ * Envia notificação de convite com o código de pareamento via WhatsApp.
+ */
+export async function sendSystemInviteNotification({
+  targetPhone,
+  leaderName,
+  pairingCode,
+  senderInstanceName,
+  customApiKey
+}) {
+  const messageText = buildInviteNotificationText(leaderName, pairingCode);
+  const cleanDigits = targetPhone.toString().replace(/\D/g, '');
+  const formattedPhone = cleanDigits.startsWith('55') ? cleanDigits : `55${cleanDigits}`;
+
+  // Se houver uma instância remetente informada, tenta disparar via API
+  if (senderInstanceName) {
+    try {
+      const sendResult = await sendEvolutionTextMessage({
+        instanceName: senderInstanceName,
+        to: formattedPhone,
+        text: messageText,
+        customApiKey
+      });
+      return {
+        success: sendResult.success,
+        messageText,
+        formattedPhone,
+        waMeUrl: `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`,
+        viaApi: true,
+        apiResult: sendResult
+      };
+    } catch (e) {
+      console.warn('Falha no envio via API da notificação, fallback para wa.me:', e);
+    }
+  }
+
+  // Fallback / URL pronta para wa.me
+  return {
+    success: true,
+    messageText,
+    formattedPhone,
+    waMeUrl: `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`,
+    viaApi: false
+  };
+}
+
+/**
  * Desconecta a instância da Evolution API.
  */
 export async function logoutEvolutionInstance(instanceName, customApiKey) {

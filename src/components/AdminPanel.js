@@ -24,6 +24,15 @@ import {
   generateManagementAlerts, 
   calculateTimelineEvolution 
 } from '../utils/metricsEngine.js';
+import {
+  getEvolutionPairingCode,
+  getEvolutionQrCode,
+  getEvolutionConnectionState,
+  logoutEvolutionInstance,
+  generateHierarchicalInstanceName,
+  sendSystemInviteNotification,
+  buildInviteNotificationText
+} from '../firebase/evolutionApi.js';
 
 export function renderAdminPanel(container, currentUser, onNavigate) {
   let allUsers = [];
@@ -243,6 +252,138 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
         <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); background: #F8FAFC; display: flex; justify-content: space-between; align-items: center;">
           <span id="modal-alert-footer-count" style="font-size: 0.8rem; font-weight: 700; color: #64748B;">0 líderes listados</span>
           <button id="btn-alert-modal-close-action" class="btn-outline-white" style="font-size: 0.82rem; padding: 0.4rem 1rem;">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Pareamento & Notificação WhatsApp do Usuário (PIN / Pairing Code & QR Code) -->
+    <div id="modal-user-whatsapp-pairing" class="modal-overlay" style="display: none;">
+      <div class="modal-content" style="max-width: 620px; max-height: 90vh; display: flex; flex-direction: column;">
+        <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #FAFAFA;">
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <div style="width: 38px; height: 38px; border-radius: 10px; background: #DCFCE7; color: #15803D; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+              📱
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <h3 id="modal-wa-user-name" style="font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin: 0;">Conectar WhatsApp do Líder</h3>
+                <span id="modal-wa-user-status-badge" class="pill-btn" style="background: #FEF3C7; color: #B45309; font-weight: 700; font-size: 0.72rem;">
+                  Verificando...
+                </span>
+              </div>
+              <p id="modal-wa-user-sub" style="font-size: 0.78rem; color: var(--text-muted); margin: 2px 0 0 0;">
+                Gere o código de 8 dígitos para conectar à distância ou envie as instruções da campanha.
+              </p>
+            </div>
+          </div>
+          <button id="btn-close-wa-modal" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);">✕</button>
+        </div>
+
+        <div style="padding: 1.25rem 1.5rem; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 1.15rem;">
+          <input type="hidden" id="modal-wa-target-uid">
+
+          <!-- Card de Identificação da Instância -->
+          <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              <span style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase;">INSTÂNCIA EVOLUTION</span>
+              <div id="modal-wa-instance-display" style="font-family: monospace; font-size: 0.85rem; font-weight: 700; color: #0F172A;">
+                <code>carregando...</code>
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase;">EQUIPE</span>
+              <div id="modal-wa-team-display" style="font-size: 0.82rem; font-weight: 700; color: #2563EB;">
+                👥 Geral
+              </div>
+            </div>
+          </div>
+
+          <!-- Campo: Número de Telefone com DDD -->
+          <div>
+            <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #334155; margin-bottom: 0.35rem;">
+              Número de WhatsApp do Líder (com DDD e DDI)
+            </label>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="text" id="modal-wa-phone-input" class="topbar-search-input" placeholder="Ex: 5521998901302" style="width: 100%; border-radius: 8px; font-weight: 700; font-size: 0.95rem; background: #FFFFFF; border: 1.5px solid #CBD5E1; padding: 0.6rem 0.85rem;">
+            </div>
+            <span style="font-size: 0.72rem; color: #64748B; margin-top: 3px; display: block;">
+              Digite os números sem espaços ou traços (Ex: <strong>5521999998888</strong>).
+            </span>
+          </div>
+
+          <!-- Botões de Conexão: Pairing Code & QR Code -->
+          <div style="display: grid; grid-template-columns: 1.3fr 1fr; gap: 0.75rem;">
+            <button type="button" id="btn-modal-generate-pairing" class="btn-green-action" style="padding: 0.75rem; font-size: 0.88rem; font-weight: 800; justify-content: center;">
+              🔢 Gerar PIN de 8 Dígitos
+            </button>
+            <button type="button" id="btn-modal-generate-qr" class="btn-outline-white" style="padding: 0.75rem; font-size: 0.85rem; font-weight: 700; justify-content: center;">
+              📷 Gerar QR Code
+            </button>
+          </div>
+
+          <!-- Área do Pairing Code Gerado -->
+          <div id="modal-wa-pairing-box" style="display: none; background: #F0FDF4; border: 2px solid #86EFAC; border-radius: 12px; padding: 1.25rem; text-align: center;">
+            <div style="font-size: 0.8rem; font-weight: 800; color: #15803D; text-transform: uppercase; margin-bottom: 0.35rem;">
+              🔑 Código de Emparelhamento (Pairing Code)
+            </div>
+            <div id="modal-wa-pin-display" style="font-size: 2.2rem; font-weight: 900; letter-spacing: 4px; color: #0F172A; font-family: monospace; background: #FFFFFF; border: 1px dashed #22C55E; border-radius: 8px; padding: 0.6rem 1rem; margin: 0.5rem 0; user-select: all;">
+              ----
+            </div>
+            <div style="display: flex; justify-content: center; gap: 0.6rem; margin-top: 0.5rem;">
+              <button type="button" id="btn-modal-copy-pin" class="btn-outline-white" style="font-size: 0.8rem; font-weight: 700; padding: 0.35rem 0.85rem; background: #FFFFFF;">
+                📋 Copiar Apenas o PIN
+              </button>
+            </div>
+            <div style="font-size: 0.75rem; color: #166534; margin-top: 0.65rem; line-height: 1.4;">
+              ⏳ O líder deve abrir o WhatsApp > Aparelhos Conectados > <strong>Conectar com número de telefone</strong> e digitar o PIN acima.
+            </div>
+          </div>
+
+          <!-- Área do QR Code -->
+          <div id="modal-wa-qr-box" style="display: none; text-align: center; border: 2px dashed #CBD5E1; border-radius: 12px; padding: 1.25rem; background: #F8FAFC;">
+            <div id="modal-wa-qr-img-mount">
+              <!-- Imagem QR Code -->
+            </div>
+            <span style="font-size: 0.75rem; color: #64748B; margin-top: 0.5rem; display: block;">
+              Aponte a câmera do WhatsApp para escanear o QR Code.
+            </span>
+          </div>
+
+          <!-- Seção de Notificação do Sistema (Alex Amarante) -->
+          <div id="modal-wa-invite-section" style="background: #EFF6FF; border: 1.5px solid #BFDBFE; border-radius: 12px; padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <strong style="font-size: 0.82rem; color: #1D4ED8; display: flex; align-items: center; gap: 0.35rem;">
+                📨 Enviar Convite da Campanha para o Líder
+              </strong>
+              <span class="pill-btn" style="background: #DBEAFE; color: #1E40AF; font-size: 0.7rem; font-weight: 800;">
+                Alex Amarante
+              </span>
+            </div>
+            <textarea id="modal-wa-invite-text" style="width: 100%; height: 110px; border-radius: 8px; border: 1px solid #CBD5E1; padding: 0.5rem 0.75rem; font-size: 0.8rem; color: #334155; box-sizing: border-box; resize: vertical; font-family: inherit; background: #FFFFFF;" readonly></textarea>
+            
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.65rem; flex-wrap: wrap;">
+              <button type="button" id="btn-modal-send-invite-api" class="btn-primary-blue" style="font-size: 0.8rem; font-weight: 700; padding: 0.45rem 0.85rem; flex: 1; justify-content: center;">
+                🚀 Enviar via WhatsApp (Sistema)
+              </button>
+              <button type="button" id="btn-modal-open-wame" class="btn-green-action" style="font-size: 0.8rem; font-weight: 700; padding: 0.45rem 0.85rem;">
+                💬 Abrir no WhatsApp (wa.me)
+              </button>
+              <button type="button" id="btn-modal-copy-invite" class="btn-outline-white" style="font-size: 0.8rem; font-weight: 700; padding: 0.45rem 0.75rem;">
+                📋 Copiar Mensagem
+              </button>
+            </div>
+          </div>
+
+          <!-- Botão Desconectar se Conectado -->
+          <div id="modal-wa-disconnect-row" style="display: none; border-top: 1px solid #E2E8F0; padding-top: 0.85rem;">
+            <button type="button" id="btn-modal-disconnect-user" class="btn-outline-white" style="width: 100%; color: #DC2626; border-color: #FECACA; font-weight: 700; font-size: 0.82rem; padding: 0.5rem;">
+              🛑 Desconectar WhatsApp deste Usuário
+            </button>
+          </div>
+        </div>
+
+        <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); background: #F8FAFC; display: flex; justify-content: flex-end;">
+          <button type="button" id="btn-modal-close-wa" class="btn-outline-white" style="font-size: 0.85rem; padding: 0.45rem 1.25rem;">Fechar</button>
         </div>
       </div>
     </div>
@@ -973,7 +1114,11 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
 
       contentEl.querySelector('#btn-goto-whatsapp-manager')?.addEventListener('click', () => onNavigate('whatsapp'));
       contentEl.querySelectorAll('.btn-direct-whatsapp-setup').forEach(btn => {
-        btn.addEventListener('click', () => onNavigate('whatsapp'));
+        btn.addEventListener('click', () => {
+          const uid = btn.getAttribute('data-uid');
+          const targetUser = allUsers.find(u => u.uid === uid);
+          if (targetUser) openUserWhatsappPairingModal(targetUser);
+        });
       });
     }
   }
@@ -998,6 +1143,288 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
       }
     });
   });
+
+  // Modal Pareamento & Notificação WhatsApp do Usuário (PIN / Pairing Code & QR Code)
+  const waModal = container.querySelector('#modal-user-whatsapp-pairing');
+  let waPollingInterval = null;
+  let currentActivePin = null;
+
+  function stopWaPolling() {
+    if (waPollingInterval) {
+      clearInterval(waPollingInterval);
+      waPollingInterval = null;
+    }
+  }
+
+  container.querySelector('#btn-close-wa-modal')?.addEventListener('click', () => {
+    stopWaPolling();
+    waModal.style.display = 'none';
+  });
+  container.querySelector('#btn-modal-close-wa')?.addEventListener('click', () => {
+    stopWaPolling();
+    waModal.style.display = 'none';
+  });
+
+  async function openUserWhatsappPairingModal(targetUser) {
+    stopWaPolling();
+    currentActivePin = null;
+
+    const team = allTeams.find(t => t.id === targetUser.team_id || t.name === targetUser.team_name);
+    const teamName = team ? team.name : (targetUser.team_name || 'Geral');
+    const role = targetUser.role || 'member';
+    const cleanRole = role === 'admin' ? 'admin' : (role === 'coordinator' ? 'coordenador' : 'membro');
+    const instanceName = targetUser.whatsapp?.instanceName || targetUser.whatsapp_instance || generateHierarchicalInstanceName(teamName, cleanRole, targetUser.name || targetUser.email);
+    const phone = targetUser.whatsapp?.phoneNumber || targetUser.phone || '';
+
+    container.querySelector('#modal-wa-target-uid').value = targetUser.uid;
+    container.querySelector('#modal-wa-user-name').textContent = targetUser.name || targetUser.email.split('@')[0];
+    container.querySelector('#modal-wa-instance-display').innerHTML = `<code>${instanceName}</code>`;
+    container.querySelector('#modal-wa-team-display').textContent = `👥 ${teamName}`;
+    container.querySelector('#modal-wa-phone-input').value = phone;
+
+    const pairingBox = container.querySelector('#modal-wa-pairing-box');
+    const qrBox = container.querySelector('#modal-wa-qr-box');
+    const disconnectRow = container.querySelector('#modal-wa-disconnect-row');
+    const statusBadge = container.querySelector('#modal-wa-user-status-badge');
+    const inviteTextArea = container.querySelector('#modal-wa-invite-text');
+
+    pairingBox.style.display = 'none';
+    qrBox.style.display = 'none';
+
+    // Texto inicial do convite sem código
+    inviteTextArea.value = buildInviteNotificationText(targetUser.name, '');
+
+    // Consulta status em tempo real
+    statusBadge.textContent = 'Verificando...';
+    statusBadge.style.background = '#FEF3C7';
+    statusBadge.style.color = '#B45309';
+
+    try {
+      const stateResult = await getEvolutionConnectionState(instanceName);
+      const isConnected = stateResult.state === 'open' || targetUser.whatsapp?.status === 'CONNECTED' || targetUser.whatsapp_connected === true;
+      
+      if (isConnected) {
+        statusBadge.textContent = '🟢 Aberta (Conectada)';
+        statusBadge.style.background = '#DCFCE7';
+        statusBadge.style.color = '#15803D';
+        disconnectRow.style.display = 'block';
+      } else {
+        statusBadge.textContent = '🟡 Desconectada (Offline)';
+        statusBadge.style.background = '#FEF3C7';
+        statusBadge.style.color = '#B45309';
+        disconnectRow.style.display = 'none';
+      }
+    } catch (e) {
+      statusBadge.textContent = '⚪ Não configurada';
+      statusBadge.style.background = '#F1F5F9';
+      statusBadge.style.color = '#64748B';
+      disconnectRow.style.display = 'none';
+    }
+
+    // Botão: Gerar PIN de 8 Dígitos
+    const btnGenPairing = container.querySelector('#btn-modal-generate-pairing');
+    btnGenPairing.onclick = async () => {
+      const inputPhone = container.querySelector('#modal-wa-phone-input').value.trim();
+      if (!inputPhone) {
+        showToast('Digite o número de telefone com DDD do líder para gerar o código.', 'warning');
+        container.querySelector('#modal-wa-phone-input').focus();
+        return;
+      }
+
+      btnGenPairing.disabled = true;
+      btnGenPairing.textContent = 'Gerando PIN...';
+
+      try {
+        const res = await getEvolutionPairingCode(instanceName, inputPhone);
+        if (res.success && res.pairingCode) {
+          currentActivePin = res.pairingCode;
+          container.querySelector('#modal-wa-pin-display').textContent = res.pairingCode;
+          pairingBox.style.display = 'block';
+          qrBox.style.display = 'none';
+
+          // Atualiza o texto do convite com o PIN gerado
+          inviteTextArea.value = buildInviteNotificationText(targetUser.name, res.pairingCode);
+
+          showToast(`PIN ${res.pairingCode} gerado com sucesso!`, 'success');
+
+          // Atualiza dados no Firestore
+          try {
+            const userRef = doc(db, 'users', targetUser.uid);
+            await updateDoc(userRef, {
+              'whatsapp.instanceName': instanceName,
+              'whatsapp.phoneNumber': res.phoneNumber,
+              'whatsapp_instance': instanceName,
+              'whatsapp_phone': res.phoneNumber,
+              'whatsapp.pairingCode': res.pairingCode,
+              'phone': res.phoneNumber
+            });
+          } catch (e) {}
+
+          // Inicia polling para detectar conexão assim que o líder digitar no celular
+          stopWaPolling();
+          waPollingInterval = setInterval(async () => {
+            const check = await getEvolutionConnectionState(instanceName);
+            if (check.state === 'open') {
+              stopWaPolling();
+              statusBadge.textContent = '🟢 Aberta (Conectada)';
+              statusBadge.style.background = '#DCFCE7';
+              statusBadge.style.color = '#15803D';
+              disconnectRow.style.display = 'block';
+              pairingBox.style.display = 'none';
+
+              try {
+                const userRef = doc(db, 'users', targetUser.uid);
+                await updateDoc(userRef, {
+                  'whatsapp.status': 'CONNECTED',
+                  'whatsapp_connected': true,
+                  'whatsapp.connectedAt': new Date().toISOString()
+                });
+              } catch (e) {}
+
+              showToast(`🎉 WhatsApp de ${targetUser.name || 'Líder'} conectado com sucesso!`, 'success');
+            }
+          }, 3000);
+
+        } else {
+          showToast(`Erro ao gerar código: ${res.error || 'Falha na Evolution API'}`, 'error');
+        }
+      } catch (err) {
+        console.error('Erro ao gerar pairing code:', err);
+        showToast(`Erro: ${err.message}`, 'error');
+      } finally {
+        btnGenPairing.disabled = false;
+        btnGenPairing.textContent = '🔢 Gerar PIN de 8 Dígitos';
+      }
+    };
+
+    // Botão: Copiar PIN
+    container.querySelector('#btn-modal-copy-pin').onclick = () => {
+      if (currentActivePin) {
+        navigator.clipboard.writeText(currentActivePin);
+        showToast(`Código ${currentActivePin} copiado para a área de transferência!`, 'success');
+      }
+    };
+
+    // Botão: Gerar QR Code Alternativo
+    const btnGenQr = container.querySelector('#btn-modal-generate-qr');
+    btnGenQr.onclick = async () => {
+      btnGenQr.disabled = true;
+      btnGenQr.textContent = 'Gerando QR...';
+      try {
+        const res = await getEvolutionQrCode(instanceName);
+        if (res.success && res.base64) {
+          const qrMount = container.querySelector('#modal-wa-qr-img-mount');
+          qrMount.innerHTML = `<img src="${res.base64}" style="max-width: 220px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">`;
+          qrBox.style.display = 'block';
+          pairingBox.style.display = 'none';
+          showToast('QR Code gerado! Aponte a câmera do WhatsApp.', 'success');
+
+          // Polling para QR
+          stopWaPolling();
+          waPollingInterval = setInterval(async () => {
+            const check = await getEvolutionConnectionState(instanceName);
+            if (check.state === 'open') {
+              stopWaPolling();
+              statusBadge.textContent = '🟢 Aberta (Conectada)';
+              statusBadge.style.background = '#DCFCE7';
+              statusBadge.style.color = '#15803D';
+              disconnectRow.style.display = 'block';
+              qrBox.style.display = 'none';
+              showToast(`🎉 WhatsApp de ${targetUser.name || 'Líder'} conectado com sucesso!`, 'success');
+            }
+          }, 3000);
+        } else {
+          showToast(`Erro ao obter QR Code: ${res.error || 'Tente novamente'}`, 'error');
+        }
+      } catch (err) {
+        showToast(`Erro: ${err.message}`, 'error');
+      } finally {
+        btnGenQr.disabled = false;
+        btnGenQr.textContent = '📷 Gerar QR Code';
+      }
+    };
+
+    // Botão: Enviar Notificação via WhatsApp API (Sistema)
+    const btnSendInviteApi = container.querySelector('#btn-modal-send-invite-api');
+    btnSendInviteApi.onclick = async () => {
+      const inputPhone = container.querySelector('#modal-wa-phone-input').value.trim();
+      if (!inputPhone) {
+        showToast('Informe o telefone do líder para enviar a notificação.', 'warning');
+        return;
+      }
+
+      const masterInst = currentUser.whatsapp?.instanceName || currentUser.whatsapp_instance || localStorage.getItem('evolution_active_instance') || 'IBM';
+
+      btnSendInviteApi.disabled = true;
+      btnSendInviteApi.textContent = 'Enviando...';
+
+      try {
+        const notifyRes = await sendSystemInviteNotification({
+          targetPhone: inputPhone,
+          leaderName: targetUser.name,
+          pairingCode: currentActivePin,
+          senderInstanceName: masterInst
+        });
+
+        if (notifyRes.success) {
+          showToast('Convite da campanha enviado para o WhatsApp do líder!', 'success');
+        } else {
+          showToast('Não foi possível disparar pela API. Use o botão "Abrir no WhatsApp".', 'warning');
+        }
+      } catch (err) {
+        console.error('Erro ao enviar notificação:', err);
+        showToast(`Falha no envio: ${err.message}`, 'error');
+      } finally {
+        btnSendInviteApi.disabled = false;
+        btnSendInviteApi.textContent = '🚀 Enviar via WhatsApp (Sistema)';
+      }
+    };
+
+    // Botão: Abrir no WhatsApp Web / App (wa.me)
+    container.querySelector('#btn-modal-open-wame').onclick = () => {
+      const inputPhone = container.querySelector('#modal-wa-phone-input').value.trim();
+      const cleanDigits = inputPhone.replace(/\D/g, '');
+      const formattedPhone = cleanDigits.startsWith('55') ? cleanDigits : `55${cleanDigits}`;
+      const msg = inviteTextArea.value;
+      const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank');
+    };
+
+    // Botão: Copiar Mensagem Completa
+    container.querySelector('#btn-modal-copy-invite').onclick = () => {
+      navigator.clipboard.writeText(inviteTextArea.value);
+      showToast('Mensagem completa copiada para a área de transferência!', 'success');
+    };
+
+    // Botão: Desconectar
+    const btnDisconnect = container.querySelector('#btn-modal-disconnect-user');
+    btnDisconnect.onclick = async () => {
+      if (confirm(`Deseja realmente desconectar a instância WhatsApp de "${targetUser.name}"?`)) {
+        btnDisconnect.disabled = true;
+        btnDisconnect.textContent = 'Desconectando...';
+        try {
+          await logoutEvolutionInstance(instanceName);
+          const userRef = doc(db, 'users', targetUser.uid);
+          await updateDoc(userRef, {
+            'whatsapp.status': 'DISCONNECTED',
+            'whatsapp_connected': false
+          });
+          statusBadge.textContent = '🟡 Desconectada (Offline)';
+          statusBadge.style.background = '#FEF3C7';
+          statusBadge.style.color = '#B45309';
+          disconnectRow.style.display = 'none';
+          showToast('Instância desconectada com sucesso.', 'info');
+        } catch (err) {
+          showToast(`Erro ao desconectar: ${err.message}`, 'error');
+        } finally {
+          btnDisconnect.disabled = false;
+          btnDisconnect.textContent = '🛑 Desconectar WhatsApp deste Usuário';
+        }
+      }
+    };
+
+    waModal.style.display = 'flex';
+  }
 
   // Modal Detalhes do Alerta Operacional
   const alertModal = container.querySelector('#modal-alert-details');
