@@ -395,23 +395,46 @@ export async function getEvolutionPairingCode(instanceName, phoneNumber, customA
       };
     }
 
-    let pairingCode = data.pairingCode || 
-                      data.code || 
-                      data.pairing_code || 
-                      data.qrcode?.pairingCode || 
-                      data.qrcode?.code || 
-                      (typeof data === 'string' && data.length <= 10 ? data : null);
+    // Extrai estritamente o código PIN de 8 dígitos (rejeitando strings de QR Code)
+    function extractValidPairingPin(apiData) {
+      if (!apiData) return null;
+      const candidates = [
+        apiData.pairingCode,
+        apiData.pairing_code,
+        apiData.pairing,
+        apiData.qrcode?.pairingCode,
+        apiData.qrcode?.pairing_code,
+        typeof apiData === 'string' ? apiData : null
+      ];
 
-    // Formata o código se vier em 8 caracteres sem traço (ex: ABCDEFGH -> ABCD-EFGH)
-    if (pairingCode && typeof pairingCode === 'string' && pairingCode.length === 8 && !pairingCode.includes('-')) {
-      pairingCode = `${pairingCode.slice(0, 4)}-${pairingCode.slice(4)}`;
+      for (const cand of candidates) {
+        if (cand && typeof cand === 'string') {
+          const clean = cand.trim().replace(/\s+/g, '');
+          // Um Pairing Code válido do WhatsApp tem entre 6 e 10 caracteres e NUNCA contém @, vírgulas ou barras
+          if (clean.length >= 6 && clean.length <= 12 && !clean.startsWith('2@') && !clean.startsWith('1@') && !clean.includes('@') && !clean.includes(',') && !clean.includes(';')) {
+            if (clean.length === 8 && !clean.includes('-')) {
+              return `${clean.slice(0, 4)}-${clean.slice(4)}`.toUpperCase();
+            }
+            return clean.toUpperCase();
+          }
+        }
+      }
+      return null;
     }
 
-    if (!pairingCode) {
+    const validPin = extractValidPairingPin(data);
+
+    if (!validPin) {
+      // Se a API retornou QR Code em vez de PIN
+      const hasQr = !!(data.base64 || data.qrcode?.base64 || data.code?.startsWith('2@'));
       return { 
         success: false, 
         instanceName, 
-        error: 'A API não retornou o código de pareamento. Verifique se o número de telefone está correto e se o chip possui WhatsApp ativo.' 
+        isQrCodeOnly: hasQr,
+        base64: data.base64 || data.qrcode?.base64 || null,
+        error: hasQr 
+          ? 'O servidor Evolution API gerou a conexão em formato de QR Code. Por favor, clique no botão "Gerar QR Code" ao lado para escanear com a câmera.' 
+          : 'A API não retornou o código de pareamento. Verifique se o número de telefone está correto com DDD (Ex: 5521999998888).'
       };
     }
 
@@ -419,7 +442,7 @@ export async function getEvolutionPairingCode(instanceName, phoneNumber, customA
       success: true,
       instanceName,
       phoneNumber: cleanPhone,
-      pairingCode: pairingCode.toUpperCase(),
+      pairingCode: validPin,
       state: data.instance?.state || 'connecting'
     };
   } catch (error) {

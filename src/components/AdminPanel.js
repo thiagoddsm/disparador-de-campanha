@@ -1346,8 +1346,29 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
             }
           }, 3000);
 
+        } else if (res.isQrCodeOnly && res.base64) {
+          const qrMount = container.querySelector('#modal-wa-qr-img-mount');
+          qrMount.innerHTML = `<img src="${res.base64}" style="max-width: 220px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">`;
+          qrBox.style.display = 'block';
+          pairingBox.style.display = 'none';
+          showToast('O servidor Evolution API gerou QR Code. Aponte a câmera do WhatsApp para conectar.', 'info');
+
+          // Polling para QR
+          stopWaPolling();
+          waPollingInterval = setInterval(async () => {
+            const check = await getEvolutionConnectionState(instanceName);
+            if (check.state === 'open') {
+              stopWaPolling();
+              statusBadge.textContent = '🟢 Aberta (Conectada)';
+              statusBadge.style.background = '#DCFCE7';
+              statusBadge.style.color = '#15803D';
+              disconnectRow.style.display = 'block';
+              qrBox.style.display = 'none';
+              showToast(`🎉 WhatsApp de ${targetUser.name || 'Líder'} conectado com sucesso!`, 'success');
+            }
+          }, 3000);
         } else {
-          showToast(`Erro ao gerar código: ${res.error || 'Falha na Evolution API'}`, 'error');
+          showToast(`Aviso: ${res.error || 'Falha ao gerar código.'}`, 'warning');
         }
       } catch (err) {
         console.error('Erro ao gerar pairing code:', err);
