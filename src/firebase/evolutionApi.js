@@ -159,7 +159,7 @@ export async function getEvolutionConnectionState(instanceName, customApiKey) {
 /**
  * Cria a instância na Evolution API se não existir (com suporte a Baileys e QR Code).
  */
-export async function createEvolutionInstanceIfNotExists(instanceName, customApiKey) {
+export async function createEvolutionInstanceIfNotExists(instanceName, customApiKey, phoneNumber = null, isQrCode = true) {
   const { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
 
   try {
@@ -168,26 +168,32 @@ export async function createEvolutionInstanceIfNotExists(instanceName, customApi
       return { success: true };
     }
 
+    const payload = {
+      instanceName,
+      token: apiKey,
+      qrcode: isQrCode,
+      integration: 'WHATSAPP-BAILEYS'
+    };
+    if (phoneNumber) {
+      payload.number = phoneNumber;
+      if (!isQrCode) payload.qrcode = false;
+    }
+
     const res = await fetch(`${baseUrl}/instance/create`, {
       method: 'POST',
       headers: {
         'apikey': apiKey,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        instanceName,
-        token: apiKey,
-        qrcode: true,
-        integration: 'WHATSAPP-BAILEYS'
-      })
+      body: JSON.stringify(payload)
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       if (res.status === 401) {
         return { success: false, error: 'Chave de API (apikey) não autorizada no servidor Evolution API.' };
       }
-      if (res.status !== 403 && !data.error?.includes('already in use')) {
+      if (res.status !== 403 && !data.error?.includes('already in use') && !JSON.stringify(data).includes('already in use')) {
         return { success: false, error: data.message || `Erro HTTP ${res.status} ao criar instância.` };
       }
     }
@@ -343,46 +349,50 @@ export async function getEvolutionPairingCode(instanceName, phoneNumber, customA
       };
     }
 
-    // 2. Garante que a instância exista se não for encontrada
+    // 2. Garante que a instância exista configurada com qrcode: false e o número do celular
     if (stateCheck.state === 'not_found') {
-      const createRes = await createEvolutionInstanceIfNotExists(instanceName, apiKey);
-      if (!createRes.success && !createRes.error?.includes('already in use')) {
-        return {
-          success: false,
-          instanceName,
-          error: `Não foi possível criar a instância "${instanceName}": ${createRes.error}`
-        };
-      }
+      await createEvolutionInstanceIfNotExists(instanceName, apiKey, cleanPhone, false);
     }
 
-    // 3. Tentativa via rota GET com query params ?number= e &pairingCode=true
-    let res = await fetch(`${baseUrl}/instance/connect/${instanceName}?number=${cleanPhone}&pairingCode=true`, {
-      method: 'GET',
-      headers: {
-        'apikey': apiKey,
-        'Content-Type': 'application/json'
-      }
-    });
+    // Função interna para solicitar o connect
+    async function requestConnect() {
+      const res = await fetch(`${baseUrl}/instance/connect/${instanceName}?number=${cleanPhone}`, {
+        method: 'GET',
+        headers: {
+          'apikey': apiKey,
+          'Content-Type': 'application/json'
+        }
+      });
+      return await res.json().catch(() => ({}));
+    }
 
-    // Se GET retornar 404 ou 405, tenta via POST
-    if (!res.ok && (res.status === 404 || res.status === 405)) {
-      res = await fetch(`${baseUrl}/instance/connect/${instanceName}`, {
+    let data = await requestConnect();
+
+    // Se o pairingCode veio nulo (porque a instância foi criada anteriormente no modo QR), recriamos com qrcode: false
+    if (!data.pairingCode && !data.pairing_code) {
+      console.log(`[Evolution API] Inicializando ${instanceName} no modo Pairing Code (qrcode: false)...`);
+      await fetch(`${baseUrl}/instance/delete/${instanceName}`, {
+        method: 'DELETE',
+        headers: { 'apikey': apiKey }
+      }).catch(() => {});
+
+      await fetch(`${baseUrl}/instance/create`, {
         method: 'POST',
         headers: {
           'apikey': apiKey,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ number: cleanPhone })
-      });
-    }
+        body: JSON.stringify({
+          instanceName,
+          token: apiKey,
+          number: cleanPhone,
+          qrcode: false,
+          integration: 'WHATSAPP-BAILEYS'
+        })
+      }).catch(() => {});
 
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      if (res.status === 401) {
-        return { success: false, instanceName, error: 'Chave de API (apikey) não autorizada no servidor Evolution API.' };
-      }
-      return { success: false, instanceName, error: data.message || data.error || `Erro HTTP ${res.status} ao gerar Pairing Code.` };
+      await applyNotificationPreservationSettings(instanceName, apiKey);
+      data = await requestConnect();
     }
 
     // Se após a chamada o estado for open, o WhatsApp já conectou
@@ -410,7 +420,7 @@ export async function getEvolutionPairingCode(instanceName, phoneNumber, customA
       for (const cand of candidates) {
         if (cand && typeof cand === 'string') {
           const clean = cand.trim().replace(/\s+/g, '');
-          // Um Pairing Code válido do WhatsApp tem entre 6 e 10 caracteres e NUNCA contém @, vírgulas ou barras
+          // Um Pairing Code válido do WhatsApp tem entre 6 e 12 caracteres e NUNCA contém @, vírgulas ou barras
           if (clean.length >= 6 && clean.length <= 12 && !clean.startsWith('2@') && !clean.startsWith('1@') && !clean.includes('@') && !clean.includes(',') && !clean.includes(';')) {
             if (clean.length === 8 && !clean.includes('-')) {
               return `${clean.slice(0, 4)}-${clean.slice(4)}`.toUpperCase();
