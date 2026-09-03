@@ -103,9 +103,12 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
         </div>
 
         <!-- KPI 4: Saúde do WhatsApp -->
-        <div class="metric-box">
+        <div class="metric-box" id="card-kpi-whatsapp-trigger" style="cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;" title="Clique para gerenciar as instâncias WhatsApp da rede">
           <div class="metric-info">
-            <span class="metric-label">INSTÂNCIAS WHATSAPP</span>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span class="metric-label">INSTÂNCIAS WHATSAPP</span>
+              <span style="font-size: 0.7rem; color: #059669; font-weight: 700;">Ver Todos ›</span>
+            </div>
             <span class="metric-big-num" id="adm-kpi-whatsapp" style="font-size: 1.35rem;">0 / 0</span>
             <span class="metric-subtext" id="adm-kpi-whatsapp-sub">🟢 0 Conectadas · 🔴 0 Offline</span>
           </div>
@@ -1570,6 +1573,7 @@ export function renderAdminPanel(container, currentUser, onNavigate) {
   container.querySelector('#tab-btn-users')?.addEventListener('click', () => switchTab('users'));
   container.querySelector('#tab-btn-whatsapp')?.addEventListener('click', () => switchTab('whatsapp'));
   container.querySelector('#tab-btn-audit')?.addEventListener('click', () => switchTab('audit'));
+  container.querySelector('#card-kpi-whatsapp-trigger')?.addEventListener('click', () => switchTab('whatsapp'));
 
   // Modal Nova Equipe
   const teamModal = container.querySelector('#modal-new-team');
