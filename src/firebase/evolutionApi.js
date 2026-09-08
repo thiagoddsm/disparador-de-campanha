@@ -83,6 +83,45 @@ function getEvolutionConfig(customApiKey) {
 }
 
 /**
+ * Fetch seguro para Evolution API com auto-recuperação (Self-Healing) em caso de 401 Unauthorized.
+ */
+export async function evolutionFetch(endpoint, options = {}, customApiKey = null) {
+  let { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
+  
+  const headers = {
+    'apikey': apiKey,
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+
+  let res;
+  try {
+    res = await fetch(`${baseUrl}${endpoint}`, {
+      ...options,
+      headers
+    });
+  } catch (err) {
+    throw err;
+  }
+
+  // Auto-recuperação em caso de 401 Unauthorized (se a chave no localStorage ou Firestore estiver desatualizada)
+  if (res.status === 401 && apiKey !== EVOLUTION_CONFIG.apiKey) {
+    console.warn(`[Evolution API] 401 Unauthorized com chave '${apiKey.slice(0, 6)}...'. Restaurando para Master Key do servidor.`);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('evolution_api_key', EVOLUTION_CONFIG.apiKey);
+    }
+    apiKey = EVOLUTION_CONFIG.apiKey;
+    headers['apikey'] = apiKey;
+    res = await fetch(`${baseUrl}${endpoint}`, {
+      ...options,
+      headers
+    });
+  }
+
+  return res;
+}
+
+/**
  * Resolve variações de Spintax para que nenhuma mensagem tenha o mesmo hash.
  * Exemplo: "{Olá|Oi|Bom dia} {nome}!" -> "Bom dia Mariana!"
  */
@@ -127,16 +166,10 @@ export function generateHierarchicalInstanceName(teamName, role, userName) {
  * Consulta o status de conexão da instância na Evolution API.
  */
 export async function getEvolutionConnectionState(instanceName, customApiKey) {
-  const { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
-
   try {
-    const res = await fetch(`${baseUrl}/instance/connectionState/${instanceName}`, {
-      method: 'GET',
-      headers: {
-        'apikey': apiKey,
-        'Content-Type': 'application/json'
-      }
-    });
+    const res = await evolutionFetch(`/instance/connectionState/${instanceName}`, {
+      method: 'GET'
+    }, customApiKey);
 
     if (res.status === 404) return { instanceName, state: 'not_found' };
     if (!res.ok) return { instanceName, state: 'error' };
@@ -160,14 +193,13 @@ export async function getEvolutionConnectionState(instanceName, customApiKey) {
  * Cria a instância na Evolution API se não existir (com suporte a Baileys e QR Code).
  */
 export async function createEvolutionInstanceIfNotExists(instanceName, customApiKey, phoneNumber = null, isQrCode = true) {
-  const { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
-
   try {
-    const stateResult = await getEvolutionConnectionState(instanceName, apiKey);
+    const stateResult = await getEvolutionConnectionState(instanceName, customApiKey);
     if (stateResult.state !== 'not_found' && stateResult.state !== 'error') {
       return { success: true };
     }
 
+    const { apiKey } = getEvolutionConfig(customApiKey);
     const payload = {
       instanceName,
       token: apiKey,
@@ -179,14 +211,10 @@ export async function createEvolutionInstanceIfNotExists(instanceName, customApi
       if (!isQrCode) payload.qrcode = false;
     }
 
-    const res = await fetch(`${baseUrl}/instance/create`, {
+    const res = await evolutionFetch('/instance/create', {
       method: 'POST',
-      headers: {
-        'apikey': apiKey,
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify(payload)
-    });
+    }, customApiKey);
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -199,7 +227,7 @@ export async function createEvolutionInstanceIfNotExists(instanceName, customApi
     }
 
     // Aplica a política de preservação de notificações imediatamente
-    await applyNotificationPreservationSettings(instanceName, apiKey);
+    await applyNotificationPreservationSettings(instanceName, customApiKey);
 
     return { success: true };
   } catch (error) {
@@ -212,8 +240,6 @@ export async function createEvolutionInstanceIfNotExists(instanceName, customApi
  * Impede que a Evolution API marque mensagens recebidas como lidas e garanta que o celular receba notificações push.
  */
 export async function applyNotificationPreservationSettings(instanceName, customApiKey) {
-  const { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
-
   const payload = {
     rejectCall: false,
     msgCall: '',
@@ -226,25 +252,17 @@ export async function applyNotificationPreservationSettings(instanceName, custom
 
   try {
     // Rota padrão Evolution v1/v2: POST /settings/set/:instance
-    let res = await fetch(`${baseUrl}/settings/set/${instanceName}`, {
+    let res = await evolutionFetch(`/settings/set/${instanceName}`, {
       method: 'POST',
-      headers: {
-        'apikey': apiKey,
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify(payload)
-    });
+    }, customApiKey);
 
     // Fallback: POST /instance/settings/:instance
     if (!res.ok && (res.status === 404 || res.status === 405)) {
-      res = await fetch(`${baseUrl}/instance/settings/${instanceName}`, {
+      res = await evolutionFetch(`/instance/settings/${instanceName}`, {
         method: 'POST',
-        headers: {
-          'apikey': apiKey,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(payload)
-      });
+      }, customApiKey);
     }
 
     const data = await res.json().catch(() => ({}));
@@ -274,30 +292,27 @@ export async function applyNotificationPreservationToAllInstances(instancesList,
  * Solicita o QR Code de pareamento da instância.
  */
 export async function getEvolutionQrCode(instanceName, customApiKey) {
-  const { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
-
   try {
-    const res = await fetch(`${baseUrl}/instance/connect/${instanceName}`, {
-      method: 'GET',
-      headers: {
-        'apikey': apiKey,
-        'Content-Type': 'application/json'
-      }
-    });
+    let res = await evolutionFetch(`/instance/connect/${instanceName}`, {
+      method: 'GET'
+    }, customApiKey);
 
-    const data = await res.json();
+    if (res.status === 404) {
+      const createRes = await createEvolutionInstanceIfNotExists(instanceName, customApiKey);
+      if (createRes.success) {
+        res = await evolutionFetch(`/instance/connect/${instanceName}`, {
+          method: 'GET'
+        }, customApiKey);
+      } else {
+        return { success: false, instanceName, error: createRes.error || 'Instância não encontrada e falha ao criá-la.' };
+      }
+    }
+
+    const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       if (res.status === 401) {
         return { success: false, instanceName, error: 'Chave de API (apikey) não autorizada no servidor Evolution API.' };
-      }
-      if (res.status === 404) {
-        const createRes = await createEvolutionInstanceIfNotExists(instanceName, apiKey);
-        if (createRes.success) {
-          return await getEvolutionQrCode(instanceName, apiKey);
-        } else {
-          return { success: false, instanceName, error: createRes.error || 'Instância não encontrada e falha ao criá-la.' };
-        }
       }
       return { success: false, instanceName, error: data.message || `Erro HTTP ${res.status}` };
     }
@@ -327,8 +342,6 @@ export async function getEvolutionQrCode(instanceName, customApiKey) {
  * @param {string} [customApiKey] - Chave opcional
  */
 export async function getEvolutionPairingCode(instanceName, phoneNumber, customApiKey) {
-  const { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
-
   if (!phoneNumber) {
     return { success: false, error: 'Número de telefone é obrigatório para gerar o código de pareamento.' };
   }
@@ -339,7 +352,7 @@ export async function getEvolutionPairingCode(instanceName, phoneNumber, customA
 
   try {
     // 1. Verifica se já está conectada
-    const stateCheck = await getEvolutionConnectionState(instanceName, apiKey);
+    const stateCheck = await getEvolutionConnectionState(instanceName, customApiKey);
     if (stateCheck.state === 'open') {
       return {
         success: false,
@@ -349,86 +362,7 @@ export async function getEvolutionPairingCode(instanceName, phoneNumber, customA
       };
     }
 
-    // Função interna com retry para aguardar o handshake do Baileys
-    async function requestConnectWithPolling(maxAttempts = 4, delayMs = 1200) {
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          const res = await fetch(`${baseUrl}/instance/connect/${instanceName}?number=${cleanPhone}`, {
-            method: 'GET',
-            headers: {
-              'apikey': apiKey,
-              'Content-Type': 'application/json'
-            }
-          });
-          const d = await res.json().catch(() => ({}));
-          const pin = extractValidPairingPin(d);
-          if (pin) {
-            return { data: d, validPin: pin };
-          }
-          if (attempt < maxAttempts) {
-            await new Promise(r => setTimeout(r, delayMs));
-          }
-        } catch (e) {
-          if (attempt < maxAttempts) {
-            await new Promise(r => setTimeout(r, delayMs));
-          }
-        }
-      }
-      return { data: {}, validPin: null };
-    }
-
-    // 2. Garante que a instância exista configurada com qrcode: false e o número do celular
-    if (stateCheck.state === 'not_found') {
-      await createEvolutionInstanceIfNotExists(instanceName, apiKey, cleanPhone, false);
-      // Aguarda 1s para o socket iniciar
-      await new Promise(r => setTimeout(r, 1000));
-    }
-
-    let { data, validPin } = await requestConnectWithPolling(2, 1000);
-
-    // Se o pairingCode veio nulo (porque a instância foi criada anteriormente no modo QR), recriamos com qrcode: false
-    if (!validPin) {
-      console.log(`[Evolution API] Inicializando ${instanceName} no modo Pairing Code (qrcode: false)...`);
-      await fetch(`${baseUrl}/instance/delete/${instanceName}`, {
-        method: 'DELETE',
-        headers: { 'apikey': apiKey }
-      }).catch(() => {});
-
-      await fetch(`${baseUrl}/instance/create`, {
-        method: 'POST',
-        headers: {
-          'apikey': apiKey,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          instanceName,
-          token: apiKey,
-          number: cleanPhone,
-          qrcode: false,
-          integration: 'WHATSAPP-BAILEYS'
-        })
-      }).catch(() => {});
-
-      await applyNotificationPreservationSettings(instanceName, apiKey);
-      // Aguarda 1.5s para o socket do Baileys registrar na Meta
-      await new Promise(r => setTimeout(r, 1500));
-
-      const retryResult = await requestConnectWithPolling(3, 1200);
-      data = retryResult.data;
-      validPin = retryResult.validPin;
-    }
-
-    // Se após a chamada o estado for open, o WhatsApp já conectou
-    if (data?.instance?.state === 'open' || data?.state === 'open') {
-      return {
-        success: false,
-        instanceName,
-        isAlreadyConnected: true,
-        error: `A instância já está conectada no WhatsApp (${data.instance?.owner || 'chip ativo'}).`
-      };
-    }
-
-    // Extrai estritamente o código PIN de 8 dígitos (rejeitando strings de QR Code)
+    // Helper para extrair PIN de 8 dígitos de qualquer formato retornado pela Evolution v2
     function extractValidPairingPin(apiData) {
       if (!apiData) return null;
       const candidates = [
@@ -455,12 +389,96 @@ export async function getEvolutionPairingCode(instanceName, phoneNumber, customA
       return null;
     }
 
+    // Função interna com polling e auto-recriação caso a instância não exista
+    async function requestConnectWithPolling(maxAttempts = 5, delayMs = 1200) {
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const res = await evolutionFetch(`/instance/connect/${instanceName}?number=${cleanPhone}`, {
+            method: 'GET'
+          }, customApiKey);
+
+          if (res.status === 404) {
+            // Se não encontrou, recria a instância no modo pairing
+            await evolutionFetch(`/instance/create`, {
+              method: 'POST',
+              body: JSON.stringify({
+                instanceName,
+                qrcode: false,
+                number: cleanPhone,
+                integration: 'WHATSAPP-BAILEYS'
+              })
+            }, customApiKey);
+            await new Promise(r => setTimeout(r, 1200));
+            continue;
+          }
+
+          const d = await res.json().catch(() => ({}));
+          const pin = extractValidPairingPin(d);
+          if (pin) {
+            return { data: d, validPin: pin };
+          }
+          if (attempt < maxAttempts) {
+            await new Promise(r => setTimeout(r, delayMs));
+          }
+        } catch (e) {
+          if (attempt < maxAttempts) {
+            await new Promise(r => setTimeout(r, delayMs));
+          }
+        }
+      }
+      return { data: {}, validPin: null };
+    }
+
+    // 2. Se a instância não existe, cria diretamente com qrcode: false e o número do celular
+    if (stateCheck.state === 'not_found') {
+      const createRes = await createEvolutionInstanceIfNotExists(instanceName, customApiKey, cleanPhone, false);
+      if (!createRes.success) {
+        return { success: false, instanceName, error: createRes.error || 'Falha ao criar instância na Evolution API.' };
+      }
+      await new Promise(r => setTimeout(r, 1200));
+    }
+
+    let { data, validPin } = await requestConnectWithPolling(3, 1000);
+
+    // Se o pairingCode ainda não veio, recriamos a instância com qrcode: false para forçar o handshake correto
+    if (!validPin) {
+      console.log(`[Evolution API] Recriando ${instanceName} no modo Pairing Code (qrcode: false)...`);
+      await evolutionFetch(`/instance/delete/${instanceName}`, { method: 'DELETE' }, customApiKey).catch(() => {});
+      await new Promise(r => setTimeout(r, 800));
+
+      await evolutionFetch(`/instance/create`, {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceName,
+          qrcode: false,
+          number: cleanPhone,
+          integration: 'WHATSAPP-BAILEYS'
+        })
+      }, customApiKey).catch(() => {});
+
+      await applyNotificationPreservationSettings(instanceName, customApiKey);
+      await new Promise(r => setTimeout(r, 1500));
+
+      const retryResult = await requestConnectWithPolling(4, 1200);
+      data = retryResult.data;
+      validPin = retryResult.validPin;
+    }
+
+    // Se após a chamada o estado for open, o WhatsApp já conectou
+    if (data?.instance?.state === 'open' || data?.state === 'open') {
+      return {
+        success: false,
+        instanceName,
+        isAlreadyConnected: true,
+        error: `A instância já está conectada no WhatsApp (${data.instance?.owner || 'chip ativo'}).`
+      };
+    }
+
     if (!validPin) {
       validPin = extractValidPairingPin(data);
     }
 
     if (!validPin) {
-      // Se a API retornou QR Code em vez de PIN
       const hasQr = !!(data?.base64 || data?.qrcode?.base64 || data?.code?.startsWith('2@'));
       return { 
         success: false, 
@@ -546,18 +564,12 @@ export async function sendSystemInviteNotification({
  * Desconecta a instância da Evolution API.
  */
 export async function logoutEvolutionInstance(instanceName, customApiKey) {
-  const { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
-
   try {
-    const res = await fetch(`${baseUrl}/instance/logout/${instanceName}`, {
-      method: 'DELETE',
-      headers: {
-        'apikey': apiKey,
-        'Content-Type': 'application/json'
-      }
-    });
+    const res = await evolutionFetch(`/instance/logout/${instanceName}`, {
+      method: 'DELETE'
+    }, customApiKey);
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok && res.status !== 404) {
       return { success: false, error: data.message || 'Erro ao desconectar.' };
     }
@@ -577,9 +589,6 @@ export async function sendEvolutionTextMessage({
   customApiKey,
   options = {}
 }) {
-  const { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
-
-  // Formata telefone
   const cleanPhone = to.replace(/\D/g, '');
   const formattedPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
 
@@ -604,16 +613,13 @@ export async function sendEvolutionTextMessage({
   };
 
   try {
-    const res = await fetch(`${baseUrl}/message/sendText/${instanceName || EVOLUTION_CONFIG.defaultInstance}`, {
+    const targetInst = instanceName || EVOLUTION_CONFIG.defaultInstance;
+    const res = await evolutionFetch(`/message/sendText/${targetInst}`, {
       method: 'POST',
-      headers: {
-        'apikey': apiKey,
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify(payload)
-    });
+    }, customApiKey);
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       return {
@@ -643,16 +649,11 @@ export async function sendEvolutionTextMessage({
  */
 export async function deleteEvolutionInstance(instanceName, customApiKey) {
   if (!instanceName) return { success: false, error: 'Nome de instância inválido.' };
-  const { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
 
   try {
-    const res = await fetch(`${baseUrl}/instance/delete/${instanceName}`, {
-      method: 'DELETE',
-      headers: {
-        'apikey': apiKey,
-        'Content-Type': 'application/json'
-      }
-    });
+    const res = await evolutionFetch(`/instance/delete/${instanceName}`, {
+      method: 'DELETE'
+    }, customApiKey);
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok && res.status !== 404) {
@@ -668,22 +669,16 @@ export async function deleteEvolutionInstance(instanceName, customApiKey) {
  * Busca todas as instâncias cadastradas no servidor Evolution API.
  */
 export async function fetchEvolutionInstances(customApiKey) {
-  const { apiKey, baseUrl } = getEvolutionConfig(customApiKey);
-
   try {
-    const res = await fetch(`${baseUrl}/instance/fetchInstances`, {
-      method: 'GET',
-      headers: {
-        'apikey': apiKey,
-        'Content-Type': 'application/json'
-      }
-    });
+    const res = await evolutionFetch('/instance/fetchInstances', {
+      method: 'GET'
+    }, customApiKey);
 
     if (!res.ok) {
       return { success: false, instances: [], error: `Erro HTTP ${res.status} ao buscar instâncias.` };
     }
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ([]));
     const instances = Array.isArray(data) ? data : (data.instances || []);
     return {
       success: true,
@@ -703,8 +698,7 @@ export async function fetchEvolutionInstances(customApiKey) {
  * Varre e exclui instâncias desconectadas há mais de X dias da Evolution API.
  */
 export async function cleanupDisconnectedInstances({ maxDisconnectedDays = 7, customApiKey } = {}) {
-  const { apiKey } = getEvolutionConfig(customApiKey);
-  const result = await fetchEvolutionInstances(apiKey);
+  const result = await fetchEvolutionInstances(customApiKey);
 
   if (!result.success) {
     return { success: false, count: 0, error: result.error };
@@ -733,7 +727,7 @@ export async function cleanupDisconnectedInstances({ maxDisconnectedDays = 7, cu
   const errors = [];
 
   for (const instName of toDelete) {
-    const delRes = await deleteEvolutionInstance(instName, apiKey);
+    const delRes = await deleteEvolutionInstance(instName, customApiKey);
     if (delRes.success) {
       deletedCount++;
     } else {
