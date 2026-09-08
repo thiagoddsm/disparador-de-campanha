@@ -7,6 +7,8 @@ import {
   subscribeToTeamMembers,
   saveContactsBatch,
   reassignContactInFirestore,
+  updateContactInFirestore,
+  deleteContactFromFirestore,
   DEFAULT_TENANT_ID
 } from '../firebase/realtime.js';
 import { showToast } from '../utils/feedback.js';
@@ -420,7 +422,61 @@ export function renderContactsView(container, currentUser, onNavigate) {
       </div>
     </div>
   `;
-  container.insertAdjacentHTML('beforeend', reassignModalHtml);
+
+  // Modal Editar Contato
+  const editContactModalHtml = `
+    <div id="modal-edit-contact" class="modal-overlay" style="display: none;">
+      <div class="modal-content" style="max-width: 500px;">
+        <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 0;">✏️ Editar Contato</h3>
+          <button id="btn-close-edit-contact" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);">✕</button>
+        </div>
+        <form id="form-edit-contact" style="padding: 1.5rem;">
+          <input type="hidden" id="edit-contact-id">
+          
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Nome Completo *</label>
+            <input type="text" id="edit-contact-name" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md);" placeholder="Ex: João da Silva" required>
+          </div>
+          
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">WhatsApp / Telefone *</label>
+            <input type="tel" inputmode="tel" id="edit-contact-phone" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md);" placeholder="Ex: 21999998888" required>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+            <div>
+              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Cidade (RJ)</label>
+              <input type="text" id="edit-contact-city" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md);" placeholder="Digite cidade..." autocomplete="off">
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Bairro (RJ)</label>
+              <input type="text" id="edit-contact-neighborhood" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md);" placeholder="Digite bairro..." autocomplete="off">
+            </div>
+          </div>
+
+          ${!isMember ? `
+            <div style="margin-bottom: 1.5rem;">
+              <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">Líder Atribuído</label>
+              <select id="edit-contact-assignee" class="topbar-search-input" style="width: 100%; background: #FFFFFF; font-size: 0.85rem; padding: 0.6rem 0.85rem; border-radius: var(--radius-md);"></select>
+            </div>
+          ` : ''}
+
+          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+            <button type="button" id="btn-delete-contact-from-modal" class="btn-outline-white" style="color: #DC2626; border-color: #FECACA; background: #FFF5F5; font-weight: 700; font-size: 0.82rem; padding: 0.5rem 0.85rem;">
+              🗑️ Excluir Contato
+            </button>
+            <div style="display: flex; gap: 0.75rem;">
+              <button type="button" id="btn-cancel-edit-contact" class="btn-outline-white">Cancelar</button>
+              <button type="submit" id="btn-save-edit-contact-submit" class="btn-green-action">Salvar Alterações</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  container.insertAdjacentHTML('beforeend', reassignModalHtml + editContactModalHtml);
 
   let coordinatorOptionsData = [];
   let leaderOptionsData = [];
@@ -579,15 +635,17 @@ export function renderContactsView(container, currentUser, onNavigate) {
   function updateAssigneesSelect() {
     const assignSel = container.querySelector('#select-contact-assignee');
     const reassignSel = container.querySelector('#select-reassign-member');
-    const available = teamMembers.length > 0 ? teamMembers : allUsers.filter(u => u.role === 'member' || u.role === 'coordinator');
+    const editAssignSel = container.querySelector('#edit-contact-assignee');
+    const available = teamMembers.length > 0 ? teamMembers : allUsers.filter(u => u.role === 'member' || u.role === 'coordinator' || u.role === 'admin');
 
     const options = [
-      `<option value="${currentUser.uid}" selected>⭐ Atribuir a Mim Mesmo (${currentUser.name || currentUser.email})</option>`,
+      `<option value="${currentUser.uid}">⭐ Atribuir a Mim Mesmo (${currentUser.name || currentUser.email})</option>`,
       ...available.filter(m => m.uid !== currentUser.uid).map(m => `<option value="${m.uid}">👤 ${m.name || m.email} (${m.email || ''})</option>`)
     ].join('');
 
     if (assignSel) assignSel.innerHTML = options;
     if (reassignSel) reassignSel.innerHTML = options;
+    if (editAssignSel) editAssignSel.innerHTML = `<option value="">Nenhum (Sem atribuição)</option>` + options;
   }
 
   function applyFiltersAndRender() {
@@ -776,9 +834,17 @@ export function renderContactsView(container, currentUser, onNavigate) {
               </td>
               <td style="padding: 0.85rem 1rem; text-align: center;">${statusBadge}</td>
               <td style="padding: 0.85rem 1rem; text-align: right;">
-                <button class="btn-reassign-action" data-id="${c.id}" style="border: 1px solid #CBD5E1; background: #FFFFFF; border-radius: 9999px; padding: 0.35rem 0.9rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; color: #334155; transition: all 0.15s ease;">
-                  Reatribuir
-                </button>
+                <div style="display: flex; gap: 0.4rem; justify-content: flex-end; align-items: center;">
+                  <button class="btn-edit-contact-action" data-id="${c.id}" title="Editar Contato" style="border: 1px solid #CBD5E1; background: #FFFFFF; border-radius: 6px; padding: 0.35rem 0.65rem; font-size: 0.78rem; font-weight: 700; cursor: pointer; color: #2563EB; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 3px;">
+                    ✏️ Editar
+                  </button>
+                  <button class="btn-reassign-action" data-id="${c.id}" title="Reatribuir Líder" style="border: 1px solid #CBD5E1; background: #FFFFFF; border-radius: 6px; padding: 0.35rem 0.65rem; font-size: 0.78rem; font-weight: 600; cursor: pointer; color: #334155; transition: all 0.15s ease;">
+                    🔁 Reatribuir
+                  </button>
+                  <button class="btn-delete-contact-action" data-id="${c.id}" data-name="${(c.name || 'Contato').replace(/"/g, '&quot;')}" title="Excluir Contato" style="border: 1px solid #FECACA; background: #FFF5F5; border-radius: 6px; padding: 0.35rem 0.55rem; font-size: 0.78rem; font-weight: 700; cursor: pointer; color: #DC2626; transition: all 0.15s ease;">
+                    🗑️
+                  </button>
+                </div>
               </td>
             </tr>
           `;
@@ -786,10 +852,30 @@ export function renderContactsView(container, currentUser, onNavigate) {
 
         // Reatribuir button listeners
         tbody.querySelectorAll('.btn-reassign-action').forEach(btn => {
-          btn.addEventListener('click', () => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
             const id = btn.getAttribute('data-id');
             container.querySelector('#reassign-contact-id').value = id;
             container.querySelector('#modal-reassign').style.display = 'flex';
+          });
+        });
+
+        // Edit contact listeners
+        tbody.querySelectorAll('.btn-edit-contact-action').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            openEditContactModal(id);
+          });
+        });
+
+        // Delete contact listeners
+        tbody.querySelectorAll('.btn-delete-contact-action').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            const name = btn.getAttribute('data-name') || 'Contato';
+            handleDeleteContact(id, name);
           });
         });
       }
@@ -813,13 +899,13 @@ export function renderContactsView(container, currentUser, onNavigate) {
               const locationInfo = [c.city, c.neighborhood || c.bairro].filter(Boolean).join(' · ');
 
               return `
-                <div class="wa-contact-item-row" style="display: flex; align-items: center; gap: 0.95rem; padding: 0.85rem 0.75rem; border-bottom: 1px solid #F1F5F9; cursor: pointer;">
-                  <div style="width: 44px; height: 44px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; color: #64748B; font-weight: 800; font-size: 0.85rem; flex-shrink: 0;">
+                <div class="wa-contact-item-row" style="display: flex; align-items: center; gap: 0.85rem; padding: 0.85rem 0.75rem; border-bottom: 1px solid #F1F5F9;">
+                  <div style="width: 42px; height: 42px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; color: #64748B; font-weight: 800; font-size: 0.85rem; flex-shrink: 0;">
                     ${(c.name || 'C').substring(0, 2).toUpperCase()}
                   </div>
                   <div style="flex: 1; min-width: 0;">
                     <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
-                      <span style="font-weight: 700; font-size: 0.95rem; color: #1E293B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                      <span style="font-weight: 700; font-size: 0.92rem; color: #1E293B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                         ${c.name}
                       </span>
                       ${isConfirmed ? `
@@ -837,11 +923,34 @@ export function renderContactsView(container, currentUser, onNavigate) {
                       </div>
                     ` : ''}
                   </div>
+                  <div style="display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0;">
+                    <button class="btn-edit-contact-action" data-id="${c.id}" style="background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 6px; padding: 0.35rem 0.5rem; font-size: 0.85rem; cursor: pointer; color: #2563EB;" title="Editar">✏️</button>
+                    <button class="btn-delete-contact-action" data-id="${c.id}" data-name="${(c.name || 'Contato').replace(/"/g, '&quot;')}" style="background: #FFF5F5; border: 1px solid #FECACA; border-radius: 6px; padding: 0.35rem 0.5rem; font-size: 0.85rem; cursor: pointer; color: #DC2626;" title="Excluir">🗑️</button>
+                  </div>
                 </div>
               `;
             }).join('')}
           </div>
         `;
+
+        // Mobile Edit contact listeners
+        mobileList.querySelectorAll('.btn-edit-contact-action').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            openEditContactModal(id);
+          });
+        });
+
+        // Mobile Delete contact listeners
+        mobileList.querySelectorAll('.btn-delete-contact-action').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            const name = btn.getAttribute('data-name') || 'Contato';
+            handleDeleteContact(id, name);
+          });
+        });
       }
     }
   }
@@ -1032,6 +1141,123 @@ export function renderContactsView(container, currentUser, onNavigate) {
       showToast('Erro ao reatribuir contato no Firestore.', 'error');
     }
   });
+
+  // Modal Editar Contato Handlers
+  const editModal = container.querySelector('#modal-edit-contact');
+  const editForm = container.querySelector('#form-edit-contact');
+  let currentEditingContactId = null;
+
+  function openEditContactModal(contactId) {
+    const contact = allContacts.find(c => c.id === contactId);
+    if (!contact) return;
+    currentEditingContactId = contactId;
+
+    const idInput = container.querySelector('#edit-contact-id');
+    const nameInput = container.querySelector('#edit-contact-name');
+    const phoneInput = container.querySelector('#edit-contact-phone');
+    const cityInput = container.querySelector('#edit-contact-city');
+    const neighInput = container.querySelector('#edit-contact-neighborhood');
+
+    if (idInput) idInput.value = contact.id;
+    if (nameInput) nameInput.value = contact.name || '';
+    if (phoneInput) phoneInput.value = contact.phone || '';
+    if (cityInput) cityInput.value = contact.city || '';
+    if (neighInput) neighInput.value = contact.neighborhood || contact.bairro || '';
+
+    updateAssigneesSelect();
+    const editAssigneeSel = container.querySelector('#edit-contact-assignee');
+    if (editAssigneeSel && contact.assigned_to) {
+      editAssigneeSel.value = contact.assigned_to;
+    }
+
+    if (editModal) editModal.style.display = 'flex';
+  }
+
+  container.querySelector('#btn-close-edit-contact')?.addEventListener('click', () => { if (editModal) editModal.style.display = 'none'; });
+  container.querySelector('#btn-cancel-edit-contact')?.addEventListener('click', () => { if (editModal) editModal.style.display = 'none'; });
+
+  // Excluir a partir do modal de edição
+  container.querySelector('#btn-delete-contact-from-modal')?.addEventListener('click', () => {
+    if (!currentEditingContactId) return;
+    const contact = allContacts.find(c => c.id === currentEditingContactId);
+    const name = contact?.name || 'Contato';
+    handleDeleteContact(currentEditingContactId, name);
+  });
+
+  async function handleDeleteContact(contactId, contactName) {
+    if (!contactId) return;
+    const confirmed = confirm(`Deseja realmente excluir o contato "${contactName}"?\n\nEsta ação removerá o contato permanentemente da base.`);
+    if (!confirmed) return;
+
+    try {
+      await deleteContactFromFirestore(contactId);
+      showToast(`Contato "${contactName}" excluído com sucesso!`, 'success');
+      if (editModal) editModal.style.display = 'none';
+    } catch (err) {
+      console.error('Erro ao excluir contato:', err);
+      showToast(`Erro ao excluir contato: ${err.message}`, 'error');
+    }
+  }
+
+  editForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentEditingContactId) return;
+
+    const name = container.querySelector('#edit-contact-name').value.trim();
+    const phone = container.querySelector('#edit-contact-phone').value.trim();
+    const city = container.querySelector('#edit-contact-city')?.value.trim() || '';
+    const neighborhood = container.querySelector('#edit-contact-neighborhood')?.value.trim() || '';
+
+    if (!name || !phone) {
+      showToast('Por favor, preencha Nome e Telefone.', 'warning');
+      return;
+    }
+
+    let assignedUid = null;
+    let assignedName = null;
+    const editAssigneeSel = container.querySelector('#edit-contact-assignee');
+    if (editAssigneeSel && editAssigneeSel.value) {
+      assignedUid = editAssigneeSel.value;
+      assignedName = editAssigneeSel.options[editAssigneeSel.selectedIndex]?.text.replace(/ \(.*\)/, '');
+    }
+
+    const saveBtn = container.querySelector('#btn-save-edit-contact-submit');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Salvando...';
+    }
+
+    try {
+      const updates = {
+        name,
+        phone,
+        city,
+        neighborhood,
+        bairro: neighborhood
+      };
+      if (editAssigneeSel) {
+        updates.assigned_to = assignedUid;
+        updates.assigned_to_name = assignedName;
+      }
+      await updateContactInFirestore(currentEditingContactId, updates);
+      showToast(`Contato "${name}" atualizado com sucesso!`, 'success');
+      if (editModal) editModal.style.display = 'none';
+    } catch (err) {
+      console.error('Erro ao atualizar contato:', err);
+      showToast(`Erro ao atualizar contato: ${err.message}`, 'error');
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Salvar Alterações';
+      }
+    }
+  });
+
+  // Autocomplete de Cidade e Bairro no Modal de Edição
+  setupSearchableLocationInput(
+    container.querySelector('#edit-contact-city'),
+    container.querySelector('#edit-contact-neighborhood')
+  );
 
   // Subscriptions em tempo real
   let unsubContacts = null;

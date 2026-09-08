@@ -455,6 +455,34 @@ export async function reassignContactInFirestore(contactId, newMemberUid, newMem
 }
 
 /**
+ * Atualiza os dados cadastrais de um contato no Firestore.
+ */
+export async function updateContactInFirestore(contactId, contactData) {
+  if (!contactId) return;
+  const contactRef = doc(db, 'contacts', contactId);
+  const updates = {
+    updated_at: serverTimestamp()
+  };
+
+  if (contactData.name !== undefined) updates.name = contactData.name;
+  if (contactData.phone !== undefined) updates.phone = contactData.phone;
+  if (contactData.city !== undefined) updates.city = contactData.city;
+  if (contactData.neighborhood !== undefined) {
+    updates.neighborhood = contactData.neighborhood;
+    updates.bairro = contactData.neighborhood;
+  }
+  if (contactData.bairro !== undefined) {
+    updates.bairro = contactData.bairro;
+    updates.neighborhood = contactData.bairro;
+  }
+  if (contactData.assigned_to !== undefined) updates.assigned_to = contactData.assigned_to;
+  if (contactData.assigned_to_name !== undefined) updates.assigned_to_name = contactData.assigned_to_name;
+  if (contactData.team_id !== undefined) updates.team_id = contactData.team_id;
+
+  await updateDoc(contactRef, updates);
+}
+
+/**
  * Remove um contato do Firestore.
  */
 export async function deleteContactFromFirestore(contactId) {
