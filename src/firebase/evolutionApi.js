@@ -742,3 +742,143 @@ export async function cleanupDisconnectedInstances({ maxDisconnectedDays = 7, cu
     errors
   };
 }
+
+/**
+ * Busca a lista de conversas/chats ativas de uma instância.
+ */
+export async function fetchEvolutionChats(instanceName, customApiKey) {
+  if (!instanceName) return { success: false, chats: [], error: 'Instância não informada.' };
+
+  try {
+    const res = await evolutionFetch(`/chat/findChats/${instanceName}`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    }, customApiKey);
+
+    if (!res.ok) {
+      return { success: false, chats: [], error: `Erro HTTP ${res.status} ao buscar conversas.` };
+    }
+
+    const data = await res.json().catch(() => ([]));
+    const chats = Array.isArray(data) ? data : (data.chats || []);
+    return {
+      success: true,
+      chats
+    };
+  } catch (error) {
+    console.error(`[Evolution API] Erro ao buscar conversas de ${instanceName}:`, error);
+    return { success: false, chats: [], error: error.message || 'Erro ao carregar conversas.' };
+  }
+}
+
+/**
+ * Busca o histórico de mensagens de uma conversa (por remoteJid).
+ */
+export async function fetchEvolutionMessages(instanceName, remoteJid, customApiKey, limit = 60) {
+  if (!instanceName || !remoteJid) {
+    return { success: false, messages: [], error: 'Instância ou conversa inválida.' };
+  }
+
+  try {
+    const res = await evolutionFetch(`/chat/findMessages/${instanceName}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        where: {
+          key: {
+            remoteJid: remoteJid
+          }
+        },
+        limit
+      })
+    }, customApiKey);
+
+    if (!res.ok) {
+      return { success: false, messages: [], error: `Erro HTTP ${res.status} ao buscar mensagens.` };
+    }
+
+    const data = await res.json().catch(() => ({}));
+    let records = [];
+    if (data.messages && Array.isArray(data.messages.records)) {
+      records = data.messages.records;
+    } else if (Array.isArray(data)) {
+      records = data;
+    } else if (Array.isArray(data.records)) {
+      records = data.records;
+    }
+
+    // Ordena do mais antigo para o mais recente (ordem cronológica para o chat)
+    records.sort((a, b) => {
+      const tsA = typeof a.messageTimestamp === 'number' ? a.messageTimestamp : Number(a.messageTimestamp) || 0;
+      const tsB = typeof b.messageTimestamp === 'number' ? b.messageTimestamp : Number(b.messageTimestamp) || 0;
+      return tsA - tsB;
+    });
+
+    return {
+      success: true,
+      messages: records,
+      total: data.messages?.total || records.length
+    };
+  } catch (error) {
+    console.error(`[Evolution API] Erro ao buscar mensagens de ${remoteJid}:`, error);
+    return { success: false, messages: [], error: error.message || 'Erro ao carregar mensagens.' };
+  }
+}
+
+/**
+ * Envia uma mensagem direta e instantânea no chat (estilo WhatsApp Web).
+ */
+export async function sendEvolutionDirectMessage({
+  instanceName,
+  to,
+  text,
+  customApiKey
+}) {
+  if (!instanceName) return { success: false, error: 'Instância não selecionada.' };
+  if (!to) return { success: false, error: 'Destinatário não informado.' };
+  if (!text || !text.trim()) return { success: false, error: 'Texto da mensagem não pode ser vazio.' };
+
+  // Se o destinatário for um JID completo ou número
+  let recipient = to.trim();
+  if (!recipient.includes('@')) {
+    const cleanPhone = recipient.replace(/\D/g, '');
+    recipient = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+  }
+
+  const payload = {
+    number: recipient,
+    text: text.trim(),
+    options: {
+      delay: 300,
+      presence: 'composing',
+      linkPreview: true
+    }
+  };
+
+  try {
+    const res = await evolutionFetch(`/message/sendText/${instanceName}`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }, customApiKey);
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      return {
+        success: false,
+        error: data.response?.message || data.message || `Erro HTTP ${res.status}`
+      };
+    }
+
+    return {
+      success: true,
+      messageId: data.key?.id || data.messageId,
+      data
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message || 'Erro ao enviar mensagem.'
+    };
+  }
+}
+

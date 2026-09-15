@@ -16,6 +16,7 @@ import { renderBulkDispatchView } from './components/BulkDispatchView.js';
 import { renderSettingsGeneral } from './components/SettingsGeneral.js';
 import { renderRolesManagement } from './components/RolesManagement.js';
 import { renderSecuritySettings } from './components/SecuritySettings.js';
+import { renderWhatsAppWebView } from './components/WhatsAppWebView.js';
 import { subscribeToTenantTeams, DEFAULT_TENANT_ID } from './firebase/realtime.js';
 import { initEvolutionConfigListener } from './firebase/evolutionApi.js';
 
@@ -35,6 +36,13 @@ let currentView = null;
 let currentTeamId = null;
 let currentUserState = null;
 let tenantTeams = [];
+
+// Verifica se a URL atual é do WhatsApp Web (/whatsapp ou #whatsapp)
+export function isWhatsAppUrl() {
+  const pathname = window.location.pathname;
+  const hash = window.location.hash;
+  return pathname.startsWith('/whatsapp') || hash.startsWith('#whatsapp') || hash.startsWith('#/whatsapp');
+}
 
 // Verifica se a URL atual é do Painel de Gestão Desktop (/admin ou #admin)
 export function isAdminUrl() {
@@ -86,9 +94,18 @@ function renderProtectedApp(currentUser) {
   const onAdminRoute = isAdminUrl();
 
   // ROTEAMENTO BASEADO EM URL:
-  // 1. Rota /admin: Painel de Gestão Desktop (Exclusivo Admin / Coordenador)
-  // 2. Rota / (Padrão): Versão Celular Otimizada (Fluida e Responsiva)
-  if (onAdminRoute) {
+  // 1. Rota /whatsapp: Tela Web WhatsApp para Operadores e Gestão
+  // 2. Rota /admin: Painel de Gestão Desktop (Exclusivo Admin / Coordenador)
+  // 3. Rota / (Padrão): Versão Celular Otimizada (Fluida e Responsiva)
+  const onWhatsAppRoute = isWhatsAppUrl();
+
+  if (onWhatsAppRoute) {
+    if (!currentView) {
+      currentView = 'whatsapp';
+    }
+    document.body.classList.add('view-mode-desktop');
+    document.body.classList.remove('view-mode-mobile');
+  } else if (onAdminRoute) {
     if (!isAdminOrCoord) {
       window.history.replaceState(null, '', '/');
       document.body.classList.add('view-mode-mobile');
@@ -286,6 +303,11 @@ function renderProtectedApp(currentUser) {
     });
   } else if (currentView === 'roles') {
     activeCleanup = renderRolesManagement(mainMount, currentUserState, (newView) => {
+      currentView = newView;
+      renderProtectedApp(currentUserState);
+    });
+  } else if (currentView === 'whatsapp') {
+    activeCleanup = renderWhatsAppWebView(mainMount, currentUserState, (newView) => {
       currentView = newView;
       renderProtectedApp(currentUserState);
     });
