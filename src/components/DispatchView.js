@@ -61,9 +61,6 @@ export function renderDispatchView(container, currentUser, onNavigate) {
         <span style="font-size: 0.88rem; font-weight: 800; text-transform: uppercase; border-bottom: 3px solid #25D366; padding-bottom: 2px; letter-spacing: 0.5px;">
           ENVIOS
         </span>
-        <span style="font-size: 0.76rem; color: rgba(255,255,255,0.9); font-weight: 600;">
-          <span id="queue-header-count">0</span> contatos na fila
-        </span>
       </div>
       <span id="wa-connection-indicator" style="font-size: 0.7rem; padding: 2px 8px; border-radius: 99px; background: rgba(255,255,255,0.2); color: #FFFFFF; font-weight: 700; white-space: nowrap;">
         Verificando...
