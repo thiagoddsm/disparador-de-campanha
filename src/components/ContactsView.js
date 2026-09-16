@@ -40,11 +40,6 @@ export function renderContactsView(container, currentUser, onNavigate) {
         <div style="display: flex; align-items: center; gap: 0.75rem;">
           <h2 style="font-size: 1.15rem; font-weight: 800; margin: 0; letter-spacing: -0.3px;">WhatsApp - ${currentUser.name || 'Operador'}</h2>
         </div>
-        <div style="display: flex; align-items: center; gap: 0.65rem;">
-          <button id="btn-goto-history-mobile" style="background: none; border: none; color: #FFFFFF; font-size: 1.15rem; cursor: pointer; padding: 0;" title="Histórico de Envios">
-            📜
-          </button>
-        </div>
       </div>
 
       <div style="background: #075E54; padding: 0.5rem 1rem 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
