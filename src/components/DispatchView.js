@@ -88,32 +88,9 @@ export function renderDispatchView(container, currentUser, onNavigate) {
           </div>
         ` : ''}
 
-        <!-- Leader Personal Coverage Progress Card -->
-        <div id="leader-mobile-goal-card" style="background: #FFFFFF; border-radius: 10px; padding: 0.75rem 0.85rem; border: 1px solid #CBD5E1; margin-bottom: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; font-size: 0.82rem;">
-            <span style="font-weight: 800; color: #1E293B;">
-              Olá, ${currentUser?.name ? currentUser.name.split(' ')[0] : 'Líder'} 👋
-            </span>
-            <span id="leader-goal-pct" style="font-weight: 800; color: #008069; font-size: 0.82rem;">0%</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.4rem;">
-            <span>Meta: <strong id="leader-goal-text" style="color: var(--text-main);">0 / 0</strong> abordados</span>
-            <span id="leader-goal-pend-text">0 pendentes</span>
-          </div>
-          <div style="width: 100%; height: 6px; background: #E2E8F0; border-radius: 99px; overflow: hidden;">
-            <div id="leader-goal-prog-bar" style="width: 0%; height: 100%; background: #25D366; transition: width 0.3s ease;"></div>
-          </div>
-        </div>
-
         <!-- Quick Controls Top Bar inside Chat -->
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-          <div style="display: flex; gap: 0.4rem; align-items: center; flex: 1; min-width: 0;">
-            <select id="select-quick-template" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: var(--text-main); font-size: 0.78rem; font-weight: 700; padding: 0.35rem 0.65rem; border-radius: 9999px; outline: none; cursor: pointer; flex: 1; min-width: 160px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-              <option value="">📄 Modelo: Escolher template... ⌵</option>
-            </select>
-          </div>
-
-          <button id="btn-toggle-queue-list" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: #008069; font-size: 0.75rem; font-weight: 800; padding: 0.35rem 0.75rem; cursor: pointer;">
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+          <button id="btn-toggle-queue-list" class="pill-btn" style="background: #FFFFFF; border: 1px solid #CBD5E1; color: #008069; font-size: 0.78rem; font-weight: 800; padding: 0.4rem 0.85rem; border-radius: 9999px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: inline-flex; align-items: center; gap: 0.35rem;">
             👥 Lista de Contatos ⌵
           </button>
         </div>
