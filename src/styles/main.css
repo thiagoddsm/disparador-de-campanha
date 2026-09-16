@@ -2465,15 +2465,37 @@ table.panel-table tr:hover td {
   .wa-chat-pane.mobile-show {
     display: flex !important;
   }
-
-  .wa-mobile-back-btn {
-    display: flex !important;
-  }
-
-  .wa-message-bubble {
-    max-width: 85%;
-  }
 }
+
+/* ==========================================================
+   CONTACTS TABLE & CARDS RESPONSIVE STYLES
+   ========================================================== */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.panel-table {
+  width: 100%;
+  min-width: 780px;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.panel-table th,
+.panel-table td {
+  white-space: nowrap !important;
+}
+
+.contact-card-item {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.contact-card-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
 
 
 

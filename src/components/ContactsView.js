@@ -303,25 +303,31 @@ export function renderContactsView(container, currentUser, onNavigate) {
           <input type="text" id="contacts-search" placeholder="Buscar por nome ou telefone..." style="width: 100%; padding: 0.8rem 1.25rem 0.8rem 3rem; border-radius: 9999px; border: 1.5px solid #E2E8F0; background: #FFFFFF; font-size: 0.88rem; outline: none; box-sizing: border-box; box-shadow: 0 1px 2px rgba(0,0,0,0.03); color: var(--text-main);">
         </div>
 
-        <!-- Contacts Table Card -->
+        <!-- Contacts Table / Cards Container -->
         <div class="main-panel-card" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;">
-          <div class="table-container">
-            <table class="panel-table" style="font-size: 0.85rem; width: 100%; border-collapse: collapse;">
+          <!-- Desktop Table (Com Scroll Horizontal Seguro e Sem Quebra Vertical de Letras) -->
+          <div class="desktop-only table-container" style="overflow-x: auto; width: 100%;">
+            <table class="panel-table" style="font-size: 0.85rem; width: 100%; min-width: 800px; border-collapse: collapse;">
               <thead>
                 <tr style="border-bottom: 1px solid #E2E8F0; background: #F8FAFC;">
-                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase;">NOME</th>
-                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase;">TELEFONE</th>
-                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase;">CIDADE</th>
-                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase;">BAIRRO</th>
-                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase;">LÍDER ATRIBUÍDO</th>
-                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: center; font-size: 0.75rem; text-transform: uppercase;">STATUS</th>
-                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: right; font-size: 0.75rem; text-transform: uppercase;">AÇÕES</th>
+                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase; white-space: nowrap;">NOME</th>
+                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase; white-space: nowrap;">TELEFONE</th>
+                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase; white-space: nowrap;">CIDADE</th>
+                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase; white-space: nowrap;">BAIRRO</th>
+                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: left; font-size: 0.75rem; text-transform: uppercase; white-space: nowrap;">LÍDER ATRIBUÍDO</th>
+                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: center; font-size: 0.75rem; text-transform: uppercase; white-space: nowrap;">STATUS</th>
+                  <th style="padding: 0.85rem 1rem; color: #64748B; font-weight: 700; text-align: right; font-size: 0.75rem; text-transform: uppercase; white-space: nowrap;">AÇÕES</th>
                 </tr>
               </thead>
               <tbody id="contacts-tbody">
                 <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 3rem;">Carregando contatos...</td></tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- Mobile Cards View (Para Celular e Telas Pequenas) -->
+          <div class="mobile-only" id="contacts-mobile-list" style="padding: 0.75rem; background: #F8FAFC; display: flex; flex-direction: column; gap: 0.65rem;">
+            <div style="text-align: center; color: var(--text-muted); padding: 2rem;">Carregando contatos...</div>
           </div>
 
           <!-- Rodapé de Paginação Otimizado para Grandes Bases -->
