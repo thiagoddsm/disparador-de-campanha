@@ -252,7 +252,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
               <div style="font-size: 0.74rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-top: 2px;">
                 <span style="color: #475569; font-weight: 600;">${formattedPhone}</span>
                 ${locationText ? `<span style="color: #0369A1; font-weight: 600; display: inline-flex; align-items: center; gap: 2px;">📍 ${locationText}</span>` : ''}
-                ${isConfirmed ? `<span style="color: #15803D; font-weight: 700;">✓ Enviado</span>` : isOpened ? `<span style="color: #2563EB; font-weight: 600;">● Aberto</span>` : ''}
+                ${isConfirmed ? `<span style="color: #15803D; font-weight: 700;">✓ Enviado</span>` : ''}
               </div>
             </div>
           </div>
