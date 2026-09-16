@@ -193,6 +193,18 @@ export function renderDispatchView(container, currentUser, onNavigate) {
     renderQueueList();
   }
 
+  function formatPhoneDisplay(phone) {
+    if (!phone) return '—';
+    const clean = phone.replace(/\D/g, '');
+    if (clean.length === 11) {
+      return `${clean.substring(0, 2)} ${clean.substring(2, 7)}-${clean.substring(7)}`;
+    }
+    if (clean.length === 13 && clean.startsWith('55')) {
+      return `${clean.substring(2, 4)} ${clean.substring(4, 9)}-${clean.substring(9)}`;
+    }
+    return phone;
+  }
+
   // Renderiza Lista na Gaveta de Contatos
   function renderQueueList() {
     const listMount = container.querySelector('#wa-queue-list-items');
@@ -208,20 +220,6 @@ export function renderDispatchView(container, currentUser, onNavigate) {
       selectAllChk.checked = contacts.length > 0 && selectedContactIds.size === contacts.length;
       selectAllChk.indeterminate = selectedContactIds.size > 0 && selectedContactIds.size < contacts.length;
     }
-
-    // Atualiza barra de progresso da meta individual do líder
-    const goalText = container.querySelector('#leader-goal-text');
-    const goalPct = container.querySelector('#leader-goal-pct');
-    const goalPendText = container.querySelector('#leader-goal-pend-text');
-    const goalProgBar = container.querySelector('#leader-goal-prog-bar');
-    const coverage = calculateNetworkCoverage(rawContacts, historyMessages);
-    const memberGoal = currentUser?.daily_goal || (rawContacts.length > 0 ? rawContacts.length : 30);
-    const progressPct = memberGoal > 0 ? Math.min(100, Math.round((coverage.abordados / memberGoal) * 100)) : 0;
-
-    if (goalText) goalText.textContent = `${coverage.abordados} / ${memberGoal}`;
-    if (goalPct) goalPct.textContent = `${progressPct}%`;
-    if (goalPendText) goalPendText.textContent = `${coverage.pendentes} pendentes`;
-    if (goalProgBar) goalProgBar.style.width = `${progressPct}%`;
 
     if (!listMount) return;
 
@@ -240,16 +238,20 @@ export function renderDispatchView(container, currentUser, onNavigate) {
       const initial = (c.name || 'C').charAt(0).toUpperCase();
       const isChecked = selectedContactIds.has(c.id);
 
+      const formattedPhone = formatPhoneDisplay(c.phone);
+      const locationParts = [c.city, c.neighborhood || c.bairro].filter(Boolean);
+      const locationText = locationParts.length > 0 ? locationParts.join(' · ') : '';
+
       return `
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.55rem 0.75rem; background: ${isChecked ? '#F0FDF4' : '#F8FAFC'}; border: 1px solid ${isChecked ? '#BBF7D0' : '#E2E8F0'}; border-radius: 8px; font-size: 0.8rem; transition: all 0.15s ease;">
-          <div style="display: flex; align-items: center; gap: 0.55rem; min-width: 0; flex: 1; cursor: pointer;" class="contact-row-toggle" data-id="${c.id}">
+          <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1; cursor: pointer;" class="contact-row-toggle" data-id="${c.id}">
             <input type="checkbox" class="chk-contact-item" data-id="${c.id}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: #25D366; cursor: pointer; flex-shrink: 0;">
-            <div style="width: 28px; height: 28px; border-radius: 50%; background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">${initial}</div>
-            <div style="min-width: 0;">
-              <div style="font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.name}</div>
-              <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;">
-                <span>${c.phone}</span>
-                ${c.assigned_to_name ? `<span>· ${c.assigned_to_name}</span>` : ''}
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">${initial}</div>
+            <div style="min-width: 0; flex: 1;">
+              <div style="font-weight: 700; color: var(--text-main); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.name}</div>
+              <div style="font-size: 0.74rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; margin-top: 2px;">
+                <span style="color: #475569; font-weight: 600;">${formattedPhone}</span>
+                ${locationText ? `<span style="color: #0369A1; font-weight: 600; display: inline-flex; align-items: center; gap: 2px;">📍 ${locationText}</span>` : ''}
                 ${isConfirmed ? `<span style="color: #15803D; font-weight: 700;">✓ Enviado</span>` : isOpened ? `<span style="color: #2563EB; font-weight: 600;">● Aberto</span>` : ''}
               </div>
             </div>
