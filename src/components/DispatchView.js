@@ -241,7 +241,7 @@ export function renderDispatchView(container, currentUser, onNavigate) {
       const isChecked = selectedContactIds.has(c.id);
 
       return `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.45rem 0.6rem; background: ${isChecked ? '#F0FDF4' : '#F8FAFC'}; border: 1px solid ${isChecked ? '#BBF7D0' : 'transparent'}; border-radius: 8px; font-size: 0.8rem; transition: all 0.15s ease;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.55rem 0.75rem; background: ${isChecked ? '#F0FDF4' : '#F8FAFC'}; border: 1px solid ${isChecked ? '#BBF7D0' : '#E2E8F0'}; border-radius: 8px; font-size: 0.8rem; transition: all 0.15s ease;">
           <div style="display: flex; align-items: center; gap: 0.55rem; min-width: 0; flex: 1; cursor: pointer;" class="contact-row-toggle" data-id="${c.id}">
             <input type="checkbox" class="chk-contact-item" data-id="${c.id}" ${isChecked ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: #25D366; cursor: pointer; flex-shrink: 0;">
             <div style="width: 28px; height: 28px; border-radius: 50%; background: #EFF6FF; color: #1D4ED8; font-weight: 700; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">${initial}</div>
@@ -253,12 +253,6 @@ export function renderDispatchView(container, currentUser, onNavigate) {
                 ${isConfirmed ? `<span style="color: #15803D; font-weight: 700;">✓ Enviado</span>` : isOpened ? `<span style="color: #2563EB; font-weight: 600;">● Aberto</span>` : ''}
               </div>
             </div>
-          </div>
-
-          <div style="display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; margin-left: 0.5rem;">
-            <button class="btn-quick-send-one" data-id="${c.id}" data-name="${c.name || ''}" data-phone="${c.phone}" data-city="${c.city || ''}" style="background: #25D366; color: #FFFFFF; border: none; font-size: 0.72rem; font-weight: 700; padding: 0.3rem 0.65rem; border-radius: 6px; cursor: pointer;" title="Enviar diretamente para este contato">
-              📱 Enviar
-            </button>
           </div>
         </div>
       `;
@@ -288,62 +282,6 @@ export function renderDispatchView(container, currentUser, onNavigate) {
           selectedContactIds.add(id);
         }
         renderQueueList();
-      });
-    });
-
-    // Listener de envio rápido individual
-    listMount.querySelectorAll('.btn-quick-send-one').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const contactId = btn.getAttribute('data-id');
-        const contactName = btn.getAttribute('data-name');
-        const contactPhone = btn.getAttribute('data-phone');
-        const contactCity = btn.getAttribute('data-city');
-
-        const rawTemplate = textarea?.value || templateText;
-        if (!rawTemplate.trim()) {
-          showToast('Selecione ou digite um template antes de enviar.', 'error');
-          return;
-        }
-
-        const processedMessage = resolveSpintax(rawTemplate);
-        btn.disabled = true;
-        btn.textContent = 'Enviando...';
-
-        const strategyToUse = isApiConnected ? 'evolution_api' : 'wa.me';
-
-        try {
-          const dispatchRes = await executeDispatch({
-            contactId,
-            contactName,
-            contactCompany: contactCity,
-            contactPhone,
-            user: currentUser,
-            strategy: strategyToUse,
-            templateBody: processedMessage
-          });
-
-          const targetContact = rawContacts.find(c => c.id === contactId);
-          if (targetContact) {
-            targetContact.status = strategyToUse === 'evolution_api' ? 'user_confirmed' : 'opened';
-          }
-          applyFilterAndRender();
-          
-          if (strategyToUse === 'evolution_api') {
-            showToast(`Mensagem enviada com sucesso via WhatsApp API para ${contactName}!`, 'success');
-          } else {
-            showToast(`Conversa aberta no WhatsApp para ${contactName}!`, 'success');
-          }
-
-          // Exibe banner de continuidade e incentivo pós-disparo
-          showContinuationBanner(contactName);
-        } catch (err) {
-          console.warn('Erro ao enviar contato:', err);
-          showToast('Erro no envio: ' + err.message, 'error');
-        } finally {
-          btn.disabled = false;
-          btn.textContent = '📱 Enviar';
-        }
       });
     });
   }
